@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js'></script>
+    <script src='https://cdn.jsdelivr.net/npm/@fullcalendar/core@6.1.10/locales/pt-br.global.min.js'></script>
+    
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+      :root {
+        --primary-color: #4318FF; 
+        --secondary-color: #F4F7FE; 
+        --text-main: #2B3674; 
+        --text-muted: #A3AED0;
+        --card-shadow: 0px 18px 40px rgba(112, 144, 176, 0.12); 
+      }
+
+      body { 
+        font-family: 'Plus Jakarta Sans', sans-serif;
+        background-color: var(--secondary-color);
+        margin: 0; padding: 0; min-height: 100vh;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      #erp-app { display: none; zoom: 90%; }
+
+      /* TELA DE LOGIN */
+      #telaLogin {
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background: var(--secondary-color);
+        z-index: 10000; display: flex; align-items: center; justify-content: center;
+      }
+      .card-login {
+        background: white; padding: 40px; border-radius: 28px;
+        box-shadow: var(--card-shadow); width: 100%; max-width: 380px;
+      }
+
+      /* ESTILOS GERAIS */
+      .erp-header { 
+        height: 65px; background: rgba(255, 255, 255, 0.7) !important; 
+        backdrop-filter: blur(12px); border-radius: 20px; margin: 15px 20px;
+        display: flex; align-items: center; justify-content: space-between; padding: 0 25px;
+        box-shadow: 0px 8px 20px rgba(112, 144, 176, 0.08); border: 1px solid rgba(255, 255, 255, 0.8);
+      }
+
+      .card { border: none !important; border-radius: 24px !important; box-shadow: var(--card-shadow) !important; transition: transform 0.3s ease; }
+      .bg-success { background: linear-gradient(135deg, #05CD99 0%, #04A67C 100%) !important; color: white !important; }
+      .bg-primary { background: linear-gradient(135deg, var(--primary-color) 0%, #868CFF 100%) !important; color: white !important; }
+
+      .dataTables_wrapper { background: white; padding: 25px; border-radius: 24px; box-shadow: var(--card-shadow); margin-top: 15px; }
+      
+      .btn { border-radius: 14px !important; font-weight: 700 !important; transition: all 0.3s ease; }
+      .btn-primary { background: linear-gradient(135deg, var(--primary-color) 0%, #868CFF 100%) !important; border: none !important; color: white !important;}
+
+      .autocomplete-suggestions {
+        border: 1px solid #E9EDF7; 
+        background: white; 
+        max-height: 220px;
+        overflow-y: auto; 
+        position: absolute; 
+        z-index: 9999; 
+        top: 100%;
+        left: 10px;
+        right: 10px; 
+        box-shadow: 0 15px 35px rgba(43, 54, 116, 0.15); 
+        border-radius: 14px;
+        margin-top: 5px;
+      }
+      
+      .badge-obs {
+        cursor: pointer; margin-left: 10px; background: #E9EEFA; color: var(--primary-color); 
+        padding: 4px 8px; border-radius: 8px; font-size: 11px; font-weight: 800; display: inline-block;
+      }
+
+      /* MODERNIZAÇÃO DO FULLCALENDAR (AGENDA) */
+      .fc { font-family: 'Plus Jakarta Sans', sans-serif !important; color: var(--text-main); }
+      .fc .fc-toolbar-title { font-weight: 800; font-size: 22px; color: var(--primary-color); letter-spacing: -0.5px; }
+      .fc .fc-button-primary {
+        background-color: white !important; border: 1px solid #E9EDF7 !important; color: var(--text-muted) !important;
+        border-radius: 12px !important; font-weight: 700 !important; text-transform: capitalize;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.02) !important; transition: all 0.2s ease;
+      }
+      .fc .fc-button-primary:hover {
+        background-color: var(--primary-color) !important; color: white !important;
+        border-color: var(--primary-color) !important; box-shadow: 0 8px 15px rgba(67, 24, 255, 0.2) !important;
+      }
+      .fc .fc-button-active { background-color: var(--primary-color) !important; color: white !important; }
+      .fc-theme-standard td, .fc-theme-standard th { border-color: #f1f5f9 !important; }
+      .fc-col-header-cell-cushion { font-weight: 700; color: var(--text-muted); padding: 10px !important; text-transform: uppercase; font-size: 13px; }
+      .fc .fc-day-today { background-color: rgba(67, 24, 255, 0.03) !important; }
+      .fc-timegrid-now-indicator-line { border-color: #EE5D50; border-width: 2px; }
+      .fc-timegrid-now-indicator-arrow { border-color: #EE5D50; background-color: #EE5D50; }
+      .fc-v-event {
+        border-radius: 10px !important; border: none !important; box-shadow: 0 4px 10px rgba(0,0,0,0.08) !important;
+        padding: 4px; font-size: 11px; transition: transform 0.2s;
+      }
+      .fc-v-event:hover { transform: scale(1.02); cursor: pointer; z-index: 5 !important; }
+      .fc-event-main { font-weight: 600; }
+    </style>
+    
+    <?!= incluirNoERP('ModuloCSS'); ?>
+
+  </head>
+  <body>
+
+    <div id="telaLogin">
+      <div class="card-login text-center">
+        <h4 class="fw-bold mb-4" style="color: var(--primary-color)">Odontologia Ramos</h4>
+        <div class="text-start mb-3">
+          <label class="form-label fw-bold small">USUÁRIO</label>
+          <input type="text" id="userLogin" class="form-control" placeholder="Login">
+        </div>
+        <div class="text-start mb-4">
+          <label class="form-label fw-bold small">SENHA</label>
+          <input type="password" id="userPass" class="form-control" placeholder="****">
+        </div>
+        <button class="btn btn-primary w-100 fw-bold py-2" onclick="fazerLogin()" id="btnLogin">ENTRAR</button>
+        <div id="msgErroLogin" class="text-danger small mt-3" style="display:none">❌ Credenciais incorretas.</div>
+      </div>
+    </div>
+
+    <div id="erp-app">
+      <div class="erp-header">
+        <span class="fw-bold" style="color: var(--text-main); font-size: 18px;">ERP CLÍNICA RAMOS</span>
+        
+        <div class="d-flex gap-3 align-items-center">
+          <button class="btn btn-sm btn-outline-primary fw-bold shadow-sm" onclick="abrirModalPaciente()" style="background: white;">
+            <span class="material-icons" style="font-size: 18px; vertical-align: middle;">person_add</span> NOVO PACIENTE
+          </button>
+          <button class="btn btn-sm btn-outline-secondary" onclick="fazerLogout()">SAIR</button>
+        </div>
+      </div>
+
+     <div class="px-4 mb-2">
+        <ul class="nav nav-pills" id="erpNavegacao" role="tablist">
+          <li class="nav-item" role="presentation">
+            <button class="nav-link active fw-bold" id="tab-lancamentos" data-bs-toggle="pill" data-bs-target="#area-lancamentos" type="button" role="tab">
+              <span class="material-icons" style="font-size: 18px; vertical-align: text-bottom;">attach_money</span> FINANCEIRO
+            </button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link fw-bold" id="tab-agenda" data-bs-toggle="pill" data-bs-target="#area-agenda" type="button" role="tab" onclick="renderizarCalendario()">
+              <span class="material-icons" style="font-size: 18px; vertical-align: text-bottom;">calendar_month</span> AGENDA CLÍNICA
+            </button>
+          </li>
+        </ul>
+      </div>
+
+      <div class="tab-content p-4 pt-2">
+        
+        <div class="tab-pane fade show active" id="area-lancamentos" role="tabpanel">
+          <div id="loader" class="text-center py-5">
+            <div class="spinner-border text-primary"></div>
+            <p class="mt-2 fw-bold">Sincronizando banco de dados...</p>
+          </div>
+          <div id="conteudo" style="display:none;"></div>
+        </div>
+
+        <div class="tab-pane fade" id="area-agenda" role="tabpanel">
+          <div class="card p-4 shadow-sm" style="border-radius: 24px;">
+             <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                <div class="d-flex align-items-center gap-3">
+                   <div class="d-flex align-items-center gap-2">
+                      <label class="small fw-bold text-muted">DOUTOR:</label>
+                      <select id="selFiltroDoutorAgenda" class="form-select form-select-sm border-0 bg-light fw-bold text-primary" style="width: 180px;" onchange="filtrarAgendaPorDoutor(this.value)">
+                         <option value="">TODOS</option>
+                      </select>
+                   </div>
+                   
+                   <div class="d-flex align-items-center gap-2">
+                      <label class="small fw-bold text-muted">INTERVALO:</label>
+                      <select id="selIntervaloAgenda" class="form-select form-select-sm border-0 bg-light fw-bold" style="width: 120px;" onchange="alterarIntervaloAgenda(this.value)">
+                         <option value="00:15:00">15 min</option>
+                         <option value="00:30:00" selected>30 min</option>
+                         <option value="01:00:00">1 hora</option>
+                      </select>
+                   </div>
+                </div>
+                
+                <button class="btn btn-primary btn-sm fw-bold" onclick="abrirModalAgendamento('', '08:00')">
+                   <span class="material-icons" style="font-size: 18px; vertical-align: middle;">add</span> NOVO AGENDAMENTO
+                </button>
+             </div>
+             
+             <div id="calendario-clinica"></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="modal fade" id="modalCadastro" data-bs-backdrop="static" tabindex="-1">
+      <div class="modal-dialog modal-lg border-0">
+        <div class="modal-content shadow-lg border-0" style="border-radius: 28px;">
+          <div class="modal-header border-0 p-4">
+            <h5 class="modal-title fw-bold" id="tituloModal">Novo Atendimento</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body p-4 pt-0">
+            <form id="formCadastro">
+              <input type="hidden" name="idLinha" id="idLinha">
+              <div class="row g-3">
+                
+                <div class="col-md-3">
+                  <label class="form-label fw-bold">DATA</label>
+                  <input type="text" class="form-control" name="data" id="dataInput" oninput="mascaraData(this)" maxlength="10">
+                </div>
+                
+                <div class="col-md-9 position-relative">
+                  <label class="form-label fw-bold">PACIENTE</label>
+                  <div class="input-group shadow-sm" style="border-radius: 14px;">
+                    <input type="text" class="form-control border-0" name="paciente" id="f_paciente" required autocomplete="off" onkeyup="autocompletePaciente(this.value)" placeholder="Digite o nome para buscar...">
+                    <button class="btn btn-primary d-flex align-items-center justify-content-center px-3" type="button" onclick="abrirNovoPacienteDoLancamento()" title="Cadastrar Novo Paciente" style="border-top-right-radius: 14px; border-bottom-right-radius: 14px; z-index: 2;">
+                      <span class="material-icons" style="font-size: 20px;">person_add</span>
+                    </button>
+                  </div>
+                  <div id="autocomplete-list" class="autocomplete-suggestions" style="display: none;"></div>
+                </div>
+                
+                <div class="col-md-6">
+                  <label class="form-label fw-bold">DOUTOR</label>
+                  <select class="form-select" name="doutor" id="sel_doutor" required></select>
+                </div>
+                
+                <div class="col-md-6">
+                  <label class="form-label fw-bold">PLANO</label>
+                  <select class="form-select" name="plano" id="sel_plano"></select>
+                </div>
+                
+                <div class="col-md-12">
+                  <label class="form-label fw-bold">PROCEDIMENTO</label>
+                  <select class="form-select" name="procedimento" id="sel_proc" required></select>
+                </div>
+                
+                <div class="col-md-6">
+                  <label class="form-label fw-bold">PAGAMENTO</label>
+                  <select class="form-select" name="pagamento" id="sel_pag"></select>
+                </div>
+                
+                <div class="col-md-6">
+                  <label class="form-label fw-bold">OBSERVAÇÃO</label>
+                  <input type="text" class="form-control" name="obs">
+                </div>
+                
+                <div class="col-md-4">
+                  <label class="form-label fw-bold text-success">PARTICULAR (R$)</label>
+                  <input type="text" class="form-control border-success" name="particular" value="0,00" oninput="mascaraMoeda(this)" onfocus="this.select()">
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label fw-bold text-primary">V. PLANO (R$)</label>
+                  <input type="text" class="form-control border-primary" name="vplano" value="0,00" oninput="mascaraMoeda(this)" onfocus="this.select()">
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label fw-bold text-danger">V. LAB (R$)</label>
+                  <input type="text" class="form-control border-danger" name="vlab" value="0,00" oninput="mascaraMoeda(this)" onfocus="this.select()">
+                </div>
+
+              </div>
+            </form>
+          </div>
+          <div class="modal-footer border-0 p-4 bg-light">
+            <button type="button" class="btn btn-danger btn-sm" id="btnExcluir" style="display:none;" onclick="pedirExclusao()">EXCLUIR</button>
+            <div class="ms-auto">
+              <button type="button" class="btn btn-secondary me-2" data-bs-dismiss="modal">CANCELAR</button>
+              <button type="button" class="btn btn-primary px-4" id="btnSalvar" onclick="salvarLancamento()">SALVAR</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <?!= incluirNoERP('FormPaciente'); ?>
+    <?!= incluirNoERP('FormAgendamento'); ?>
+    <?!= incluirNoERP('ModalProntuario'); ?>
+    
+    <script>
+    function mascaraData(input) {
+      let v = input.value.replace(/\D/g,'').slice(0, 8);
+      if (v.length >= 5) input.value = `${v.slice(0,2)}/${v.slice(2,4)}/${v.slice(4)}`;
+      else if (v.length >= 3) input.value = `${v.slice(0,2)}/${v.slice(2)}`;
+      else input.value = v;
+    }
+    function mascaraMoeda(i) {
+      let v = i.value.replace(/\D/g,'');
+      v = (v/100).toFixed(2) + '';
+      v = v.replace(".", ",");
+      v = v.replace(/(\d)(\d{3})(\d{3}),/g, "$1.$2.$3,");
+      v = v.replace(/(\d)(\d{3}),/g, "$1.$2,");
+      i.value = v;
+    }
+    </script>
+
+    <?!= incluirNoERP('ModuloJS'); ?>
+  </body>
+</html>
