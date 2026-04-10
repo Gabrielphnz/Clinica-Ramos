@@ -1,0 +1,1220 @@
+<!-- MODAL PRONTUÁRIO MELHORADO -->
+<div class="modal fade" id="modalProntuario" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+  <div class="modal-dialog modal-fullscreen">
+    <div class="modal-content bg-light">
+      
+      <!-- HEADER COM MAIS OPÇÕES -->
+      <div class="modal-header bg-white border-bottom px-4 py-3 d-flex justify-content-between align-items-center">
+        <div class="d-flex align-items-center gap-3">
+           <button class="btn btn-light rounded-circle p-2 d-flex align-items-center" onclick="fecharProntuario()">
+              <span class="material-icons">arrow_back</span>
+           </button>
+           <h4 class="fw-bold mb-0 text-primary" id="prontuarioNomeHeader">NOME DO PACIENTE</h4>
+           <span class="badge bg-success rounded-pill px-3 py-2" id="prontuarioStatusBadge">Ativo</span>
+        </div>
+        <div class="d-flex gap-2">
+           <button class="btn btn-outline-primary fw-bold" onclick="abrirModalAgendamento('', '')">📅 AGENDAR</button>
+           <button class="btn btn-outline-danger fw-bold" onclick="abrirFinanceiroPaciente()">💰 FINANCEIRO</button>
+           <button class="btn btn-outline-secondary fw-bold" onclick="imprimirProntuario()">🖨️ IMPRIMIR</button>
+           <button type="button" class="btn-close" onclick="fecharProntuario()"></button>
+        </div>
+      </div>
+
+      <div class="modal-body p-0">
+        <div class="row g-0 h-100">
+          
+          <!-- SIDEBAR ESQUERDA MELHORADA -->
+          <div class="col-md-2 bg-white border-end d-flex flex-column" style="min-height: calc(100vh - 80px); overflow-y: auto;">
+            <div class="p-4 text-center border-bottom">
+              <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center mx-auto mb-3 shadow-sm" style="width: 90px; height: 90px; font-size: 32px; font-weight: bold;" id="prontuarioIniciais">
+                --
+              </div>
+              <h6 class="fw-bold mb-1 text-dark" id="prontuarioNomeLateral">Paciente</h6>
+              <small class="text-muted d-block mb-3" id="prontuarioConvenio">Convênio</small>
+              
+              <div class="d-grid gap-2">
+                <button class="btn btn-success w-100 fw-bold d-flex align-items-center justify-content-center gap-2 shadow-sm rounded-pill" onclick="chamarWhatsappProntuario()">
+                  <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" width="18"> WhatsApp
+                </button>
+                <button class="btn btn-outline-secondary w-100 fw-bold d-flex align-items-center justify-content-center gap-2 rounded-pill" onclick="copiarTelefoneProntuario()">
+                  <span class="material-icons" style="font-size: 16px;">content_copy</span> Copiar Telefone
+                </button>
+              </div>
+            </div>
+
+            <!-- INFORMAÇÕES RÁPIDAS -->
+            <div class="p-3 border-bottom">
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <small class="text-muted">Última consulta:</small>
+                <strong class="text-dark" id="prontuarioUltimaConsulta">--/--/----</strong>
+              </div>
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <small class="text-muted">Total de atendimentos:</small>
+                <strong class="text-primary" id="prontuarioTotalAtendimentos">0</strong>
+              </div>
+              <div class="d-flex justify-content-between align-items-center">
+                <small class="text-muted">Valor total gasto:</small>
+                <strong class="text-success" id="prontuarioTotalGasto">R$ 0,00</strong>
+              </div>
+            </div>
+
+            <!-- ATALHOS RÁPIDOS -->
+            <div class="p-3">
+              <button class="btn btn-light w-100 text-start mb-2 rounded-3" onclick="document.querySelector('[data-bs-target=\'#tabAnamnese\']').click()">
+                <span class="material-icons align-middle me-2">assignment</span> Ver Anamnese
+              </button>
+              <button class="btn btn-light w-100 text-start mb-2 rounded-3" onclick="document.querySelector('[data-bs-target=\'#tabEvolucao\']').click()">
+                <span class="material-icons align-middle me-2">edit_note</span> Ver Evoluções
+              </button>
+              <button class="btn btn-light w-100 text-start mb-2 rounded-3" onclick="document.querySelector('[data-bs-target=\'#tabFicha\']').click()">
+                <span class="material-icons align-middle me-2">badge</span> Dados Pessoais
+              </button>
+              <button class="btn btn-danger w-100 text-start rounded-3" onclick="abrirNovaEvolucaoRapida()">
+                <span class="material-icons align-middle me-2">add</span> Nova Evolução
+              </button>
+            </div>
+          </div>
+
+          <!-- CONTEÚDO PRINCIPAL -->
+          <div class="col-md-10 bg-light d-flex flex-column h-100">
+            
+            <!-- TABS MELHORADAS -->
+            <div class="bg-white border-bottom px-4 pt-3">
+              <style>
+                #tabsProntuario .nav-link { color: #A3AED0; font-weight: 700; border: none; background: transparent; padding: 8px 20px 12px 20px; border-bottom: 3px solid transparent !important; transition: all 0.2s; }
+                #tabsProntuario .nav-link:hover { color: #4318FF; }
+                #tabsProntuario .nav-link.active { color: #4318FF !important; border-bottom: 3px solid #4318FF !important; }
+              </style>
+              <ul class="nav nav-tabs border-0" id="tabsProntuario" role="tablist">
+                <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabFicha" type="button" role="tab">📋 Ficha Pessoal</button></li>
+                <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabAnamnese" type="button" role="tab">📝 Anamnese</button></li>
+                <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabOdontograma" type="button" role="tab">🦷 Odontograma</button></li>
+                <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tabEvolucao" type="button" role="tab">📈 Evolução Clínica</button></li>
+                <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabOrto" type="button" role="tab">😬 Ortodontia</button></li>
+                <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabExames" type="button" role="tab">🔬 Exames</button></li>
+                <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabDocumentos" type="button" role="tab">📎 Documentos</button></li>
+              </ul>
+            </div>
+
+            <div class="tab-content p-4 h-100 overflow-auto">
+              
+              <!-- TAB 1: FICHA PESSOAL MELHORADA -->
+              <div class="tab-pane fade" id="tabFicha" role="tabpanel">
+                <div class="row g-4">
+                  <div class="col-md-5">
+                    <div class="card border-0 shadow-sm rounded-4 h-100">
+                      <div class="card-header bg-white border-0 p-4 pb-2 d-flex justify-content-between">
+                        <h6 class="fw-bold mb-0 text-dark"><span class="material-icons align-middle text-primary">badge</span> Dados Pessoais</h6>
+                        <button class="btn btn-sm btn-outline-primary rounded-pill" onclick="editarDadosPaciente()">✏️ Editar</button>
+                      </div>
+                      <div class="card-body p-4">
+                        <form id="formFichaProntuario">
+                          <div class="row g-3">
+                            <div class="col-12"><label class="small fw-bold text-muted mb-1">Nome Completo</label><input type="text" class="form-control bg-light border-0 fw-bold" id="ficha_nome" readonly></div>
+                            <div class="col-md-6"><label class="small fw-bold text-muted mb-1">CPF</label><input type="text" class="form-control bg-light border-0" id="ficha_cpf" readonly></div>
+                            <div class="col-md-6"><label class="small fw-bold text-muted mb-1">RG</label><input type="text" class="form-control bg-light border-0" id="ficha_rg" readonly></div>
+                            <div class="col-md-6"><label class="small fw-bold text-muted mb-1">Nascimento</label><input type="text" class="form-control bg-light border-0" id="ficha_nascimento" readonly></div>
+                            <div class="col-md-6"><label class="small fw-bold text-muted mb-1">Idade</label><input type="text" class="form-control bg-light border-0" id="ficha_idade" readonly></div>
+                            <div class="col-md-6"><label class="small fw-bold text-muted mb-1">Celular</label><input type="text" class="form-control bg-light border-0 fw-bold text-success" id="ficha_celular" readonly></div>
+                            <div class="col-md-6"><label class="small fw-bold text-muted mb-1">Telefone Fixo</label><input type="text" class="form-control bg-light border-0" id="ficha_telefone" readonly></div>
+                            <div class="col-md-6"><label class="small fw-bold text-muted mb-1">Email</label><input type="email" class="form-control bg-light border-0" id="ficha_email" readonly></div>
+                            <div class="col-md-6"><label class="small fw-bold text-muted mb-1">Convênio / Plano</label><input type="text" class="form-control bg-light border-0 fw-bold text-primary" id="ficha_convenio" readonly></div>
+                            <div class="col-12"><label class="small fw-bold text-muted mb-1">Endereço Completo</label><input type="text" class="form-control bg-light border-0" id="ficha_endereco" readonly></div>
+                            <div class="col-12"><label class="small fw-bold text-muted mb-1">Responsável (se menor)</label><input type="text" class="form-control bg-light border-0" id="ficha_responsavel" readonly></div>
+                          </div>
+                        </form>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div class="col-md-7">
+                    <div class="card border-0 shadow-sm rounded-4 h-100">
+                      <div class="card-header bg-white border-0 p-4 pb-2">
+                        <h6 class="fw-bold mb-0 text-dark"><span class="material-icons align-middle text-success">receipt_long</span> Histórico de Procedimentos</h6>
+                      </div>
+                      <div class="card-body p-0">
+                        <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                          <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light text-muted small">
+                              <tr><th class="ps-4">DATA</th><th>PROCEDIMENTO</th><th>DOUTOR</th><th class="text-end pe-4">VALOR</th></tr>
+                            </thead>
+                            <tbody id="ficha_tabela_procedimentos">
+                              <tr><td colspan="4" class="text-center py-4 text-muted">Carregando...</td></tr>
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- PRÓXIMAS CONSULTAS -->
+                    <div class="card border-0 shadow-sm rounded-4 mt-4">
+                      <div class="card-header bg-white border-0 p-4 pb-2">
+                        <h6 class="fw-bold mb-0 text-dark"><span class="material-icons align-middle text-warning">event</span> Próximas Consultas</h6>
+                      </div>
+                      <div class="card-body p-0">
+                        <div class="table-responsive">
+                          <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light text-muted small">
+                              <tr><th class="ps-4">DATA</th><th>HORA</th><th>PROCEDIMENTO</th><th>DOUTOR</th><th class="text-center pe-4">STATUS</th></tr>
+                            </thead>
+                            <tbody id="ficha_proximas_consultas">
+                              <tr><td colspan="5" class="text-center py-4 text-muted">Carregando...</td></tr>
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- TAB ANAMNESE COMPLETA (SUBSTITUIR A EXISTENTE) -->
+<div class="tab-pane fade" id="tabAnamnese" role="tabpanel">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h5 class="fw-bold text-dark mb-0"><span class="material-icons align-middle">assignment</span> Anamnese Odontológica Completa</h5>
+    <div class="d-flex gap-2">
+      <button class="btn btn-outline-primary fw-bold px-4 rounded-pill shadow-sm" onclick="carregarAnamneseCompleta()">
+        <span class="material-icons align-middle">refresh</span> RECARREGAR
+      </button>
+      <button class="btn btn-primary fw-bold px-4 rounded-pill shadow-sm" onclick="salvarAnamneseCompleta()">
+        <span class="material-icons align-middle">save</span> SALVAR TUDO
+      </button>
+    </div>
+  </div>
+ <!-- FORMULÁRIO DE ANAMNESE COMPLETO -->
+  <form id="formAnamneseCompleta">
+    <div class="row g-3">
+      
+      <!-- ==================== SEÇÃO 1: IDENTIFICAÇÃO ==================== -->
+      <div class="col-12">
+        <div class="card border-0 shadow-sm rounded-4">
+          <div class="card-header bg-white border-0 pt-4 px-4">
+            <h6 class="fw-bold text-primary mb-0"><span class="material-icons align-middle">person</span> 1. IDENTIFICAÇÃO DO PACIENTE</h6>
+          </div>
+          <div class="card-body px-4 pb-4">
+            <div class="row g-3">
+              <div class="col-md-4">
+                <label class="small fw-bold text-muted mb-1">Nome Completo</label>
+                <input type="text" class="form-control bg-light border-0" id="ana_nome" readonly>
+              </div>
+              <div class="col-md-2">
+                <label class="small fw-bold text-muted mb-1">Data Nasc.</label>
+                <input type="text" class="form-control bg-light border-0" id="ana_nascimento" readonly>
+              </div>
+              <div class="col-md-2">
+                <label class="small fw-bold text-muted mb-1">Idade</label>
+                <input type="text" class="form-control bg-light border-0" id="ana_idade" readonly>
+              </div>
+              <div class="col-md-2">
+                <label class="small fw-bold text-muted mb-1">Sexo</label>
+                <select class="form-select bg-light border-0" id="ana_sexo">
+                  <option value="">Selecione</option>
+                  <option value="Feminino">Feminino</option>
+                  <option value="Masculino">Masculino</option>
+                  <option value="Outro">Outro</option>
+                </select>
+              </div>
+              <div class="col-md-2">
+                <label class="small fw-bold text-muted mb-1">Estado Civil</label>
+                <select class="form-select bg-light border-0" id="ana_estado_civil">
+                  <option value="">Selecione</option>
+                  <option value="Solteiro(a)">Solteiro(a)</option>
+                  <option value="Casado(a)">Casado(a)</option>
+                  <option value="Divorciado(a)">Divorciado(a)</option>
+                  <option value="Viúvo(a)">Viúvo(a)</option>
+                  <option value="União Estável">União Estável</option>
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label class="small fw-bold text-muted mb-1">Profissão</label>
+                <input type="text" class="form-control bg-light border-0" id="ana_profissao">
+              </div>
+              <div class="col-md-6">
+                <label class="small fw-bold text-muted mb-1">Escolaridade</label>
+                <select class="form-select bg-light border-0" id="ana_escolaridade">
+                  <option value="">Selecione</option>
+                  <option value="Fundamental Incompleto">Fundamental Incompleto</option>
+                  <option value="Fundamental Completo">Fundamental Completo</option>
+                  <option value="Médio Incompleto">Médio Incompleto</option>
+                  <option value="Médio Completo">Médio Completo</option>
+                  <option value="Superior Incompleto">Superior Incompleto</option>
+                  <option value="Superior Completo">Superior Completo</option>
+                  <option value="Pós-Graduação">Pós-Graduação</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== SEÇÃO 2: QUEIXA PRINCIPAL ==================== -->
+      <div class="col-12">
+        <div class="card border-0 shadow-sm rounded-4">
+          <div class="card-header bg-white border-0 pt-4 px-4">
+            <h6 class="fw-bold text-primary mb-0"><span class="material-icons align-middle">chat</span> 2. QUEIXA PRINCIPAL E HDA</h6>
+          </div>
+          <div class="card-body px-4 pb-4">
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="small fw-bold text-muted mb-1">Queixa Principal</label>
+                <textarea class="form-control bg-light border-0" id="ana_queixa" rows="3" placeholder="O que trouxe o paciente ao consultório?"></textarea>
+              </div>
+              <div class="col-md-6">
+                <label class="small fw-bold text-muted mb-1">História da Doença Atual (HDA)</label>
+                <textarea class="form-control bg-light border-0" id="ana_hda" rows="3" placeholder="Detalhes da evolução do sintoma..."></textarea>
+              </div>
+              <div class="col-md-4">
+                <label class="small fw-bold text-muted mb-1">Início dos Sintomas</label>
+                <input type="text" class="form-control bg-light border-0" id="ana_inicio_sintomas" placeholder="Ex: Há 2 semanas">
+              </div>
+              <div class="col-md-4">
+                <label class="small fw-bold text-muted mb-1">Frequência</label>
+                <select class="form-select bg-light border-0" id="ana_frequencia">
+                  <option value="">Selecione</option>
+                  <option value="Contínuo">Contínuo</option>
+                  <option value="Intermitente">Intermitente</option>
+                  <option value="Sazonal">Sazonal</option>
+                </select>
+              </div>
+              <div class="col-md-4">
+                <label class="small fw-bold text-muted mb-1">Intensidade (0-10)</label>
+                <input type="range" class="form-range" min="0" max="10" step="1" id="ana_intensidade" oninput="document.getElementById('ana_intensidade_valor').innerText = this.value">
+                <div class="d-flex justify-content-between">
+                  <span>0</span><span id="ana_intensidade_valor" class="fw-bold">0</span><span>10</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== SEÇÃO 3: SINAIS VITAIS ==================== -->
+      <div class="col-md-6">
+        <div class="card border-0 shadow-sm rounded-4 h-100">
+          <div class="card-header bg-white border-0 pt-4 px-4">
+            <h6 class="fw-bold text-primary mb-0"><span class="material-icons align-middle">monitor_heart</span> 3. SINAIS VITAIS</h6>
+          </div>
+          <div class="card-body px-4 pb-4">
+            <div class="row g-2">
+              <div class="col-md-6">
+                <label class="small text-muted">Pressão Arterial (PA)</label>
+                <input type="text" class="form-control bg-light border-0" id="ana_pa" placeholder="Ex: 120/80">
+              </div>
+              <div class="col-md-6">
+                <label class="small text-muted">Frequência Cardíaca (bpm)</label>
+                <input type="text" class="form-control bg-light border-0" id="ana_fc">
+              </div>
+              <div class="col-md-6">
+                <label class="small text-muted">Frequência Respiratória (irpm)</label>
+                <input type="text" class="form-control bg-light border-0" id="ana_fr">
+              </div>
+              <div class="col-md-6">
+                <label class="small text-muted">Temperatura (°C)</label>
+                <input type="text" class="form-control bg-light border-0" id="ana_temp">
+              </div>
+              <div class="col-md-6">
+                <label class="small text-muted">Glicemia Capilar</label>
+                <input type="text" class="form-control bg-light border-0" id="ana_glicemia">
+              </div>
+              <div class="col-md-6">
+                <label class="small text-muted">Saturação O₂ (%)</label>
+                <input type="text" class="form-control bg-light border-0" id="ana_saturacao">
+              </div>
+              <div class="col-md-6">
+                <label class="small text-muted">Peso (kg)</label>
+                <input type="text" class="form-control bg-light border-0" id="ana_peso">
+              </div>
+              <div class="col-md-6">
+                <label class="small text-muted">Altura (m)</label>
+                <input type="text" class="form-control bg-light border-0" id="ana_altura">
+              </div>
+              <div class="col-md-12">
+                <label class="small text-muted">IMC</label>
+                <input type="text" class="form-control bg-light border-0 fw-bold" id="ana_imc" readonly>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== SEÇÃO 4: HISTÓRIA MÉDICA ==================== -->
+      <div class="col-md-6">
+        <div class="card border-0 shadow-sm rounded-4 h-100">
+          <div class="card-header bg-white border-0 pt-4 px-4">
+            <h6 class="fw-bold text-danger mb-0"><span class="material-icons align-middle">health_and_safety</span> 4. HISTÓRIA MÉDICA</h6>
+          </div>
+          <div class="card-body px-4 pb-4">
+            <div class="row g-3">
+              <div class="col-12">
+                <div class="form-check form-switch mb-2">
+                  <input class="form-check-input" type="checkbox" id="ana_cardiaco">
+                  <label class="form-check-label fw-bold">Doença Cardíaca (Infarto, Arritmia, etc.)</label>
+                </div>
+                <div class="ms-4 mb-2" id="ana_cardiaco_detail" style="display:none;">
+                  <input type="text" class="form-control bg-light border-0" placeholder="Descreva qual doença e tratamento">
+                </div>
+                
+                <div class="form-check form-switch mb-2">
+                  <input class="form-check-input" type="checkbox" id="ana_hipertensao">
+                  <label class="form-check-label fw-bold">Hipertensão Arterial</label>
+                </div>
+                <div class="ms-4 mb-2" id="ana_hipertensao_detail" style="display:none;">
+                  <input type="text" class="form-control bg-light border-0" placeholder="Medicação / Tempo de diagnóstico">
+                </div>
+                
+                <div class="form-check form-switch mb-2">
+                  <input class="form-check-input" type="checkbox" id="ana_diabetes">
+                  <label class="form-check-label fw-bold">Diabetes Mellitus</label>
+                </div>
+                <div class="ms-4 mb-2" id="ana_diabetes_detail" style="display:none;">
+                  <input type="text" class="form-control bg-light border-0" placeholder="Tipo 1 / Tipo 2 / Controlada">
+                </div>
+                
+                <div class="form-check form-switch mb-2">
+                  <input class="form-check-input" type="checkbox" id="ana_respiratorio">
+                  <label class="form-check-label fw-bold">Doença Respiratória (Asma, Bronquite, DPOC)</label>
+                </div>
+                <div class="ms-4 mb-2" id="ana_respiratorio_detail" style="display:none;">
+                  <input type="text" class="form-control bg-light border-0" placeholder="Qual doença e frequência">
+                </div>
+                
+                <div class="form-check form-switch mb-2">
+                  <input class="form-check-input" type="checkbox" id="ana_renal">
+                  <label class="form-check-label fw-bold">Doença Renal (Insuficiência Renal)</label>
+                </div>
+                <div class="ms-4 mb-2" id="ana_renal_detail" style="display:none;">
+                  <input type="text" class="form-control bg-light border-0" placeholder="Em diálise? Qual estágio?">
+                </div>
+                
+                <div class="form-check form-switch mb-2">
+                  <input class="form-check-input" type="checkbox" id="ana_hepatite">
+                  <label class="form-check-label fw-bold">Hepatite / Doença Hepática</label>
+                </div>
+                <div class="ms-4 mb-2" id="ana_hepatite_detail" style="display:none;">
+                  <input type="text" class="form-control bg-light border-0" placeholder="Tipo A, B, C / Cirrose?">
+                </div>
+                
+                <div class="form-check form-switch mb-2">
+                  <input class="form-check-input" type="checkbox" id="ana_dst">
+                  <label class="form-check-label fw-bold">Doenças Infectocontagiosas (HIV, TB, etc.)</label>
+                </div>
+                <div class="ms-4 mb-2" id="ana_dst_detail" style="display:none;">
+                  <input type="text" class="form-control bg-light border-0" placeholder="Qual doença e tratamento">
+                </div>
+                
+                <div class="form-check form-switch mb-2">
+                  <input class="form-check-input" type="checkbox" id="ana_cancer">
+                  <label class="form-check-label fw-bold">Neoplasia / Câncer</label>
+                </div>
+                <div class="ms-4 mb-2" id="ana_cancer_detail" style="display:none;">
+                  <input type="text" class="form-control bg-light border-0" placeholder="Tipo de câncer / Tratamento (QT/RT)">
+                </div>
+                
+                <div class="form-check form-switch mb-2">
+                  <input class="form-check-input" type="checkbox" id="ana_autoimune">
+                  <label class="form-check-label fw-bold">Doença Autoimune (Lúpus, Artrite Reumatoide)</label>
+                </div>
+                <div class="ms-4 mb-2" id="ana_autoimune_detail" style="display:none;">
+                  <input type="text" class="form-control bg-light border-0" placeholder="Qual doença e medicação">
+                </div>
+                
+                <div class="form-check form-switch mb-2">
+                  <input class="form-check-input" type="checkbox" id="ana_osteoporose">
+                  <label class="form-check-label fw-bold">Osteoporose / Osteopenia</label>
+                </div>
+                <div class="ms-4 mb-2" id="ana_osteoporose_detail" style="display:none;">
+                  <input type="text" class="form-control bg-light border-0" placeholder="Faz uso de Bifosfonatos?">
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== SEÇÃO 5: ALERGIAS E MEDICAÇÕES ==================== -->
+      <div class="col-md-6">
+        <div class="card border-0 shadow-sm rounded-4 h-100">
+          <div class="card-header bg-white border-0 pt-4 px-4">
+            <h6 class="fw-bold text-warning mb-0"><span class="material-icons align-middle">medication</span> 5. ALERGIAS E MEDICAÇÕES</h6>
+          </div>
+          <div class="card-body px-4 pb-4">
+            <div class="mb-3">
+              <label class="small fw-bold text-muted mb-1">Medicamentos em uso contínuo</label>
+              <textarea class="form-control bg-light border-0" id="ana_medicamentos" rows="2" placeholder="Listar medicamentos, dosagem e horários"></textarea>
+            </div>
+            <div class="mb-3">
+              <label class="small fw-bold text-muted mb-1">Alergias</label>
+              <textarea class="form-control bg-light border-0" id="ana_alergias" rows="2" placeholder="Alergias medicamentosas, alimentares ou outras"></textarea>
+            </div>
+            <div class="mb-3">
+              <label class="small fw-bold text-muted mb-1">Reação a Anestésico Local</label>
+              <select class="form-select bg-light border-0" id="ana_reacao_anestesia">
+                <option value="">Selecione</option>
+                <option value="Nunca fez">Nunca fez</option>
+                <option value="Sem reação">Sem reação</option>
+                <option value="Aumento da frequência cardíaca">Aumento da frequência cardíaca</option>
+                <option value="Sudorese">Sudorese</option>
+                <option value="Desmaio">Desmaio</option>
+                <option value="Convulsão">Convulsão</option>
+                <option value="Outros">Outros</option>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label class="small fw-bold text-muted mb-1">Vacinação em dia</label>
+              <div class="d-flex gap-3">
+                <div class="form-check"><input class="form-check-input" type="radio" name="ana_vacina" id="ana_vacina_sim" value="Sim"><label class="form-check-label">Sim</label></div>
+                <div class="form-check"><input class="form-check-input" type="radio" name="ana_vacina" id="ana_vacina_nao" value="Não"><label class="form-check-label">Não</label></div>
+                <div class="form-check"><input class="form-check-input" type="radio" name="ana_vacina" id="ana_vacina_parcial" value="Parcial"><label class="form-check-label">Parcial</label></div>
+              </div>
+            </div>
+            <div class="mb-3">
+              <label class="small fw-bold text-muted mb-1">COVID-19</label>
+              <div class="d-flex gap-3">
+                <div class="form-check"><input class="form-check-input" type="radio" name="ana_covid" id="ana_covid_sim" value="Sim"><label class="form-check-label">Já teve COVID-19</label></div>
+                <div class="form-check"><input class="form-check-input" type="radio" name="ana_covid" id="ana_covid_nao" value="Não"><label class="form-check-label">Não teve</label></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== SEÇÃO 6: HISTÓRIA ODONTOLÓGICA ==================== -->
+      <div class="col-md-6">
+        <div class="card border-0 shadow-sm rounded-4 h-100">
+          <div class="card-header bg-white border-0 pt-4 px-4">
+            <h6 class="fw-bold text-success mb-0"><span class="material-icons align-middle">tooth</span> 6. HISTÓRIA ODONTOLÓGICA</h6>
+          </div>
+          <div class="card-body px-4 pb-4">
+            <div class="row g-3">
+              <div class="col-12">
+                <label class="small fw-bold text-muted mb-1">Última consulta odontológica</label>
+                <input type="text" class="form-control bg-light border-0" id="ana_ultima_consulta" placeholder="Ex: Há 6 meses">
+              </div>
+              <div class="col-12">
+                <label class="small fw-bold text-muted mb-1">Motivo da última consulta</label>
+                <input type="text" class="form-control bg-light border-0" id="ana_motivo_ultima">
+              </div>
+              <div class="col-12">
+                <label class="small fw-bold text-muted mb-1">Tratamentos odontológicos anteriores</label>
+                <textarea class="form-control bg-light border-0" id="ana_tratamentos_anteriores" rows="2" placeholder="Extração, Canal, Prótese, Implante, etc."></textarea>
+              </div>
+              <div class="col-12">
+                <label class="small fw-bold text-muted mb-1">Experiência com tratamento odontológico</label>
+                <select class="form-select bg-light border-0" id="ana_experiencia">
+                  <option value="">Selecione</option>
+                  <option value="Ótima">Ótima</option>
+                  <option value="Boa">Boa</option>
+                  <option value="Regular">Regular</option>
+                  <option value="Ruim">Ruim</option>
+                  <option value="Traumática">Traumática</option>
+                </select>
+              </div>
+              <div class="col-12">
+                <label class="small fw-bold text-muted mb-1">Medo de tratamento odontológico</label>
+                <div class="d-flex gap-3">
+                  <div class="form-check"><input class="form-check-input" type="radio" name="ana_medo" id="ana_medo_sim" value="Sim"><label class="form-check-label">Sim</label></div>
+                  <div class="form-check"><input class="form-check-input" type="radio" name="ana_medo" id="ana_medo_nao" value="Não"><label class="form-check-label">Não</label></div>
+                  <div class="form-check"><input class="form-check-input" type="radio" name="ana_medo" id="ana_medo_parcial" value="Moderado"><label class="form-check-label">Moderado</label></div>
+                </div>
+              </div>
+              <div class="col-12">
+                <label class="small fw-bold text-muted mb-1">Radiografias anteriores</label>
+                <input type="text" class="form-control bg-light border-0" id="ana_radiografias" placeholder="Ex: Panorâmica há 1 ano">
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== SEÇÃO 7: HÁBITOS E SAÚDE BUCAL ==================== -->
+      <div class="col-md-6">
+        <div class="card border-0 shadow-sm rounded-4 h-100">
+          <div class="card-header bg-white border-0 pt-4 px-4">
+            <h6 class="fw-bold text-info mb-0"><span class="material-icons align-middle">brush</span> 7. HÁBITOS E SAÚDE BUCAL</h6>
+          </div>
+          <div class="card-body px-4 pb-4">
+            <div class="row g-3">
+              <div class="col-12">
+                <label class="small fw-bold text-muted mb-1">Escovação (vezes/dia)</label>
+                <select class="form-select bg-light border-0" id="ana_escovacao">
+                  <option value="">Selecione</option>
+                  <option value="1 vez">1 vez</option>
+                  <option value="2 vezes">2 vezes</option>
+                  <option value="3 vezes">3 vezes</option>
+                  <option value="Mais de 3 vezes">Mais de 3 vezes</option>
+                </select>
+              </div>
+              <div class="col-12">
+                <label class="small fw-bold text-muted mb-1">Uso de fio dental</label>
+                <select class="form-select bg-light border-0" id="ana_fio_dental">
+                  <option value="">Selecione</option>
+                  <option value="Diariamente">Diariamente</option>
+                  <option value="Às vezes">Às vezes</option>
+                  <option value="Raramente">Raramente</option>
+                  <option value="Nunca">Nunca</option>
+                </select>
+              </div>
+              <div class="col-12">
+                <label class="small fw-bold text-muted mb-1">Enxaguante bucal</label>
+                <div class="d-flex gap-3">
+                  <div class="form-check"><input class="form-check-input" type="radio" name="ana_enxaguante" id="ana_enxaguante_sim" value="Sim"><label class="form-check-label">Sim</label></div>
+                  <div class="form-check"><input class="form-check-input" type="radio" name="ana_enxaguante" id="ana_enxaguante_nao" value="Não"><label class="form-check-label">Não</label></div>
+                </div>
+              </div>
+              <div class="col-12">
+                <label class="small fw-bold text-muted mb-1">Sangramento gengival</label>
+                <div class="d-flex gap-3">
+                  <div class="form-check"><input class="form-check-input" type="radio" name="ana_sangramento" id="ana_sangramento_sim" value="Sim"><label class="form-check-label">Sim</label></div>
+                  <div class="form-check"><input class="form-check-input" type="radio" name="ana_sangramento" id="ana_sangramento_nao" value="Não"><label class="form-check-label">Não</label></div>
+                  <div class="form-check"><input class="form-check-input" type="radio" name="ana_sangramento" id="ana_sangramento_escova" value="Ao escovar"><label class="form-check-label">Ao escovar</label></div>
+                </div>
+              </div>
+              <div class="col-12">
+                <label class="small fw-bold text-muted mb-1">Sensibilidade dental</label>
+                <select class="form-select bg-light border-0" id="ana_sensibilidade">
+                  <option value="">Selecione</option>
+                  <option value="Não">Não</option>
+                  <option value="Ao frio">Ao frio</option>
+                  <option value="Ao quente">Ao quente</option>
+                  <option value="Ao doce">Ao doce</option>
+                  <option value="À pressão">À pressão</option>
+                </select>
+              </div>
+              <div class="col-12">
+                <label class="small fw-bold text-muted mb-1">Hábitos parafuncionais</label>
+                <div class="row">
+                  <div class="col-6"><div class="form-check"><input class="form-check-input" type="checkbox" id="ana_bruxismo"><label class="form-check-label small">Bruxismo (range dentes)</label></div></div>
+                  <div class="col-6"><div class="form-check"><input class="form-check-input" type="checkbox" id="ana_onicofagia"><label class="form-check-label small">Onicofagia (rói unhas)</label></div></div>
+                  <div class="col-6"><div class="form-check"><input class="form-check-input" type="checkbox" id="ana_morder_obj"><label class="form-check-label small">Morde objetos</label></div></div>
+                  <div class="col-6"><div class="form-check"><input class="form-check-input" type="checkbox" id="ana_apertamento"><label class="form-check-label small">Apertamento dental</label></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== SEÇÃO 8: ESTILO DE VIDA ==================== -->
+      <div class="col-md-12">
+        <div class="card border-0 shadow-sm rounded-4">
+          <div class="card-header bg-white border-0 pt-4 px-4">
+            <h6 class="fw-bold text-secondary mb-0"><span class="material-icons align-middle">lifestyle</span> 8. ESTILO DE VIDA</h6>
+          </div>
+          <div class="card-body px-4 pb-4">
+            <div class="row g-3">
+              <div class="col-md-3">
+                <div class="form-check form-switch">
+                  <input class="form-check-input" type="checkbox" id="ana_tabagista">
+                  <label class="form-check-label fw-bold">Tabagista (fuma)</label>
+                </div>
+                <div class="ms-4 mt-1" id="ana_tabagista_detail" style="display:none;">
+                  <input type="text" class="form-control bg-light border-0" placeholder="Quantos cigarros/dia? Há quanto tempo?">
+                </div>
+              </div>
+              <div class="col-md-3">
+                <div class="form-check form-switch">
+                  <input class="form-check-input" type="checkbox" id="ana_etilista">
+                  <label class="form-check-label fw-bold">Etilista (bebida alcoólica)</label>
+                </div>
+                <div class="ms-4 mt-1" id="ana_etilista_detail" style="display:none;">
+                  <input type="text" class="form-control bg-light border-0" placeholder="Frequência e quantidade">
+                </div>
+              </div>
+              <div class="col-md-3">
+                <div class="form-check form-switch">
+                  <input class="form-check-input" type="checkbox" id="ana_atividade_fisica">
+                  <label class="form-check-label fw-bold">Atividade Física</label>
+                </div>
+                <div class="ms-4 mt-1" id="ana_atividade_detail" style="display:none;">
+                  <input type="text" class="form-control bg-light border-0" placeholder="Qual atividade? Frequência?">
+                </div>
+              </div>
+              <div class="col-md-3">
+                <div class="form-check form-switch">
+                  <input class="form-check-input" type="checkbox" id="ana_sono_irregular">
+                  <label class="form-check-label fw-bold">Sono Irregular</label>
+                </div>
+                <div class="ms-4 mt-1" id="ana_sono_detail" style="display:none;">
+                  <input type="text" class="form-control bg-light border-0" placeholder="Horas de sono por noite">
+                </div>
+              </div>
+              <div class="col-md-6">
+                <label class="small fw-bold text-muted mb-1">Alimentação</label>
+                <textarea class="form-control bg-light border-0" id="ana_alimentacao" rows="2" placeholder="Hábitos alimentares, consumo de açúcar, etc."></textarea>
+              </div>
+              <div class="col-md-6">
+                <label class="small fw-bold text-muted mb-1">Estresse / Ansiedade</label>
+                <select class="form-select bg-light border-0" id="ana_estresse">
+                  <option value="">Selecione</option>
+                  <option value="Baixo">Baixo</option>
+                  <option value="Moderado">Moderado</option>
+                  <option value="Alto">Alto</option>
+                  <option value="Em tratamento">Em tratamento psicológico/psiquiátrico</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== SEÇÃO 9: EXAME FÍSICO EXTRAORAL ==================== -->
+      <div class="col-md-6">
+        <div class="card border-0 shadow-sm rounded-4">
+          <div class="card-header bg-white border-0 pt-4 px-4">
+            <h6 class="fw-bold text-dark mb-0"><span class="material-icons align-middle">face</span> 9. EXAME FÍSICO EXTRAORAL</h6>
+          </div>
+          <div class="card-body px-4 pb-4">
+            <div class="row g-2">
+              <div class="col-6"><label class="small text-muted">Face / Assimetria</label><input type="text" class="form-control bg-light border-0" id="ana_face"></div>
+              <div class="col-6"><label class="small text-muted">ATM (Estalos / Dor)</label><input type="text" class="form-control bg-light border-0" id="ana_atm"></div>
+              <div class="col-6"><label class="small text-muted">Abertura de boca</label><input type="text" class="form-control bg-light border-0" id="ana_abertura" placeholder="Ex: Normal / Limitada"></div>
+              <div class="col-6"><label class="small text-muted">Linfonodos</label><input type="text" class="form-control bg-light border-0" id="ana_linfonodos" placeholder="Palpáveis?"></div>
+              <div class="col-6"><label class="small text-muted">Lábios / Mucosa</label><input type="text" class="form-control bg-light border-0" id="ana_labios"></div>
+              <div class="col-6"><label class="small text-muted">ATM / Musculatura</label><input type="text" class="form-control bg-light border-0" id="ana_musculatura"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== SEÇÃO 10: EXAME FÍSICO INTRAORAL ==================== -->
+      <div class="col-md-6">
+        <div class="card border-0 shadow-sm rounded-4">
+          <div class="card-header bg-white border-0 pt-4 px-4">
+            <h6 class="fw-bold text-dark mb-0"><span class="material-icons align-middle">mouth</span> 10. EXAME FÍSICO INTRAORAL</h6>
+          </div>
+          <div class="card-body px-4 pb-4">
+            <div class="row g-2">
+              <div class="col-6"><label class="small text-muted">Mucosa Jugal</label><input type="text" class="form-control bg-light border-0" id="ana_mucosa_jugal"></div>
+              <div class="col-6"><label class="small text-muted">Palato</label><input type="text" class="form-control bg-light border-0" id="ana_palato"></div>
+              <div class="col-6"><label class="small text-muted">Língua / Assoalho</label><input type="text" class="form-control bg-light border-0" id="ana_lingua"></div>
+              <div class="col-6"><label class="small text-muted">Gengiva / Periodonto</label><input type="text" class="form-control bg-light border-0" id="ana_gengiva"></div>
+              <div class="col-6"><label class="small text-muted">Oclusão / Mordida</label><input type="text" class="form-control bg-light border-0" id="ana_oclusao"></div>
+              <div class="col-6"><label class="small text-muted">Cáries / Lesões</label><input type="text" class="form-control bg-light border-0" id="ana_caries"></div>
+              <div class="col-12"><label class="small text-muted">Observações do Exame Intraoral</label><textarea class="form-control bg-light border-0" id="ana_obs_intraoral" rows="2"></textarea></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== SEÇÃO 11: HIPÓTESE DIAGNÓSTICA E PLANO ==================== -->
+      <div class="col-12">
+        <div class="card border-0 shadow-sm rounded-4">
+          <div class="card-header bg-white border-0 pt-4 px-4">
+            <h6 class="fw-bold text-primary mb-0"><span class="material-icons align-middle">clinical_notes</span> 11. HIPÓTESE DIAGNÓSTICA E PLANO DE TRATAMENTO</h6>
+          </div>
+          <div class="card-body px-4 pb-4">
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="small fw-bold text-muted mb-1">Hipótese Diagnóstica</label>
+                <textarea class="form-control bg-light border-0" id="ana_hipotese" rows="3" placeholder="Diagnóstico presuntivo..."></textarea>
+              </div>
+              <div class="col-md-6">
+                <label class="small fw-bold text-muted mb-1">Plano de Tratamento Proposto</label>
+                <textarea class="form-control bg-light border-0" id="ana_plano" rows="3" placeholder="Sequência de tratamento sugerida..."></textarea>
+              </div>
+              <div class="col-md-4">
+                <label class="small fw-bold text-muted mb-1">Próximo Retorno</label>
+                <input type="date" class="form-control bg-light border-0" id="ana_proximo_retorno">
+              </div>
+              <div class="col-md-4">
+                <label class="small fw-bold text-muted mb-1">Profissional Responsável</label>
+                <select class="form-select bg-light border-0" id="ana_responsavel"></select>
+              </div>
+              <div class="col-md-4">
+                <label class="small fw-bold text-muted mb-1">Data da Anamnese</label>
+                <input type="text" class="form-control bg-light border-0" id="ana_data_anamnese" readonly>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </form>
+</div>
+
+              <!-- TAB 3: EVOLUÇÃO CLÍNICA -->
+              <div class="tab-pane fade show active" id="tabEvolucao" role="tabpanel">
+                <div class="card border-0 shadow-sm rounded-4 mb-4">
+                  <div class="card-header bg-white border-0 p-4 d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <h6 class="fw-bold mb-0 text-dark"><span class="material-icons align-middle text-primary">edit_note</span> Evolução Clínica</h6>
+                    <div class="d-flex gap-2">
+                      <button class="btn btn-outline-secondary btn-sm fw-bold rounded-pill" onclick="filtrarEvolucoesPorDoutor('')">
+                        📋 Todas
+                      </button>
+                      <select class="form-select form-select-sm bg-light border-0 w-auto" id="filtroDoutorEvolucao" onchange="filtrarEvolucoesPorDoutor(this.value)">
+                        <option value="">Todos os profissionais</option>
+                      </select>
+                      <button class="btn btn-primary btn-sm fw-bold px-3 rounded-pill" onclick="modalNovaEvolucao()">
+                        + Novo Registro
+                      </button>
+                    </div>
+                  </div>
+                  <div class="card-body p-0">
+                    <div class="table-responsive">
+                      <table class="table table-hover align-middle mb-0" id="tabelaEvolucao">
+                        <thead class="table-light text-muted small">
+                          <tr><th class="ps-4">DATA</th><th>PROCEDIMENTO</th><th>REGIÃO/DENTE</th><th>PROFISSIONAL</th><th>OBSERVAÇÕES</th><th class="text-center pe-4">AÇÕES</th></tr>
+                        </thead>
+                        <tbody id="corpoTabelaEvolucao">
+                          <tr><td colspan="6" class="text-center py-4 text-muted">Carregando histórico do paciente...</td></tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- TAB 4: ODONTOGRAMA (placeholder) -->
+      <div class="tab-pane fade" id="tabOdontograma" role="tabpanel">
+  <div class="card border-0 shadow-sm rounded-4">
+    <div class="card-header bg-white border-0 p-4 d-flex justify-content-between align-items-center">
+      <div>
+        <h6 class="fw-bold mb-0 text-dark">Odontograma Interativo</h6>
+        <small class="text-muted">Clique no dente para marcar o estado atual</small>
+      </div>
+      <div class="d-flex gap-2">
+        <span class="badge bg-danger p-2">🔴 Tratamento</span>
+        <span class="badge bg-primary p-2">🔵 Realizado</span>
+        <span class="badge bg-secondary p-2">⚪ Extraído</span>
+      </div>
+    </div>
+    <div class="card-body p-4">
+      <div class="odontograma-container d-flex flex-column align-items-center gap-4">
+        
+        <div class="d-flex flex-wrap justify-content-center gap-1">
+          <div class="dente-box" onclick="selecionarDente(18)" id="dente_18"><span>18</span></div>
+          <div class="dente-box" onclick="selecionarDente(17)" id="dente_17"><span>17</span></div>
+          <div class="dente-box" onclick="selecionarDente(16)" id="dente_16"><span>16</span></div>
+          <div class="dente-box" onclick="selecionarDente(15)" id="dente_15"><span>15</span></div>
+          <div class="dente-box" onclick="selecionarDente(14)" id="dente_14"><span>14</span></div>
+          <div class="dente-box" onclick="selecionarDente(13)" id="dente_13"><span>13</span></div>
+          <div class="dente-box" onclick="selecionarDente(12)" id="dente_12"><span>12</span></div>
+          <div class="dente-box me-3" onclick="selecionarDente(11)" id="dente_11"><span>11</span></div>
+          
+          <div class="dente-box ms-3" onclick="selecionarDente(21)" id="dente_21"><span>21</span></div>
+          <div class="dente-box" onclick="selecionarDente(22)" id="dente_22"><span>22</span></div>
+          <div class="dente-box" onclick="selecionarDente(23)" id="dente_23"><span>23</span></div>
+          <div class="dente-box" onclick="selecionarDente(24)" id="dente_24"><span>24</span></div>
+          <div class="dente-box" onclick="selecionarDente(25)" id="dente_25"><span>25</span></div>
+          <div class="dente-box" onclick="selecionarDente(26)" id="dente_26"><span>26</span></div>
+          <div class="dente-box" onclick="selecionarDente(27)" id="dente_27"><span>27</span></div>
+          <div class="dente-box" onclick="selecionarDente(28)" id="dente_28"><span>28</span></div>
+        </div>
+
+        <hr class="w-100 opacity-25">
+
+        <div class="d-flex flex-wrap justify-content-center gap-1">
+          <div class="dente-box" onclick="selecionarDente(48)" id="dente_48"><span>48</span></div>
+          <div class="dente-box" onclick="selecionarDente(47)" id="dente_47"><span>47</span></div>
+          <div class="dente-box" onclick="selecionarDente(46)" id="dente_46"><span>46</span></div>
+          <div class="dente-box" onclick="selecionarDente(45)" id="dente_45"><span>45</span></div>
+          <div class="dente-box" onclick="selecionarDente(44)" id="dente_44"><span>44</span></div>
+          <div class="dente-box" onclick="selecionarDente(43)" id="dente_43"><span>43</span></div>
+          <div class="dente-box" onclick="selecionarDente(42)" id="dente_42"><span>42</span></div>
+          <div class="dente-box me-3" onclick="selecionarDente(41)" id="dente_41"><span>41</span></div>
+          
+          <div class="dente-box ms-3" onclick="selecionarDente(31)" id="dente_31"><span>31</span></div>
+          <div class="dente-box" onclick="selecionarDente(32)" id="dente_32"><span>32</span></div>
+          <div class="dente-box" onclick="selecionarDente(33)" id="dente_33"><span>33</span></div>
+          <div class="dente-box" onclick="selecionarDente(34)" id="dente_34"><span>34</span></div>
+          <div class="dente-box" onclick="selecionarDente(35)" id="dente_35"><span>35</span></div>
+          <div class="dente-box" onclick="selecionarDente(36)" id="dente_36"><span>36</span></div>
+          <div class="dente-box" onclick="selecionarDente(37)" id="dente_37"><span>37</span></div>
+          <div class="dente-box" onclick="selecionarDente(38)" id="dente_38"><span>38</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .dente-box {
+    width: 42px; height: 55px; border: 2px solid #dee2e6; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; transition: all 0.2s; background: white;
+    font-weight: bold; color: #6c757d; font-size: 13px;
+  }
+  .dente-box:hover { border-color: #4318FF; transform: translateY(-3px); }
+  .dente-box.selecionado { border-color: #4318FF; background: #ECEEFE; color: #4318FF; box-shadow: 0 0 10px rgba(67, 24, 255, 0.2); }
+  .dente-box.problema { background: #FDE8E6 !important; border-color: #EE5D50 !important; color: #EE5D50 !important; }
+  .dente-box.feito { background: #E6FBF5 !important; border-color: #05CD99 !important; color: #05CD99 !important; }
+  .dente-box.ausente { background: #F4F7FE !important; border-color: #A3AED0 !important; color: #A3AED0 !important; opacity: 0.5; }
+</style>
+
+<div class="modal fade" id="modalAcaoDente" tabindex="-1" style="z-index: 1070;">
+  <div class="modal-dialog modal-sm modal-dialog-centered">
+    <div class="modal-content border-0 shadow-lg" style="border-radius: 20px;">
+      <div class="modal-header border-0 bg-light">
+        <h6 class="fw-bold mb-0">Dente <span id="numDenteSelecionado">--</span></h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-3">
+        <div class="d-grid gap-2">
+          <button class="btn btn-outline-danger btn-sm fw-bold text-start" onclick="marcarStatusDente('problema')">🔴 Necessita Tratamento</button>
+          <button class="btn btn-outline-primary btn-sm fw-bold text-start" onclick="marcarStatusDente('feito')">🔵 Realizado / Saudável</button>
+          <button class="btn btn-outline-secondary btn-sm fw-bold text-start" onclick="marcarStatusDente('ausente')">⚪ Ausente / Extraído</button>
+          <hr class="my-1">
+          <button class="btn btn-light btn-sm fw-bold text-start" onclick="marcarStatusDente('limpar')">🔄 Limpar Marcação</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+              <!-- TAB 5: ORTODONTIA (placeholder) -->
+              <div class="tab-pane fade" id="tabOrto" role="tabpanel">
+                <div class="card border-0 shadow-sm rounded-4">
+                  <div class="card-body p-4 text-center">
+                    <span class="material-icons" style="font-size: 48px; color: #ccc;">face</span>
+                    <h5 class="text-muted mt-3">Painel de Ortodontia</h5>
+                    <p class="text-muted">Acompanhamento ortodôntico, evolução de casos e documentação.</p>
+                    <button class="btn btn-primary rounded-pill" onclick="alert('Funcionalidade em desenvolvimento!')">Configurar</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- TAB 6: EXAMES -->
+              <div class="tab-pane fade" id="tabExames" role="tabpanel">
+                <div class="card border-0 shadow-sm rounded-4">
+                  <div class="card-header bg-white border-0 p-4 d-flex justify-content-between align-items-center">
+                    <h6 class="fw-bold mb-0 text-dark"><span class="material-icons align-middle text-info">science</span> Exames e Laudos</h6>
+                    <button class="btn btn-primary btn-sm rounded-pill" onclick="uploadExame()">+ Adicionar Exame</button>
+                  </div>
+                  <div class="card-body p-0">
+                    <div class="table-responsive">
+                      <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light text-muted small">
+                          <tr><th class="ps-4">DATA</th><th>TIPO DE EXAME</th><th>RESULTADO</th><th>PROFISSIONAL</th><th class="text-center pe-4">ANEXO</th></tr>
+                        </thead>
+                        <tbody id="tabelaExames">
+                          <tr><td colspan="5" class="text-center py-4 text-muted">Nenhum exame cadastrado</td></tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- TAB 7: DOCUMENTOS -->
+              <div class="tab-pane fade" id="tabDocumentos" role="tabpanel">
+                <div class="card border-0 shadow-sm rounded-4">
+                  <div class="card-header bg-white border-0 p-4 d-flex justify-content-between align-items-center">
+                    <h6 class="fw-bold mb-0 text-dark"><span class="material-icons align-middle text-secondary">folder</span> Documentos do Paciente</h6>
+                    <button class="btn btn-primary btn-sm rounded-pill" onclick="uploadDocumento()">+ Adicionar Documento</button>
+                  </div>
+                  <div class="card-body p-0">
+                    <div class="table-responsive">
+                      <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light text-muted small">
+                          <tr><th class="ps-4">DATA</th><th>TIPO</th><th>DESCRIÇÃO</th><th class="text-center pe-4">ARQUIVO</th></tr>
+                        </thead>
+                        <tbody id="tabelaDocumentos">
+                          <tr><td colspan="4" class="text-center py-4 text-muted">Nenhum documento anexado</td></tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL NOVA EVOLUÇÃO -->
+<div class="modal fade" id="modalNovaEvolucao" tabindex="-1" style="z-index: 1060;">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content rounded-4 border-0 shadow">
+      <div class="modal-header bg-light border-0">
+        <h6 class="fw-bold mb-0 text-primary">Registrar Evolução</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-4">
+        <form id="formEvolucao">
+          <input type="hidden" id="evo_paciente">
+          <div class="mb-3">
+            <label class="small fw-bold text-muted mb-1">Data</label>
+            <input type="date" class="form-control bg-light border-0" id="evo_data" required>
+          </div>
+          <div class="mb-3">
+            <label class="small fw-bold text-muted mb-1">Procedimento</label>
+            <input type="text" class="form-control bg-light border-0" id="evo_proc" list="listaProcEvolucao" required>
+            <datalist id="listaProcEvolucao"></datalist>
+          </div>
+          <div class="row g-2 mb-3">
+            <div class="col-6">
+              <label class="small fw-bold text-muted mb-1">Região/Dente</label>
+              <input type="text" class="form-control bg-light border-0" id="evo_dente" placeholder="Ex: 11, 12, Superior Direito...">
+            </div>
+            <div class="col-6">
+              <label class="small fw-bold text-muted mb-1">Profissional</label>
+              <select class="form-select bg-light border-0" id="evo_doutor" required></select>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="small fw-bold text-muted mb-1">Descrição Clínica</label>
+            <textarea class="form-control bg-light border-0" id="evo_obs" rows="3" required></textarea>
+          </div>
+          <div class="mb-3">
+            <label class="small fw-bold text-muted mb-1">Próximo Retorno</label>
+            <input type="date" class="form-control bg-light border-0" id="evo_proximo_retorno">
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer border-0 bg-light p-3">
+        <button class="btn btn-secondary fw-bold" data-bs-dismiss="modal">Cancelar</button>
+        <button class="btn btn-primary fw-bold px-4" onclick="salvarEvolucao()">Salvar Evolução</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="modalPaciente" tabindex="-1" style="z-index: 1080;">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content border-0 shadow-lg" style="border-radius: 24px;">
+      <div class="modal-header bg-primary text-white border-0 p-4">
+        <h5 class="fw-bold mb-0 d-flex align-items-center gap-2" id="tituloModalPaciente">
+          <span class="material-icons">person_add</span> Novo Paciente
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-4 bg-light">
+        <form id="formPacienteCompleto">
+          <input type="hidden" name="nome_original" id="paciente_original_nome">
+          
+          <div class="row g-3">
+            <div class="col-12">
+              <label class="small fw-bold text-muted mb-1">Nome Completo *</label>
+              <input type="text" name="Nome" class="form-control border-0 shadow-sm fw-bold" required>
+            </div>
+            
+            <div class="col-md-4">
+              <label class="small fw-bold text-muted mb-1">CPF</label>
+              <input type="text" name="CPF" class="form-control border-0 shadow-sm">
+            </div>
+            <div class="col-md-4">
+              <label class="small fw-bold text-muted mb-1">RG</label>
+              <input type="text" name="RG" class="form-control border-0 shadow-sm">
+            </div>
+            <div class="col-md-4">
+              <label class="small fw-bold text-muted mb-1">Nascimento</label>
+              <input type="date" name="Nascimento" class="form-control border-0 shadow-sm">
+            </div>
+
+            <div class="col-md-4">
+              <label class="small fw-bold text-muted mb-1">Celular *</label>
+              <input type="text" name="Celular" class="form-control border-0 shadow-sm text-success fw-bold" placeholder="(00) 90000-0000" required>
+            </div>
+            <div class="col-md-4">
+              <label class="small fw-bold text-muted mb-1">Telefone Fixo / Recado</label>
+              <input type="text" name="Telefone" class="form-control border-0 shadow-sm">
+            </div>
+            <div class="col-md-4">
+              <label class="small fw-bold text-muted mb-1">Email</label>
+              <input type="email" name="Email" class="form-control border-0 shadow-sm">
+            </div>
+
+            <div class="col-md-4">
+              <label class="small fw-bold text-muted mb-1">Sexo</label>
+              <select name="sexo" class="form-select border-0 shadow-sm">
+                <option value="">Selecione</option>
+                <option value="Feminino">Feminino</option>
+                <option value="Masculino">Masculino</option>
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label class="small fw-bold text-muted mb-1">Profissão</label>
+              <input type="text" name="profissao" class="form-control border-0 shadow-sm">
+            </div>
+            <div class="col-md-4">
+              <label class="small fw-bold text-muted mb-1">Convênio</label>
+              <input type="text" name="convenio" class="form-control border-0 shadow-sm text-primary fw-bold" placeholder="Ex: Particular, Unimed...">
+            </div>
+
+            <div class="col-12">
+              <label class="small fw-bold text-muted mb-1">Endereço Completo</label>
+              <input type="text" name="Endereco" class="form-control border-0 shadow-sm" placeholder="Rua, Número, Bairro, Cidade">
+            </div>
+            
+            <div class="col-12">
+              <label class="small fw-bold text-muted mb-1">Responsável (Se menor de idade)</label>
+              <input type="text" name="Responsavel" class="form-control border-0 shadow-sm">
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer border-0 bg-white p-4">
+        <button class="btn btn-secondary fw-bold px-4 rounded-pill" data-bs-dismiss="modal">CANCELAR</button>
+        <button class="btn btn-primary fw-bold px-5 rounded-pill shadow-sm" onclick="salvarPacienteCRM()" id="btnSalvarPaciente">💾 SALVAR PACIENTE</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<script>
+// ==========================================
+// FUNÇÕES ADICIONAIS DO PRONTUÁRIO
+// ==========================================
+
+function imprimirProntuario() {
+  mostrarNotificacao("Gerando PDF do prontuário...", "info");
+  // Implementar impressão
+  window.print();
+}
+
+function copiarTelefoneProntuario() {
+  const telefone = document.getElementById("ficha_celular").value;
+  if (telefone) {
+    navigator.clipboard.writeText(telefone);
+    mostrarNotificacao("Telefone copiado!", "sucesso");
+  }
+}
+
+function editarDadosPaciente() {
+  mostrarNotificacao("Funcionalidade em desenvolvimento", "info");
+}
+
+function abrirFinanceiroPaciente() {
+  const paciente = pacienteAtualProntuario;
+  if (paciente) {
+    // Abrir modal financeiro ou redirecionar
+    mostrarNotificacao(`Abrindo financeiro de ${paciente.nome}`, "info");
+  }
+}
+
+function abrirNovaEvolucaoRapida() {
+  modalNovaEvolucao();
+}
+
+function uploadExame() {
+  mostrarNotificacao("Upload de exames em breve", "info");
+}
+
+function uploadDocumento() {
+  mostrarNotificacao("Upload de documentos em breve", "info");
+}
+
+function carregarAnamneseCompleta() {
+  mostrarNotificacao("Recarregando anamnese...", "info");
+  // Implementar recarga dos dados
+}
+
+function filtrarEvolucoesPorDoutor(doutor) {
+  const tabela = document.getElementById("tabelaEvolucao");
+  if (!tabela) return;
+  
+  const linhas = tabela.querySelectorAll("tbody tr");
+  linhas.forEach(linha => {
+    if (linha.cells.length > 3) {
+      const profissional = linha.cells[3]?.innerText || "";
+      if (doutor === "" || profissional === doutor) {
+        linha.style.display = "";
+      } else {
+        linha.style.display = "none";
+      }
+    }
+  });
+}
+
+// Carregar lista de doutores no filtro
+function carregarFiltroDoutores() {
+  const select = document.getElementById("filtroDoutorEvolucao");
+  if (select && listaDoutoresGlobal) {
+    select.innerHTML = '<option value="">Todos os profissionais</option>';
+    listaDoutoresGlobal.forEach(d => {
+      select.innerHTML += `<option value="${d}">${d}</option>`;
+    });
+  }
+}
+
+function setupAnamneseToggles() {
+  const toggles = [
+    { checkbox: 'ana_cardiaco', detail: 'ana_cardiaco_detail' },
+    { checkbox: 'ana_hipertensao', detail: 'ana_hipertensao_detail' },
+    { checkbox: 'ana_diabetes', detail: 'ana_diabetes_detail' },
+    { checkbox: 'ana_respiratorio', detail: 'ana_respiratorio_detail' },
+    { checkbox: 'ana_renal', detail: 'ana_renal_detail' },
+    { checkbox: 'ana_hepatite', detail: 'ana_hepatite_detail' },
+    { checkbox: 'ana_dst', detail: 'ana_dst_detail' },
+    { checkbox: 'ana_cancer', detail: 'ana_cancer_detail' },
+    { checkbox: 'ana_autoimune', detail: 'ana_autoimune_detail' },
+    { checkbox: 'ana_osteoporose', detail: 'ana_osteoporose_detail' },
+    { checkbox: 'ana_tabagista', detail: 'ana_tabagista_detail' },
+    { checkbox: 'ana_etilista', detail: 'ana_etilista_detail' },
+    { checkbox: 'ana_atividade_fisica', detail: 'ana_atividade_detail' },
+    { checkbox: 'ana_sono_irregular', detail: 'ana_sono_detail' }
+  ];
+  
+  toggles.forEach(item => {
+    const checkbox = document.getElementById(item.checkbox);
+    const detail = document.getElementById(item.detail);
+    if (checkbox && detail) {
+      checkbox.addEventListener('change', function() {
+        detail.style.display = this.checked ? 'block' : 'none';
+      });
+    }
+  });
+}
+
+// Calcular IMC automaticamente
+function calcularIMC() {
+  const peso = parseFloat(document.getElementById('ana_peso')?.value) || 0;
+  const altura = parseFloat(document.getElementById('ana_altura')?.value) || 0;
+  const imcField = document.getElementById('ana_imc');
+  
+  if (imcField && peso > 0 && altura > 0) {
+    const imc = peso / (altura * altura);
+    imcField.value = imc.toFixed(1);
+  }
+}
+
+// Event listeners para IMC
+document.addEventListener('DOMContentLoaded', function() {
+  const pesoInput = document.getElementById('ana_peso');
+  const alturaInput = document.getElementById('ana_altura');
+  if (pesoInput) pesoInput.addEventListener('input', calcularIMC);
+  if (alturaInput) alturaInput.addEventListener('input', calcularIMC);
+  
+  // Configurar data atual
+  const dataField = document.getElementById('ana_data_anamnese');
+  if (dataField) {
+    const hoje = new Date();
+    dataField.value = hoje.toLocaleDateString('pt-BR');
+  }
+  
+  setupAnamneseToggles();
+});
+
+// Carregar dados salvos da anamnese
+function carregarAnamneseCompleta() {
+  const paciente = pacienteAtualProntuario;
+  if (!paciente) return;
+  
+  // Preencher identificação
+  document.getElementById('ana_nome').value = paciente.nome || '';
+  document.getElementById('ana_nascimento').value = paciente.nascimento || '';
+  document.getElementById('ana_sexo').value = paciente.sexo || '';
+  document.getElementById('ana_estado_civil').value = paciente.estado_civil || '';
+  document.getElementById('ana_profissao').value = paciente.profissao || '';
+  
+  // Calcular idade se tiver nascimento
+  if (paciente.nascimento) {
+    const nasc = new Date(paciente.nascimento);
+    const hoje = new Date();
+    let idade = hoje.getFullYear() - nasc.getFullYear();
+    document.getElementById('ana_idade').value = idade;
+  }
+  
+  mostrarNotificacao("Anamnese carregada!", "sucesso");
+}
+
+
+
+</script>
