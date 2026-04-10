@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    /* Estilo Idêntico ao Holerite - Clínica Ramos */
+    @page { size: A4; margin: 10mm 15mm 15mm 15mm; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f2f5; margin: 0; padding: 20px; }
+    .no-print { background: white; padding: 20px; border-radius: 8px; margin: 0 auto 30px auto; width: 850px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); text-align: center; }
+    .recibo-pagina { background: white; width: 100%; max-width: 210mm; margin: auto; padding: 10mm; box-sizing: border-box; border: 4px double #2c3e50; }
+    .header { text-align: center; border-bottom: 3px solid #2c3e50; padding-bottom: 10px; margin-bottom: 20px; }
+    .header h1 { margin: 0; color: #2c3e50; letter-spacing: 2px; font-size: 24px; }
+    .header p { margin: 5px 0; font-weight: bold; color: #7f8c8d; font-size: 14px; text-transform: uppercase; }
+    .row-info { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 12px; border-bottom: 1px solid #eee; padding-bottom: 3px; }
+    .label-info { font-weight: bold; color: #34495e; }
+    
+    table { width: 100%; border-collapse: collapse; margin-top: 5px; font-size: 10px; }
+    th { background: #f8f9fa !important; border: 1px solid #2c3e50; padding: 6px; text-align: left; -webkit-print-color-adjust: exact; }
+    td { border: 1px solid #dcdde1; padding: 5px; }
+    
+    .secao-titulo { background: #34495e !important; color: white !important; padding: 5px 10px; margin-top: 20px; font-size: 11px; font-weight: bold; -webkit-print-color-adjust: exact; }
+    .total-final { font-size: 18px; text-align: right; margin-top: 15px; font-weight: 800; color: #2c3e50; border-top: 2px solid #2c3e50; padding-top: 10px; }
+
+    @media print { 
+      body { background: white; padding: 0; }
+      .no-print { display: none; }
+      .recibo-pagina { border: none; padding: 0; width: 100%; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="no-print">
+    <h3>📊 Relatório Geral e Produtividade</h3>
+    <div style="display: flex; gap: 10px; justify-content: center; align-items: center; flex-wrap: wrap;">
+      <select id="dentista" style="padding: 8px; border-radius: 4px; border: 1px solid #ccc;">
+        <option value="TODOS">Todos os Profissionais</option>
+      </select>
+      
+      <!-- ===== CORREÇÃO: Campo de data com máscara automática ===== -->
+      <div style="position: relative;">
+        <input type="text" id="dataFiltro" placeholder="DD/MM/AAAA" 
+               style="width: 120px; padding: 8px; border-radius: 4px; border: 1px solid #ccc;"
+               maxlength="10" oninput="mascaraData(this)">
+      </div>
+      
+      <!-- ===== CORREÇÃO: Campo de mês com máscara automática ===== -->
+      <div style="position: relative;">
+        <input type="text" id="mesFiltro" placeholder="MM/AAAA" 
+               style="width: 100px; padding: 8px; border-radius: 4px; border: 1px solid #ccc;"
+               maxlength="7" oninput="mascaraMes(this)">
+      </div>
+      
+      <button onclick="gerar()" style="background: #27ae60; color: white; border:none; padding:10px 15px; cursor:pointer; border-radius: 4px; font-weight: bold;">Gerar</button>
+      <button onclick="window.print()" style="background: #2c3e50; color: white; border:none; padding:10px 15px; cursor:pointer; border-radius: 4px; font-weight: bold;">🖨️ Imprimir</button>
+    </div>
+  </div>
+
+  <div id="documento" style="display:none;" class="recibo-pagina">
+    <div class="header">
+      <h1>ODONTOLOGIA RAMOS</h1>
+      <p>RELATÓRIO DE MOVIMENTAÇÃO E PRODUTIVIDADE</p>
+    </div>
+
+    <div class="row-info">
+      <span><span class="label-info">Filtro:</span> <span id="resFiltro"></span></span>
+      <span><span class="label-info">Emissão:</span> <span id="resEmissao"></span></span>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>DATA</th><th>PACIENTE</th><th>PROCEDIMENTO</th><th>PAGAMENTO</th><th>DOUTOR</th><th style="text-align:right;">PART.</th><th style="text-align:right;">PLANO</th>
+        </tr>
+      </thead>
+      <tbody id="corpoTabela"></tbody>
+    </table>
+
+    <div class="secao-titulo">RESUMO DE PRODUTIVIDADE POR PROFISSIONAL</div>
+    <table style="width: 50%; margin-top: 10px;">
+      <thead>
+        <tr><th>DOUTOR(A)</th><th style="text-align:center;">QTD PACIENTES</th><th style="text-align:right;">TOTAL PRODUZIDO</th></tr>
+      </thead>
+      <tbody id="corpoResumo"></tbody>
+    </table>
+
+    <div class="total-final">TOTAL GERAL: R$ <span id="resTotal"></span></div>
+  </div>
+
+  <script>
+    let dadosBrutos = [];
+
+    // ===== FUNÇÕES DE MÁSCARA =====
+    function mascaraData(input) {
+      let v = input.value.replace(/\D/g, '').slice(0, 8);
+      if (v.length >= 5) {
+        input.value = v.replace(/^(\d{2})(\d{2})(\d{0,4}).*/, "$1/$2/$3");
+      } else if (v.length >= 3) {
+        input.value = v.replace(/^(\d{2})(\d{0,2}).*/, "$1/$2");
+      } else {
+        input.value = v;
+      }
+    }
+
+    function mascaraMes(input) {
+      let v = input.value.replace(/\D/g, '').slice(0, 6);
+      if (v.length >= 5) {
+        input.value = v.replace(/^(\d{2})(\d{0,4}).*/, "$1/$2");
+      } else if (v.length >= 3) {
+        input.value = v.replace(/^(\d{2})(\d{0,2}).*/, "$1/$2");
+      } else {
+        input.value = v;
+      }
+    }
+
+    window.onload = function() {
+      google.script.run.withSuccessHandler(listas => {
+        const sel = document.getElementById('dentista');
+        listas.doutores.forEach(n => { 
+          let o = document.createElement('option'); 
+          o.value = n; 
+          o.text = n; 
+          sel.add(o); 
+        });
+      }).getListasParaForm();
+      
+      google.script.run.withSuccessHandler(res => { 
+        dadosBrutos = res; 
+      }).getDadosTabelaERP();
+      
+      // ===== CORREÇÃO: Pré-preencher com o mês atual =====
+      const hoje = new Date();
+      const mes = String(hoje.getMonth() + 1).padStart(2, '0');
+      const ano = hoje.getFullYear();
+      document.getElementById('mesFiltro').value = `${mes}/${ano}`;
+    };
+
+    function gerar() {
+      const dentista = document.getElementById('dentista').value;
+      const dataDia = document.getElementById('dataFiltro').value;
+      const mesAno = document.getElementById('mesFiltro').value;
+      
+      let filtrados = dadosBrutos;
+      if(dentista !== "TODOS") filtrados = filtrados.filter(d => d.doutor === dentista);
+
+      if(dataDia) {
+        // Já está no formato dd/mm/aaaa pela máscara
+        filtrados = filtrados.filter(d => d.data === dataDia);
+        document.getElementById('resFiltro').innerText = "DIÁRIO: " + dataDia;
+      } else if(mesAno) {
+        filtrados = filtrados.filter(d => (d.data.split('/')[1] + '/' + d.data.split('/')[2]) === mesAno);
+        document.getElementById('resFiltro').innerText = "MENSAL: " + mesAno;
+      }
+
+      // Preencher Tabela Principal e Calcular Resumo
+      const tbody = document.getElementById('corpoTabela');
+      const resBody = document.getElementById('corpoResumo');
+      tbody.innerHTML = ""; 
+      resBody.innerHTML = "";
+      
+      let totalGeral = 0;
+      let resumoDoutores = {};
+
+      filtrados.forEach(item => {
+        let vTotal = (item.particular || 0) + (item.vplano || 0);
+        totalGeral += vTotal;
+        
+        // Logica do Resumo
+        if(!resumoDoutores[item.doutor]) {
+          resumoDoutores[item.doutor] = { qtd: 0, valor: 0 };
+        }
+        resumoDoutores[item.doutor].qtd++;
+        resumoDoutores[item.doutor].valor += vTotal;
+
+        tbody.innerHTML += `<tr>
+          <td>${item.data}</td>
+          <td><strong>${item.paciente}</strong></td>
+          <td>${item.procedimento || '-'}</td>
+          <td>${item.pagamento || '-'}</td>
+          <td>${item.doutor}</td>
+          <td style="text-align:right;">R$ ${(item.particular || 0).toFixed(2)}</td>
+          <td style="text-align:right;">R$ ${(item.vplano || 0).toFixed(2)}</td>
+        </tr>`;
+      });
+
+      // Preencher Tabela de Resumo
+      for(let dr in resumoDoutores) {
+        resBody.innerHTML += `<tr>
+          <td>${dr}</td>
+          <td style="text-align:center;">${resumoDoutores[dr].qtd}</td>
+          <td style="text-align:right;">R$ ${resumoDoutores[dr].valor.toFixed(2)}</td>
+        </tr>`;
+      }
+
+      document.getElementById('resEmissao').innerText = new Date().toLocaleDateString('pt-BR');
+      document.getElementById('resTotal').innerText = totalGeral.toFixed(2);
+      document.getElementById('documento').style.display = 'block';
+    }
+  </script>
+</body>
+</html>
