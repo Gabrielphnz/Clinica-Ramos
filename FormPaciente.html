@@ -1,0 +1,88 @@
+<div class="modal fade" id="modalPaciente" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-xl">
+    <div class="modal-content border-0 shadow-lg" style="border-radius:24px;">
+      <div class="modal-header bg-primary text-white border-0 p-4">
+        <h5 class="fw-bold mb-0">🧬 CRM de Pacientes - Ficha Completa</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      
+      <div class="modal-body p-0">
+        <ul class="nav nav-tabs px-4 pt-3 bg-light border-0" id="pacienteTabs" role="tablist">
+          <li class="nav-item"><button class="nav-link active fw-bold border-0 bg-transparent text-primary" data-bs-toggle="tab" data-bs-target="#pIdent">1. Identificação</button></li>
+          <li class="nav-item"><button class="nav-link fw-bold border-0 bg-transparent text-muted" data-bs-toggle="tab" data-bs-target="#pEnd">2. Endereço & Localização</button></li>
+          <li class="nav-item"><button class="nav-link fw-bold border-0 bg-transparent text-muted" data-bs-toggle="tab" data-bs-target="#pFinan">3. Convênio & Financeiro</button></li>
+          <li class="nav-item"><button class="nav-link fw-bold border-0 bg-transparent text-muted" data-bs-toggle="tab" data-bs-target="#pResp">4. Responsável</button></li>
+          <li class="nav-item"><button class="nav-link fw-bold border-0 bg-transparent text-muted" data-bs-toggle="tab" data-bs-target="#pExtra">5. Dados Clínicos & Marketing</button></li>
+        </ul>
+
+        <form id="formPacienteCompleto" class="p-4">
+          <div class="tab-content">
+            
+            <div class="tab-pane fade show active" id="pIdent">
+              <div class="row g-3">
+                <div class="col-md-6"><label class="form-label small fw-bold">Nome Completo *</label><input type="text" name="Nome" class="form-control fw-bold" required></div>
+                <div class="col-md-3"><label class="form-label small fw-bold">Apelido (Nick)</label><input type="text" name="nick_name" class="form-control"></div>
+                <div class="col-md-3"><label class="form-label small fw-bold">Nascimento</label><input type="date" name="Nascimento" class="form-control"></div>
+                <div class="col-md-4"><label class="form-label small fw-bold">CPF</label><input type="text" name="CPF" class="form-control"></div>
+                <div class="col-md-4"><label class="form-label small fw-bold">RG</label><input type="text" name="RG" class="form-control"></div>
+                <div class="col-md-4"><label class="form-label small fw-bold">Sexo</label><select name="sexo" class="form-select"><option value="">Selecione...</option><option value="F">Feminino</option><option value="M">Masculino</option></select></div>
+                <div class="col-md-4"><label class="form-label small fw-bold">Celular Principal (WhatsApp) *</label><input type="text" name="Celular" class="form-control" required></div>
+                <div class="col-md-4"><label class="form-label small fw-bold">Celular 2</label><input type="text" name="celular2" class="form-control"></div>
+                <div class="col-md-4"><label class="form-label small fw-bold">Email</label><input type="email" name="email" class="form-control"></div>
+                <div class="col-md-6"><label class="form-label small fw-bold">Profissão</label><input type="text" name="profissao" class="form-control"></div>
+                <div class="col-md-6"><label class="form-label small fw-bold">Motivo da Consulta</label><input type="text" name="motivo" class="form-control"></div>
+              </div>
+            </div>
+
+            <div class="tab-pane fade" id="pEnd">
+              <div class="row g-3">
+                <div class="col-md-3"><label class="form-label small fw-bold">CEP</label><input type="text" name="cep" class="form-control"></div>
+                <div class="col-md-7"><label class="form-label small fw-bold">Logradouro (Rua/Av)</label><input type="text" name="Endereco" class="form-control"></div>
+                <div class="col-md-2"><label class="form-label small fw-bold">UF</label><input type="text" name="uf" class="form-control" maxlength="2"></div>
+                <div class="col-md-4"><label class="form-label small fw-bold">Bairro</label><input type="text" name="bairro" class="form-control"></div>
+                <div class="col-md-4"><label class="form-label small fw-bold">Cidade</label><input type="text" name="cidade" class="form-control"></div>
+                <div class="col-md-4"><label class="form-label small fw-bold">País</label><input type="text" name="pais" class="form-control" value="Brasil"></div>
+                <div class="col-md-12"><label class="form-label small fw-bold">Endereço Comercial</label><input type="text" name="endcomercial" class="form-control"></div>
+              </div>
+            </div>
+
+            <div class="tab-pane fade" id="pFinan">
+              <div class="row g-3">
+                <div class="col-md-6"><label class="form-label small fw-bold">Convênio/Plano</label><select name="convenio" id="sel_convenio_paciente" class="form-select"><option value="">Nenhum / Particular</option></select></div>
+                <div class="col-md-6"><label class="form-label small fw-bold">Nº Carteirinha</label><input type="text" name="carteirinha" class="form-control"></div>
+                <div class="col-md-6"><label class="form-label small fw-bold">Titular do Plano</label><input type="text" name="titular" class="form-control"></div>
+                <div class="col-md-6"><label class="form-label small fw-bold">CPF do Titular</label><input type="text" name="cpftitular" class="form-control"></div>
+                <div class="col-md-6"><label class="form-label small fw-bold">ID Asaas (Financeiro)</label><input type="text" name="id_asaas" class="form-control"></div>
+                <div class="col-md-6"><label class="form-label small fw-bold">Indicador/Vendedor</label><input type="text" name="indicador" class="form-control"></div>
+              </div>
+            </div>
+
+            <div class="tab-pane fade" id="pResp">
+              <div class="row g-3">
+                <div class="col-md-6"><label class="form-label small fw-bold">Nome do Responsável</label><input type="text" name="Responsavel" class="form-control"></div>
+                <div class="col-md-6"><label class="form-label small fw-bold">Profissão do Resp.</label><input type="text" name="profresp" class="form-control"></div>
+                <div class="col-md-4"><label class="form-label small fw-bold">CPF do Resp.</label><input type="text" name="cpfresp" class="form-control"></div>
+                <div class="col-md-4"><label class="form-label small fw-bold">RG do Resp.</label><input type="text" name="rgresp" class="form-control"></div>
+                <div class="col-md-4"><label class="form-label small fw-bold">Nascimento Resp.</label><input type="date" name="respNascimento" class="form-control"></div>
+              </div>
+            </div>
+
+            <div class="tab-pane fade" id="pExtra">
+              <div class="row g-3">
+                <div class="col-md-12"><label class="form-label small fw-bold">Observações Clínicas / Histórico</label><textarea name="OBS" class="form-control" rows="3"></textarea></div>
+                <div class="col-md-6"><label class="form-label small fw-bold">Como nos conheceu? (Indicação)</label><input type="text" name="Indicacao" class="form-control"></div>
+                <div class="col-md-6"><label class="form-label small fw-bold">Consentiu WhatsApp?</label><select name="consentiu_whatsapp" class="form-select"><option value="SIM">Sim</option><option value="NAO">Não</option></select></div>
+              </div>
+            </div>
+
+          </div>
+        </form>
+      </div>
+
+      <div class="modal-footer border-0 p-4 bg-light">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">FECHAR</button>
+        <button type="button" class="btn btn-primary px-5 fw-bold shadow" onclick="salvarPacienteCRM()">💾 CADASTRAR PACIENTE</button>
+      </div>
+    </div>
+  </div>
+</div>
