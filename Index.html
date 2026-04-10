@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+    :root {
+      --primary: #4318FF;
+      --secondary: #F4F7FE;
+      --text-main: #2B3674;
+      --text-muted: #A3AED0;
+      --success: #05CD99;
+      --warning: #FFCE20;
+      --danger: #EE5D50;
+      --info: #00B5E2;
+      --dark-panel: #111C44;
+      --card-shadow: 0px 18px 40px rgba(112, 144, 176, 0.12);
+    }
+
+    body { 
+      background-color: var(--secondary); 
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      color: var(--text-main);
+      overflow-x: hidden;
+    }
+
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+
+    .sidebar { 
+      background: var(--dark-panel);
+      color: white; 
+      min-height: 100vh; 
+      padding: 30px 20px; 
+      position: fixed; 
+      width: 280px; 
+      box-shadow: 4px 0 24px rgba(0,0,0,0.1);
+      z-index: 100;
+    }
+    .main-content { margin-left: 280px; padding: 30px; }
+    
+    .sidebar h4 { font-weight: 800; letter-spacing: -0.5px; margin-bottom: 30px; color: white; }
+    .sidebar label { font-weight: 600; color: #A3AED0; font-size: 12px; letter-spacing: 0.5px; margin-top: 15px; }
+    
+    select.form-select { 
+      background: rgba(255, 255, 255, 0.05); 
+      color: white; 
+      border: 1px solid rgba(255, 255, 255, 0.1); 
+      margin-bottom: 5px; 
+      font-size: 14px;
+      border-radius: 12px;
+      padding: 12px;
+      font-weight: 500;
+    }
+    select.form-select:focus { background: rgba(255, 255, 255, 0.1); border-color: var(--primary); box-shadow: none; color: white;}
+    select.form-select option { background: var(--dark-panel); color: white; }
+    
+    .btn-update {
+      background: linear-gradient(135deg, var(--primary) 0%, #868CFF 100%);
+      border: none;
+      border-radius: 12px;
+      padding: 12px;
+      font-weight: 700;
+      color: white;
+      transition: all 0.3s;
+      box-shadow: 0 8px 16px rgba(67, 24, 255, 0.2);
+    }
+    .btn-update:hover { transform: translateY(-2px); box-shadow: 0 12px 20px rgba(67, 24, 255, 0.3); color: white;}
+
+    /* ANIMAÇÕES GERAIS */
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-up { animation: slideUp 0.5s ease forwards; }
+
+    /* CARDS KPI */
+    .card-kpi { 
+      background: white; 
+      padding: 25px 20px; 
+      border-radius: 20px; 
+      box-shadow: var(--card-shadow); 
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      height: 100%;
+      border: none;
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.3s;
+    }
+    .card-kpi:hover { transform: translateY(-4px); }
+    
+    .card-kpi::before {
+      content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px;
+      background: var(--primary); border-radius: 4px 0 0 4px;
+    }
+    .kpi-faturamento::before { background: var(--success); }
+    .kpi-atendimentos::before { background: var(--primary); }
+    .kpi-ticket::before { background: var(--warning); }
+    .kpi-pacientes::before { background: var(--info); }
+    .kpi-particular::before { background: #9b59b6; }
+    .kpi-lucro::before { background: var(--danger); }
+
+    .kpi-label { color: var(--text-muted); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 5px;}
+    .kpi-value { font-size: 24px; font-weight: 800; color: var(--text-main); letter-spacing: -0.5px; margin: 0; line-height: 1.2;}
+
+    /* CARDS GRÁFICOS E SOLUÇÃO DAS PROPORÇÕES */
+    .chart-box { 
+      background: white; 
+      padding: 25px; 
+      border-radius: 24px; 
+      box-shadow: var(--card-shadow); 
+      margin-bottom: 25px; 
+      height: 100%;
+    }
+    .chart-title { 
+      font-weight: 800; 
+      color: var(--text-main); 
+      margin-bottom: 20px; 
+      font-size: 16px; 
+      letter-spacing: -0.2px;
+    }
+    
+    /* AQUI ESTÁ A SOLUÇÃO: Caixa fixa que segura o gráfico */
+    .chart-wrapper {
+      position: relative;
+      height: 260px;
+      width: 100%;
+    }
+
+    /* BARRAS DE RANKING INTERATIVAS */
+    .ranking-item { margin-bottom: 15px; }
+    .ranking-info { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 13px; font-weight: 700; color: var(--text-main); }
+    .ranking-value { color: var(--success); font-weight: 800; }
+    .progress-custom { height: 8px; background-color: var(--secondary); border-radius: 10px; overflow: hidden; }
+    .progress-bar-custom { height: 100%; border-radius: 10px; transition: width 1s ease-in-out; }
+    .bg-gradient-primary { background: linear-gradient(90deg, var(--primary) 0%, #868CFF 100%); }
+    .bg-gradient-success { background: linear-gradient(90deg, var(--success) 0%, #48E5B8 100%); }
+    .bg-gradient-info { background: linear-gradient(90deg, var(--info) 0%, #4DE1FF 100%); }
+
+    /* INSIGHTS */
+    .insight-card {
+      background: var(--secondary);
+      border-left: 4px solid var(--warning);
+      padding: 18px 20px;
+      border-radius: 16px;
+      margin-bottom: 15px;
+      font-weight: 600;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      transition: all 0.3s;
+    }
+    .insight-card:hover { transform: translateX(5px); background: white; box-shadow: var(--card-shadow); }
+    .insight-icon {
+      background: white; border-radius: 50%; width: 40px; height: 40px;
+      display: flex; align-items: center; justify-content: center; font-size: 20px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+    }
+
+    .col-mini { flex: 0 0 16.666%; max-width: 16.666%; padding: 0 10px;}
+    @media (max-width: 1400px) { .col-mini { flex: 0 0 33.333%; max-width: 33.333%; margin-bottom: 20px;} }
+  </style>
+</head>
+<body>
+
+  <div class="sidebar">
+    <h4 class="text-center">📊 DASHBOARD</h4>
+    
+    <label>👨‍⚕️ DOUTOR</label>
+    <select id="selDoutor" class="form-select" onchange="aplicarFiltros()">
+      <option>Carregando...</option>
+    </select>
+    
+    <label>🦷 PROCEDIMENTO</label>
+    <select id="selProc" class="form-select" onchange="aplicarFiltros()">
+      <option>Carregando...</option>
+    </select>
+    
+    <label>📅 MÊS</label>
+    <select id="selMes" class="form-select" onchange="aplicarFiltros()">
+      <option>Carregando...</option>
+    </select>
+    
+    <label>💳 TIPO</label>
+    <select id="selTipo" class="form-select" onchange="aplicarFiltros()">
+      <option value="Todos">Todos</option>
+      <option value="PARTICULAR">Particular</option>
+      <option value="PLANO">Plano</option>
+    </select>
+    
+    <div class="mt-4">
+      <button class="btn-update w-100 mb-3" onclick="buscar()">
+        🔄 ATUALIZAR DADOS
+      </button>
+    </div>
+    
+    <div id="statusInfo" class="small mt-2 text-center text-info fw-bold">
+      Aguardando dados...
+    </div>
+    
+    <div id="sidebarResumo" class="mt-4 p-3" style="background: rgba(255,255,255,0.05); border-radius: 16px;">
+      <div style="color: #A3AED0; font-size: 11px; font-weight: 700; letter-spacing: 0.5px;">TOTAL REGISTROS</div>
+      <div style="font-size: 24px; font-weight: 800; color: white;" id="sidebarTotalRegistros">0</div>
+    </div>
+  </div>
+
+  <div class="main-content">
+    
+    <div class="row g-0 mb-4 animate-up" style="margin: 0 -10px; animation-delay: 0.1s;">
+      <div class="col-mini">
+        <div class="card-kpi kpi-faturamento">
+          <div class="kpi-label">Faturamento</div>
+          <div class="kpi-value" id="kpiFaturamento">R$ 0</div>
+        </div>
+      </div>
+      <div class="col-mini">
+        <div class="card-kpi kpi-atendimentos">
+          <div class="kpi-label">Atendimentos</div>
+          <div class="kpi-value" id="kpiAtendimentos">0</div>
+        </div>
+      </div>
+      <div class="col-mini">
+        <div class="card-kpi kpi-ticket">
+          <div class="kpi-label">Ticket Médio</div>
+          <div class="kpi-value" id="kpiTicket">R$ 0</div>
+        </div>
+      </div>
+      <div class="col-mini">
+        <div class="card-kpi kpi-pacientes">
+          <div class="kpi-label">Pacientes Únicos</div>
+          <div class="kpi-value" id="kpiPacientes">0</div>
+        </div>
+      </div>
+      <div class="col-mini">
+        <div class="card-kpi kpi-particular">
+          <div class="kpi-label">% Particular</div>
+          <div class="kpi-value" id="kpiParticular">0%</div>
+        </div>
+      </div>
+      <div class="col-mini">
+        <div class="card-kpi kpi-lucro">
+          <div class="kpi-label">Lucro Líquido</div>
+          <div class="kpi-value" id="kpiLucro">R$ 0</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row animate-up" style="animation-delay: 0.2s;">
+      <div class="col-md-5">
+        <div class="chart-box">
+          <div class="chart-title">Receita Particular vs Plano</div>
+          <div class="chart-wrapper">
+            <canvas id="chartTipo"></canvas>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-7">
+        <div class="chart-box">
+          <div class="chart-title">Atendimentos por Profissional</div>
+          <div class="chart-wrapper">
+            <canvas id="chartAtendimentosDoutor"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row animate-up" style="animation-delay: 0.3s;">
+      <div class="col-md-4">
+        <div class="chart-box">
+          <div class="chart-title">🏆 Top 5 Profissionais</div>
+          <div id="rankingDoutores">Carregando...</div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="chart-box">
+          <div class="chart-title">💎 Top 5 Procedimentos</div>
+          <div id="rankingProcedimentos">Carregando...</div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="chart-box">
+          <div class="chart-title">🏥 Top 5 Planos</div>
+          <div id="rankingPlanos">Carregando...</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row animate-up" style="animation-delay: 0.4s;">
+      <div class="col-md-7">
+        <div class="chart-box">
+          <div class="chart-title">Distribuição de Atendimentos por Mês</div>
+          <div class="chart-wrapper">
+            <canvas id="chartMeses"></canvas>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-5">
+        <div class="chart-box">
+          <div class="chart-title">Custo Laboratório por Profissional</div>
+          <div class="chart-wrapper">
+            <canvas id="chartLabDoutor"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row animate-up" style="animation-delay: 0.5s;">
+      <div class="col-12">
+        <div class="chart-box">
+          <div class="chart-title">Evolução Mensal do Faturamento Bruto</div>
+          <div class="chart-wrapper" style="height: 300px;">
+            <canvas id="chartEvolucao"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row animate-up" style="animation-delay: 0.6s;">
+      <div class="col-12">
+        <div class="chart-box" style="height: auto;">
+          <div class="chart-title">🤖 Inteligência de Dados (Insights)</div>
+          <div id="insightsArea">
+            <div class="insight-card">
+              <div class="insight-icon">⏳</div> Analisando dados...
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Configurações Globais Lindas pro Chart.js
+    Chart.defaults.font.family = "'Plus Jakarta Sans', sans-serif";
+    Chart.defaults.color = '#A3AED0';
+    Chart.defaults.scale.grid.color = 'rgba(163, 174, 208, 0.1)';
+    Chart.defaults.plugins.tooltip.backgroundColor = 'rgba(17, 28, 68, 0.9)';
+    Chart.defaults.plugins.tooltip.padding = 12;
+    Chart.defaults.plugins.tooltip.cornerRadius = 10;
+    Chart.defaults.plugins.tooltip.titleFont = { size: 14, weight: 'bold' };
+    
+    const palette = ['#4318FF', '#05CD99', '#FFCE20', '#00B5E2', '#EE5D50', '#868CFF', '#9b59b6'];
+
+    let dadosBrutos = [];
+    let graficos = {};
+    let dadosFiltrados = [];
+
+    window.onload = function() { buscar(); };
+
+    function buscar() {
+      document.getElementById('statusInfo').innerHTML = "⏳ Sincronizando...";
+      google.script.run
+        .withSuccessHandler(res => {
+          if (!res || res.length === 0) {
+            document.getElementById('statusInfo').innerHTML = "❌ Sem dados";
+            return;
+          }
+          dadosBrutos = res;
+          document.getElementById('statusInfo').innerHTML = "✅ Sincronizado";
+          document.getElementById('sidebarTotalRegistros').innerText = res.length;
+          preencherFiltros();
+          aplicarFiltros();
+        })
+        .withFailureHandler(err => {
+          document.getElementById('statusInfo').innerHTML = "❌ Erro de Conexão";
+        })
+        .getDashboardData();
+    }
+
+    function preencherFiltros() {
+      const setF = (id, campo) => {
+        const lista = [...new Set(dadosBrutos.map(d => d[campo]))].filter(x => x).sort();
+        const el = document.getElementById(id);
+        el.innerHTML = '<option value="Todos">Todos</option>';
+        lista.forEach(i => el.innerHTML += `<option value="${i}">${i}</option>`);
+      };
+      setF('selDoutor', 'doutor');
+      setF('selProc', 'procedimento');
+      
+      const meses = [...new Set(dadosBrutos.map(d => d.mes))].filter(x => x);
+      meses.sort((a, b) => {
+        const [mesA, anoA] = a.split('/');
+        const [mesB, anoB] = b.split('/');
+        return new Date(anoB, mesB-1) - new Date(anoA, mesA-1);
+      });
+      const elMes = document.getElementById('selMes');
+      elMes.innerHTML = '<option value="Todos">Todos</option>';
+      meses.forEach(i => elMes.innerHTML += `<option value="${i}">${i}</option>`);
+    }
+
+    function aplicarFiltros() {
+      const d = document.getElementById('selDoutor').value;
+      const p = document.getElementById('selProc').value;
+      const m = document.getElementById('selMes').value;
+      const tipo = document.getElementById('selTipo').value;
+
+      dadosFiltrados = dadosBrutos.filter(i => 
+        (d === "Todos" || i.doutor === d) &&
+        (p === "Todos" || i.procedimento === p) &&
+        (m === "Todos" || i.mes === m)
+      );
+
+      if (tipo === "PARTICULAR") {
+        dadosFiltrados = dadosFiltrados.filter(i => i.particular > 0);
+      } else if (tipo === "PLANO") {
+        dadosFiltrados = dadosFiltrados.filter(i => i.vplano > 0);
+      }
+
+      calcularKPIs();
+      renderizarGraficos();
+      gerarInsights();
+    }
+
+   function calcularKPIs() {
+      const total = dadosFiltrados.reduce((s, i) => s + (Number(i.total) || 0), 0);
+      const part = dadosFiltrados.reduce((s, i) => s + (Number(i.particular) || 0), 0);
+      const plano = dadosFiltrados.reduce((s, i) => s + (Number(i.vplano) || 0), 0);
+      const qtd = dadosFiltrados.length;
+      
+      const pacientesUnicos = [...new Set(dadosFiltrados.map(i => i.paciente))].length;
+      
+      const configMoeda = { style: 'currency', currency: 'BRL', minimumFractionDigits: 0, maximumFractionDigits: 0 };
+      
+      document.getElementById('kpiFaturamento').innerText = total.toLocaleString('pt-BR', configMoeda);
+      document.getElementById('kpiAtendimentos').innerText = qtd;
+      
+      const ticketMedio = qtd > 0 ? total / qtd : 0;
+      document.getElementById('kpiTicket').innerText = ticketMedio.toLocaleString('pt-BR', configMoeda);
+      
+      document.getElementById('kpiPacientes').innerText = pacientesUnicos;
+      
+      const percentualPart = total > 0 ? Math.round((part / total) * 100) : 0;
+      document.getElementById('kpiParticular').innerText = percentualPart + '%';
+      
+      // CORREÇÃO: Agora soma estritamente o "Lucro da Clínica" já calculado na planilha
+      const lucroLiquido = dadosFiltrados.reduce((s, i) => s + (Number(i.lucroClinica) || 0), 0);
+      document.getElementById('kpiLucro').innerText = lucroLiquido.toLocaleString('pt-BR', configMoeda);
+    }
+
+    function renderizarGraficos() {
+      Object.values(graficos).forEach(g => { if (g) g.destroy(); });
+      graficos = {};
+      
+      // 1: Evolução Mensal
+      const evolucaoMap = {};
+      dadosBrutos.forEach(i => {
+        if (i.mes) evolucaoMap[i.mes] = (evolucaoMap[i.mes] || 0) + i.total;
+      });
+      const mesesOrdenados = Object.keys(evolucaoMap).sort((a,b) => {
+        const [mA, aA] = a.split('/'); const [mB, aB] = b.split('/');
+        return new Date(aA, mA-1) - new Date(aB, mB-1);
+      });
+      
+      graficos.evolucao = new Chart(document.getElementById('chartEvolucao'), {
+        type: 'line',
+        data: {
+          labels: mesesOrdenados,
+          datasets: [{
+            label: 'Faturamento (R$)',
+            data: mesesOrdenados.map(m => evolucaoMap[m]),
+            borderColor: '#4318FF',
+            backgroundColor: 'rgba(67, 24, 255, 0.1)',
+            borderWidth: 3,
+            pointBackgroundColor: '#FFFFFF',
+            pointBorderColor: '#4318FF',
+            pointBorderWidth: 2,
+            pointRadius: 5,
+            pointHoverRadius: 7,
+            tension: 0.4,
+            fill: true
+          }]
+        },
+        options: { 
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: { 
+            x: { grid: { display: false } },
+            y: { border: { display: false } }
+          }
+        }
+      });
+
+      // 2: Particular vs Plano
+      const partTotal = dadosFiltrados.reduce((s, i) => s + (Number(i.particular) || 0), 0);
+      const planoTotal = dadosFiltrados.reduce((s, i) => s + (Number(i.vplano) || 0), 0);
+      graficos.tipo = new Chart(document.getElementById('chartTipo'), {
+        type: 'doughnut',
+        data: {
+          labels: ['Particular', 'Plano'],
+          datasets: [{
+            data: [partTotal, planoTotal],
+            backgroundColor: ['#05CD99', '#4318FF'],
+            borderWidth: 0,
+            hoverOffset: 8
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          cutout: '75%',
+          plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, padding: 20 } } }
+        }
+      });
+
+      // 3: Atendimentos por Doutor
+      const atendDoutorMap = {};
+      dadosFiltrados.forEach(i => {
+        if (!atendDoutorMap[i.doutor]) atendDoutorMap[i.doutor] = 0;
+        atendDoutorMap[i.doutor]++;
+      });
+      const nomesAtend = Object.keys(atendDoutorMap).sort((a,b) => atendDoutorMap[b] - atendDoutorMap[a]);
+      
+      graficos.atendDoutor = new Chart(document.getElementById('chartAtendimentosDoutor'), {
+        type: 'bar',
+        data: {
+          labels: nomesAtend,
+          datasets: [{
+            label: 'Atendimentos',
+            data: nomesAtend.map(n => atendDoutorMap[n]),
+            backgroundColor: '#00B5E2',
+            borderRadius: 8,
+            borderSkipped: false,
+            hoverBackgroundColor: '#028bb0'
+          }]
+        },
+        options: { 
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: { 
+            x: { grid: { display: false } },
+            y: { border: { display: false } }
+          }
+        }
+      });
+
+      // 4: Distribuição por Mês
+      const mesesCount = {};
+      dadosFiltrados.forEach(i => {
+        if (i.mes) mesesCount[i.mes] = (mesesCount[i.mes] || 0) + 1;
+      });
+      const labelsMesesBar = Object.keys(mesesCount).sort((a,b) => {
+        const [mA, aA] = a.split('/'); const [mB, aB] = b.split('/');
+        return new Date(aA, mA-1) - new Date(aB, mB-1);
+      });
+      
+      graficos.meses = new Chart(document.getElementById('chartMeses'), {
+        type: 'bar',
+        data: {
+          labels: labelsMesesBar,
+          datasets: [{
+            label: 'Atendimentos',
+            data: labelsMesesBar.map(m => mesesCount[m]),
+            backgroundColor: '#FFCE20',
+            borderRadius: 8,
+            hoverBackgroundColor: '#e3b610'
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: { 
+            x: { grid: { display: false } },
+            y: { border: { display: false } }
+          }
+        }
+      });
+
+      // 5: Laboratório por Doutor
+      const labDoutorMap = {};
+      dadosFiltrados.forEach(i => {
+        if (i.vlab > 0) {
+          if (!labDoutorMap[i.doutor]) labDoutorMap[i.doutor] = 0;
+          labDoutorMap[i.doutor] += i.vlab;
+        }
+      });
+      
+      graficos.labDoutor = new Chart(document.getElementById('chartLabDoutor'), {
+        type: 'pie',
+        data: {
+          labels: Object.keys(labDoutorMap),
+          datasets: [{
+            data: Object.values(labDoutorMap),
+            backgroundColor: palette,
+            borderWidth: 0,
+            hoverOffset: 8
+          }]
+        },
+        options: {
+           responsive: true, maintainAspectRatio: false,
+           plugins: { legend: { position: 'right', labels: { usePointStyle: true, boxWidth: 8 } } }
+        }
+      });
+
+      // --- Rankings Animados com Barras de Progresso ---
+      const buildRankingBars = (mapData, idContainer, colorClass) => {
+        const sorted = Object.entries(mapData).sort((a, b) => b[1] - a[1]).slice(0, 5); // TOP 5 agora!
+        let html = '';
+        if(sorted.length === 0) {
+          document.getElementById(idContainer).innerHTML = '<div class="text-center text-muted mt-4">Sem dados</div>';
+          return;
+        }
+        
+        let maxVal = sorted[0][1]; // O primeiro é o maior
+
+        sorted.forEach(([nome, valor], idx) => {
+          let pct = (valor / maxVal) * 100;
+          html += `
+            <div class="ranking-item">
+              <div class="ranking-info">
+                <span><span style="color:var(--text-muted); margin-right:5px;">#${idx+1}</span> ${nome}</span>
+                <span class="ranking-value">${valor.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL', minimumFractionDigits: 0})}</span>
+              </div>
+              <div class="progress-custom">
+                <div class="progress-bar-custom ${colorClass}" style="width: ${pct}%;"></div>
+              </div>
+            </div>`;
+        });
+        document.getElementById(idContainer).innerHTML = html;
+      };
+
+      // Montando os 3 rankings
+      const doutoresMap = {};
+      dadosFiltrados.forEach(i => { if(!doutoresMap[i.doutor]) doutoresMap[i.doutor]=0; doutoresMap[i.doutor] += i.total; });
+      buildRankingBars(doutoresMap, 'rankingDoutores', 'bg-gradient-primary');
+
+      const procMap = {};
+      dadosFiltrados.forEach(i => { if(!procMap[i.procedimento]) procMap[i.procedimento]=0; procMap[i.procedimento] += i.total; });
+      buildRankingBars(procMap, 'rankingProcedimentos', 'bg-gradient-success');
+
+      const planosMap = {};
+      dadosFiltrados.forEach(i => { const plano = i.plano || 'NÃO INFORMADO'; if(!planosMap[plano]) planosMap[plano]=0; planosMap[plano] += i.total; });
+      buildRankingBars(planosMap, 'rankingPlanos', 'bg-gradient-info');
+    }
+
+    function gerarInsights() {
+      let insights = [];
+      
+      const doutores = {};
+      dadosFiltrados.forEach(i => doutores[i.doutor] = (doutores[i.doutor] || 0) + i.total);
+      const topDoutor = Object.entries(doutores).sort((a,b) => b[1]-a[1])[0];
+      if (topDoutor) {
+        insights.push({ icon: '🏆', text: `<strong>Dr(a). ${topDoutor[0]}</strong> lidera o faturamento do filtro atual com <span style="color:var(--success)">R$ ${topDoutor[1].toLocaleString('pt-BR', {minimumFractionDigits:0})}</span>.` });
+      }
+      
+      const procs = {};
+      dadosFiltrados.forEach(i => procs[i.procedimento] = (procs[i.procedimento] || 0) + i.total);
+      const topProc = Object.entries(procs).sort((a,b) => b[1]-a[1])[0];
+      if (topProc) {
+        insights.push({ icon: '💎', text: `O procedimento <strong>"${topProc[0]}"</strong> é o motor de receita, trazendo <span style="color:var(--success)">R$ ${topProc[1].toLocaleString('pt-BR', {minimumFractionDigits:0})}</span>.` });
+      }
+      
+      const totalLab = dadosFiltrados.reduce((s, i) => s + (i.vlab || 0), 0);
+      const mediaLab = dadosFiltrados.length > 0 ? totalLab / dadosFiltrados.length : 0;
+      if (mediaLab > 0) {
+        insights.push({ icon: '🧪', text: `O custo médio de laboratório por atendimento está em <strong>R$ ${mediaLab.toFixed(2).replace('.',',')}</strong>.` });
+      }
+      
+      let insightsHtml = '';
+      insights.forEach(insight => {
+        insightsHtml += `
+          <div class="insight-card">
+            <div class="insight-icon">${insight.icon}</div>
+            <div>${insight.text}</div>
+          </div>`;
+      });
+      
+      if (dadosFiltrados.length === 0) {
+        insightsHtml = `
+          <div class="insight-card" style="border-left-color: var(--danger);">
+            <div class="insight-icon">⚠️</div>
+            <div>Nenhum dado encontrado para os filtros selecionados.</div>
+          </div>`;
+      }
+      
+      document.getElementById('insightsArea').innerHTML = insightsHtml;
+    }
+  </script>
+</body>
+</html>
