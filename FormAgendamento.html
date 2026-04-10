@@ -1,0 +1,71 @@
+<div class="modal fade" id="modalAgendamento" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content border-0 shadow-lg" style="border-radius:24px;">
+      <div class="modal-header bg-dark text-white border-0 p-4">
+        <h5 class="fw-bold mb-0">📅 Novo Agendamento</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-4">
+        <form id="formAgendamento">
+          <input type="hidden" id="agenda_id">
+          
+          <div class="row g-3">
+            <div class="col-12 position-relative">
+              <label class="form-label small fw-bold">PACIENTE</label>
+              <div class="input-group">
+                <input type="text" class="form-control" id="ag_paciente" required autocomplete="off" onkeyup="autocompletePacienteAgenda(this.value)" placeholder="Buscar no CRM...">
+                <button class="btn btn-primary" type="button" onclick="abrirNovoPacienteDoLancamento()" style="border-top-right-radius: 14px; border-bottom-right-radius: 14px;">
+                  <span class="material-icons" style="font-size: 20px; vertical-align: middle;">person_add</span>
+                </button>
+              </div>
+              <div id="ag-autocomplete-list" class="autocomplete-suggestions" style="display: none;"></div>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label small fw-bold">DATA</label>
+              <input type="text" id="ag_data" class="form-control bg-light" readonly>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-bold">HORA</label>
+              <input type="time" id="ag_hora" class="form-control" required>
+            </div>
+
+            <div class="col-md-12">
+              <label class="form-label small fw-bold">DOUTOR</label>
+              <select id="ag_doutor" class="form-select" required></select>
+            </div>
+
+            <div class="col-md-12">
+              <label class="form-label small fw-bold">PROCEDIMENTO</label>
+              <select id="ag_procedimento" class="form-select" required></select>
+            </div>
+
+            <div class="col-md-12">
+              <label class="form-label small fw-bold">STATUS</label>
+              <select id="ag_status" class="form-select fw-bold">
+                <option value="AGENDADO">🕒 AGENDADO</option>
+                <option value="CONFIRMADO">✅ CONFIRMADO</option>
+                <option value="EM ATENDIMENTO">🦷 EM ATENDIMENTO</option>
+                <option value="FINALIZADO">💰 FINALIZADO / PAGAR</option>
+                <option value="FALTOU">❌ FALTOU</option>
+                <option value="CANCELADO">🚫 CANCELADO</option>
+              </select>
+            </div>
+
+            <div class="col-12">
+              <label class="form-label small fw-bold">OBSERVAÇÕES</label>
+              <textarea id="ag_obs" class="form-control" rows="2"></textarea>
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer border-0 p-4 bg-light d-flex justify-content-between">
+        <button type="button" class="btn btn-outline-danger btn-sm" id="btnExcluirAg" style="display:none;" onclick="excluirAgendamento()">EXCLUIR</button>
+        <div>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">CANCELAR</button>
+          <button type="button" class="btn btn-dark px-4 fw-bold" onclick="salvarAgendamento()">RESERVAR HORÁRIO</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
