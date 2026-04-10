@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <style>
+    /* ESTILO FORMAL */
+    @page { size: A4; margin: 10mm; }
+    body {
+      background: #f0f2f5;
+      font-family: 'Segoe UI', sans-serif;
+      margin: 0;
+      padding: 20px;
+      font-size: 11px;
+    }
+    .no-print {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      text-align: center;
+    }
+    .recibo-pagina {
+      background: white;
+      width: 185mm;
+      margin: auto;
+      padding: 10mm;
+      border: 1px solid #ccc;
+      min-height: 260mm;
+    }
+    .header {
+      text-align: center;
+      border-bottom: 2px solid #2c3e50;
+      margin-bottom: 10px;
+    }
+    .header h1 {
+      margin: 0;
+      color: #2c3e50;
+      font-size: 18px;
+    }
+    .row-info {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 5px;
+      font-weight: bold;
+      border-bottom: 1px solid #eee;
+      padding: 3px 0;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 8px;
+    }
+    th {
+      background: #f8f9fa;
+      border: 1px solid #2c3e50;
+      padding: 5px;
+      text-align: left;
+      font-size: 10px;
+    }
+    td {
+      border: 1px solid #eee;
+      padding: 4px;
+      font-size: 10px;
+    }
+    .secao-titulo {
+      background: #2c3e50;
+      color: white;
+      padding: 4px 10px;
+      margin-top: 10px;
+      font-weight: bold;
+      text-transform: uppercase;
+    }
+    .tab-resumo {
+      width: 49%;
+      border: 1px solid #2c3e50;
+    }
+    .tab-resumo th {
+      text-align: center;
+      background: #f8f9fa;
+      border-bottom: 1px solid #2c3e50;
+      padding: 5px;
+      text-transform: uppercase;
+    }
+    .tab-resumo td {
+      border: none;
+      padding: 3px 8px;
+    }
+    .container-resumos {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 10px;
+      align-items: flex-start;
+    }
+    .coluna-direita-resumos {
+      width: 49%;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .coluna-direita-resumos .tab-resumo {
+      width: 100%;
+    }
+    .total-final {
+      font-size: 14px;
+      text-align: right;
+      margin-top: 15px;
+      padding: 10px;
+      border: 2px solid #2c3e50;
+      background: #fdfdfd;
+      font-weight: bold;
+    }
+    .assinatura-box {
+      margin-top: 50px;
+      display: flex;
+      justify-content: space-around;
+    }
+    .linha-assinatura {
+      border-top: 1px solid #000;
+      width: 220px;
+      text-align: center;
+      padding-top: 5px;
+      font-size: 10px;
+      font-weight: bold;
+    }
+    @media print {
+      .no-print { display: none; }
+      .recibo-pagina { border: none; width: 100%; margin: 0; }
+    }
+    .btn-primary {
+      background: #2c3e50;
+      border: none;
+      padding: 10px 20px;
+      font-weight: bold;
+      color: white;
+    }
+    .btn-primary:hover { background: #1a252f; }
+    .btn-secondary {
+      background: #7f8c8d;
+      border: none;
+      padding: 10px 20px;
+      font-weight: bold;
+      color: white;
+    }
+    .checkbox-group {
+      display: flex;
+      gap: 20px;
+      justify-content: center;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container-fluid">
+    <div class="no-print">
+      <h4 class="mb-3">📄 HOLERITE</h4>
+      <div class="row g-3 align-items-end">
+        <div class="col-md-4">
+          <label class="form-label">👨‍⚕️ DOUTOR</label>
+          <select id="selDoutor" class="form-select">
+            <option value="">Carregando...</option>
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">📅 MÊS/ANO</label>
+          <input type="text" id="inputMes" class="form-control" 
+                 placeholder="MM/AAAA" maxlength="7" 
+                 oninput="mascaraMes(this)">
+        </div>
+        <div class="col-md-2">
+          <button class="btn btn-primary w-100" onclick="buscarHolerite()">
+            GERAR
+          </button>
+        </div>
+      </div>
+      <div class="checkbox-group">
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" id="chkTotalBruto">
+          <label class="form-check-label" for="chkTotalBruto">
+            Exibir Total Produzido (Bruto)
+          </label>
+        </div>
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" id="chkTotalClinica">
+          <label class="form-check-label" for="chkTotalClinica">
+            Exibir Total Clínica (Lucro)
+          </label>
+        </div>
+      </div>
+      <div class="mt-3">
+        <button onclick="window.print()" class="btn btn-secondary">
+          🖨️ IMPRIMIR
+        </button>
+      </div>
+    </div>
+
+    <div id="resultado" style="display: none;" class="recibo-pagina">
+      <div class="header">
+        <h1>ODONTOLOGIA RAMOS</h1>
+        <p id="tipoDoc" style="margin:2px; font-weight:bold;">FECHAMENTO DE PRODUÇÃO INDIVIDUAL</p>
+      </div>
+      <div class="row-info">
+        <span>Ref: <span id="resRef"></span></span>
+        <span id="resExtra"></span>
+      </div>
+      <div id="conteudo"></div>
+      <div id="totaisAdicionais" style="margin-top: 15px;"></div>
+      <div class="total-final" id="resTotalGeral"></div>
+      <div class="assinatura-box">
+        <div class="linha-assinatura">ADMINISTRAÇÃO</div>
+        <div class="linha-assinatura">PROFISSIONAL RESPONSÁVEL</div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    function mascaraMes(input) {
+      let v = input.value.replace(/\D/g, '').slice(0, 6);
+      if (v.length >= 5) {
+        input.value = v.replace(/^(\d{2})(\d{0,4}).*/, "$1/$2");
+      } else if (v.length >= 3) {
+        input.value = v.replace(/^(\d{2})(\d{0,2}).*/, "$1/$2");
+      } else {
+        input.value = v;
+      }
+    }
+
+    window.onload = function() {
+      google.script.run
+        .withSuccessHandler(preencherDoutores)
+        .getListasParaForm();
+    };
+
+    function preencherDoutores(listas) {
+      const sel = document.getElementById('selDoutor');
+      sel.innerHTML = '<option value="">Selecione o doutor</option>';
+      if (listas && listas.doutores) {
+        listas.doutores.forEach(d => {
+          sel.innerHTML += `<option value="${d}">${d}</option>`;
+        });
+      }
+    }
+
+    function buscarHolerite() {
+      const doutor = document.getElementById('selDoutor').value;
+      const mes = document.getElementById('inputMes').value.trim();
+
+      if (!doutor) { alert('Selecione o doutor!'); return; }
+      if (!mes) { alert('Digite o mês/ano!'); return; }
+      if (!mes.match(/^\d{2}\/\d{4}$/)) {
+        alert('Mês/ano inválido! Use MM/AAAA');
+        return;
+      }
+
+      document.getElementById('resultado').style.display = 'none';
+      google.script.run
+        .withSuccessHandler(exibirHolerite)
+        .withFailureHandler(err => alert('Erro: ' + err))
+        .getDadosHolerite(doutor, mes);
+    }
+
+    function exibirHolerite(dados) {
+      if (!dados || dados.contagem === 0) {
+        alert('Nenhum atendimento encontrado para este período.');
+        return;
+      }
+
+      document.getElementById('resRef').innerText = dados.mes;
+      document.getElementById('resExtra').innerText = "Profissional: " + dados.nome;
+
+      let html = '';
+
+      // Calcula as comissões exatas de Particular e Plano baseadas na porcentagem do Dentista
+      let comissaoParticular = 0;
+      if (dados.particular) {
+         dados.particular.forEach(i => comissaoParticular += (i.parteDentista || 0));
+      }
+
+      let comissaoPlano = 0;
+      if (dados.plano) {
+         dados.plano.forEach(i => comissaoPlano += (i.parteDentista || 0));
+      }
+
+      // Particular
+      html += `<div class="secao-titulo">PARTICULARES (COMISSÕES)</div>`;
+      html += dados.particular.length ? renderTabela(dados.particular) : "<p>Nenhum atendimento particular.</p>";
+
+      // Plano
+      html += `<div class="secao-titulo">CONVÊNIOS/PLANOS (COMISSÕES)</div>`;
+      html += dados.plano.length ? renderTabela(dados.plano) : "<p>Nenhum atendimento de plano.</p>";
+
+      // Resumos de pagamento, laboratório e novo resumo de Comissões
+      html += renderResumosEstiloTabela(dados.pagamentos, dados.totalLab, comissaoParticular, comissaoPlano);
+
+      document.getElementById('conteudo').innerHTML = html;
+
+      // Totais adicionais conforme checkboxes
+      let totaisHtml = '';
+      if (document.getElementById('chkTotalBruto').checked) {
+        totaisHtml += `<div><strong>Total Produzido (Bruto Geral):</strong> R$ ${(dados.totalBruto || 0).toFixed(2).replace('.', ',')}</div>`;
+      }
+      if (document.getElementById('chkTotalClinica').checked) {
+        totaisHtml += `<div><strong>Total Clínica (Lucro):</strong> R$ ${(dados.totalClinica || 0).toFixed(2).replace('.', ',')}</div>`;
+      }
+      document.getElementById('totaisAdicionais').innerHTML = totaisHtml;
+
+      // Total líquido a receber (sempre exibido)
+      document.getElementById('resTotalGeral').innerText = 
+        "LÍQUIDO A RECEBER: R$ " + (dados.totalLiquidoDentista || 0).toFixed(2).replace('.', ',');
+
+      document.getElementById('resultado').style.display = 'block';
+    }
+
+    // A tabela agora puxa 'item.parteDentista' em vez do valor bruto
+    function renderTabela(lista) {
+      let rows = "", soma = 0;
+      lista.forEach(item => {
+        const comissao = item.parteDentista || 0;
+        const lab = item.vlab || 0;
+        soma += comissao;
+        rows += `<tr>
+          <td>${item.paciente}</td>
+          <td>${item.procedimento}</td>
+          <td>R$ ${lab.toFixed(2).replace('.', ',')}</td>
+          <td>${item.forma || '-'}</td>
+          <td style="text-align:right; font-weight:bold; color:#2c3e50;">R$ ${comissao.toFixed(2).replace('.', ',')}</td>
+        </tr>`;
+      });
+      return `<table>
+        <thead><tr><th>Paciente</th><th>Procedimento</th><th>V. Lab</th><th>Forma</th><th style="text-align:right;">Sua Comissão</th></tr></thead>
+        <tbody>${rows}</tbody>
+        <tfoot><tr style="background:#f1f1f1; font-weight:bold;"><td colspan="4" style="text-align:right;">SUBTOTAL COMISSÃO:</td><td style="text-align:right;">R$ ${soma.toFixed(2).replace('.', ',')}</td></tr></tfoot>
+      </table>`;
+    }
+
+    function renderResumosEstiloTabela(pagamentos, totalLab, comissaoParticular, comissaoPlano) {
+      let rowsPgto = "";
+      if (pagamentos && typeof pagamentos === 'object') {
+        for (let forma in pagamentos) {
+          rowsPgto += `<tr><td>${forma}:</td><td style="text-align:right;">R$ ${pagamentos[forma].toFixed(2).replace('.', ',')}</td></tr>`;
+        }
+      }
+      if (rowsPgto === "") rowsPgto = "<tr><td colspan='2'>Nenhum dado</td></tr>";
+
+      return `
+        <div class="container-resumos">
+          <table class="tab-resumo">
+            <thead><tr><th colspan="2">Modos de Pagamento (Entradas Gerais)</th></tr></thead>
+            <tbody>${rowsPgto}</tbody>
+          </table>
+          
+          <div class="coluna-direita-resumos">
+              <table class="tab-resumo">
+                <thead><tr><th colspan="2">Laboratório</th></tr></thead>
+                <tbody>
+                  <tr><td>Total do Período:</td>
+                  <td style="text-align:right; font-weight:bold;">R$ ${(totalLab || 0).toFixed(2).replace('.', ',')}</td></tr>
+                  <tr><td colspan="2" style="font-size:8px; color:#999; text-align:center;">(Valor já descontado da comissão)</td></tr>
+                </tbody>
+              </table>
+              
+              <table class="tab-resumo">
+                <thead><tr><th colspan="2">Resumo de Comissões</th></tr></thead>
+                <tbody>
+                  <tr><td>Comissão Particular:</td>
+                  <td style="text-align:right; font-weight:bold;">R$ ${(comissaoParticular || 0).toFixed(2).replace('.', ',')}</td></tr>
+                  <tr><td>Comissão Convênio/Plano:</td>
+                  <td style="text-align:right; font-weight:bold;">R$ ${(comissaoPlano || 0).toFixed(2).replace('.', ',')}</td></tr>
+                  <tr style="border-top: 1px solid #2c3e50;">
+                  <td><strong>Soma das Comissões:</strong></td>
+                  <td style="text-align:right; font-weight:bold;">R$ ${(comissaoParticular + comissaoPlano).toFixed(2).replace('.', ',')}</td></tr>
+                </tbody>
+              </table>
+          </div>
+        </div>`;
+    }
+  </script>
+</body>
+</html>
