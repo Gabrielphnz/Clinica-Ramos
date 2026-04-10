@@ -1,0 +1,48 @@
+<style>
+  html, body { 
+    margin: 0; padding: 0; min-height: 100vh; 
+    background-color: #ffffff;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+    overflow-x: hidden; 
+  }
+
+  #erp-app { display: block; zoom: 82%; }
+
+  /* CABEÇALHO AJUSTADO: Cor #E0FFFF com texto Escuro */
+  .erp-header { 
+    height: 45px; 
+    background: #E0FFFF !important; 
+    color: #2c3e50 !important; 
+    display: flex; 
+    align-items: center; 
+    justify-content: space-between; 
+    padding: 0 20px;
+    position: sticky; top: 0; z-index: 1000;
+    border-bottom: 1px solid #add8e6;
+  }
+  
+  .erp-header h1, .erp-header span, .erp-header i { color: #2c3e50 !important; }
+
+  .erp-main { padding: 20px; background: #fff; }
+
+  table.dataTable { border-collapse: collapse !important; margin-bottom: 20px !important; }
+
+  /* TABELA: Cabeçalho combinando com o topo */
+  table.dataTable thead th { 
+    background-color: #E0FFFF !important; 
+    color: #2c3e50 !important; 
+    font-size: 11px;
+    text-transform: uppercase;
+    border-bottom: 2px solid #add8e6 !important;
+  }
+  
+  .table-sm td { font-size: 12px; vertical-align: middle; }
+
+  .resumo-final {
+    background: #f1f3f5; padding: 15px; border-radius: 8px;
+    margin-top: 20px; border: 1px solid #dee2e6;
+    display: flex; gap: 20px; font-size: 13px; font-weight: bold; color: #2c3e50;
+  }
+
+  .footer-custom, .erp-footer { display: none !important; }
+</style>
