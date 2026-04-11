@@ -227,6 +227,53 @@
   }
 </style>
 
+<div class="modal fade" id="modalRecall" tabindex="-1" style="z-index: 1050;">
+  <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content border-0 shadow-lg bg-light" style="border-radius: 20px;">
+      
+      <div class="card border-0 shadow-none bg-transparent" id="moduloRecorrencia">
+        <div class="card-header bg-white border-bottom p-4 d-flex justify-content-between align-items-center" style="border-top-left-radius: 20px; border-top-right-radius: 20px;">
+          <div>
+            <h5 class="fw-bold mb-0 text-dark d-flex align-items-center gap-2">
+              <span class="material-icons text-warning">update</span> Central de Retornos (Recall)
+            </h5>
+            <small class="text-muted">Pacientes que precisam ser contatados para novos ciclos de tratamento.</small>
+          </div>
+          <div class="d-flex gap-2">
+            <button class="btn btn-outline-primary fw-bold rounded-pill" onclick="carregarPainelRetornos()">
+              <span class="material-icons align-middle" style="font-size: 18px;">refresh</span> Atualizar
+            </button>
+            
+            <button type="button" class="btn-close ms-3 mt-2" onclick="fecharModalRecall()"></button>
+            
+          </div>
+        </div>
+        
+        <div class="card-body p-0">
+          <div class="table-responsive" style="max-height: 60vh;">
+            <table class="table table-hover align-middle mb-0 bg-white">
+              <thead class="table-light text-muted small" style="position: sticky; top: 0; z-index: 1;">
+                <tr>
+                  <th class="ps-4 py-3">PACIENTE</th>
+                  <th>PROCEDIMENTO BASE</th>
+                  <th>ÚLTIMA VEZ</th>
+                  <th>VENCIMENTO</th>
+                  <th>STATUS</th>
+                  <th class="text-center pe-4">AÇÃO</th>
+                </tr>
+              </thead>
+              <tbody id="tabelaRetornos">
+                <tr><td colspan="6" class="text-center py-5 text-muted">Carregando lista de retornos...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
 <script>
 // ==========================================
 // 1. VARIÁVEIS GLOBAIS VITAIS (BLINDADAS)
@@ -481,6 +528,10 @@ function exibirTabela(dados) {
                <button class="btn btn-outline-secondary btn-sm" onclick="gerarResultado()">RESULTADO</button>
                <button class="btn btn-outline-secondary btn-sm" onclick="abrirConfiguracao()">⚙️ CONFIG</button>
                <button class="btn btn-outline-primary btn-sm fw-bold" onclick="abrirAlmoxarifado()">📦 ESTOQUE</button>
+               <button class="btn btn-warning text-dark fw-bold shadow-sm w-100 mb-3 d-flex align-items-center justify-content-center gap-2 rounded-3 py-2" onclick="abrirModalRecall()">
+  <span class="material-icons">notifications_active</span>
+  Retornos Pendentes
+</button>
             </div>
             <div class="d-flex gap-2 align-items-center">
                <button class="btn btn-info btn-sm text-white" onclick="abrirDashboard()"><span class="material-icons" style="font-size:20px; line-height: 1;">bar_chart</span></button>
@@ -1817,26 +1868,56 @@ function renderizarCalendario(forcarRecarregamento = false) {
   }
 }
 
-// FUNÇÃO ORIGINAL (Só para Novos Agendamentos - Limpa tudo)
 function abrirModalAgendamento(data, hora) {
-  document.getElementById("formAgendamento").reset();
-  document.getElementById("ag_data").value = data;
-  document.getElementById("ag_hora").value = hora;
-  document.getElementById("agenda_id").value = "";
-  document.getElementById("btnExcluirAg").style.display = "none";
+  // 1. Limpa o formulário e reseta os campos ocultos
+  const form = document.getElementById("formAgendamento");
+  if (form) form.reset();
   
-  // Como é novo, pode repopular as listas tranquilamente
+  const idAgendamento = document.getElementById("agenda_id");
+  if (idAgendamento) idAgendamento.value = "";
+  
+  const btnExcluir = document.getElementById("btnExcluirAg");
+  if (btnExcluir) btnExcluir.style.display = "none";
+  
+  // 2. Repopula as listas de doutores (Sua lógica original preservada)
   const pop = (id, arr) => {
     let el = document.getElementById(id);
-    if(el) {
+    if(el && arr) {
         el.innerHTML = '<option value="">Selecione...</option>';
         arr.forEach(i => { el.innerHTML += `<option value="${i}">${i}</option>`; });
     }
   };
-  pop("ag_doutor", listaDoutoresGlobal); // Usa do cache local, sem pedir pro Google
-  // Se não tivermos o cache global dos procedimentos, usamos a lista limpa
-  
-  new bootstrap.Modal(document.getElementById('modalAgendamento')).show();
+  if (typeof listaDoutoresGlobal !== 'undefined') {
+      pop("ag_doutor", listaDoutoresGlobal);
+  }
+
+  // 3. Lógica da Data: Trava (Calendário) ou Destrava com Data de Hoje (Botão Novo)
+  const inputData = document.getElementById("ag_data");
+  const inputHora = document.getElementById("ag_hora");
+
+  if (inputData) {
+      if (data) { 
+          // Se clicou na grade do calendário
+          inputData.value = data;
+          inputData.setAttribute("readonly", true);
+          if (inputHora && hora) inputHora.value = hora;
+      } else { 
+          // Se clicou no botão "Novo Agendamento" (parâmetros vazios)
+          inputData.removeAttribute("readonly");
+          
+          // Sugere a data de hoje formatada
+          const hoje = new Date();
+          const ano = hoje.getFullYear();
+          const mes = String(hoje.getMonth() + 1).padStart(2, '0');
+          const dia = String(hoje.getDate()).padStart(2, '0');
+          // Basta inverter a ordem das variáveis!
+            inputData.value = `${dia}/${mes}/${ano}`;
+      }
+  }
+
+  // 4. Abre o modal
+  const modalEl = document.getElementById('modalAgendamento');
+  if (modalEl) new bootstrap.Modal(modalEl).show();
 }
 
 // NOVA FUNÇÃO EXCLUSIVA PARA EDIÇÃO (Super Rápida e sem Reset!)
@@ -1917,6 +1998,21 @@ function autocompletePacienteAgenda(valor) {
     </div>`
   ).join('');
   listEl.style.display = 'block';
+}
+function abrirProntuarioDaAgenda() {
+  // Pega o nome que está digitado ou selecionado na caixinha da agenda
+  const nomePaciente = document.getElementById('ag_paciente').value;
+  
+  if (!nomePaciente || nomePaciente.length < 3) {
+      return mostrarNotificacao("Digite ou selecione um paciente primeiro!", "erro");
+  }
+  
+  // Opcional: Se você quiser que a telinha de agendamento feche antes de abrir o Prontuário,
+  // descomente a linha abaixo tirando as duas barras (//)
+  // bootstrap.Modal.getInstance(document.getElementById('modalAgendamento')).hide();
+  
+  // Chama a sua função principal que já faz tudo!
+  abrirProntuario(nomePaciente);
 }
 
 // ==========================================
@@ -2047,10 +2143,18 @@ function carregarProximasConsultas(nome) {
         return;
      }
      
-     corpo.innerHTML = futuras.map(a => `
-       <tr><td class="ps-4 fw-bold">${a.data}</td><td>${a.hora}</td><td>${a.proc}</td><td>${a.doutor}</td>
-       <td class="text-center pe-4"><span class="badge bg-warning text-dark">${a.status}</span></td></tr>
-     `).join('');
+     corpo.innerHTML = futuras.map(a => {
+         // Converte de AAAA-MM-DD para DD/MM/AAAA visualmente
+         let dataBR = a.data;
+         if (dataBR && dataBR.includes('-')) {
+             const partes = dataBR.split('-');
+             dataBR = `${partes[2]}/${partes[1]}/${partes[0]}`;
+         }
+         
+         return `<tr><td class="ps-4 fw-bold">${dataBR}</td><td>${a.hora}</td><td>${a.proc}</td><td>${a.doutor}</td>
+         <td class="text-center pe-4"><span class="badge bg-warning text-dark">${a.status}</span></td></tr>`;
+       }).join('');
+
   }).getAgendamentosCalendario('');
 }
 
@@ -2307,6 +2411,87 @@ function carregarOdontograma(nomePaciente) {
   }).getOdontogramaPaciente(nomePaciente);
 }
 
+// ==========================================
+// CONFIGURAÇÃO DE REGRAS DE RECORRÊNCIA
+// ==========================================
+const REGRAS_CLINICA = [
+  { proc: "Manutenção", dias: 30 },
+  { proc: "Limpeza", dias: 180 }, // 6 meses
+  { proc: "Profilaxia", dias: 180 }, // Outro nome para Limpeza
+  { proc: "Clareamento", dias: 365 }
+];
+
+function carregarPainelRetornos() {
+  const corpo = document.getElementById("tabelaRetornos");
+  corpo.innerHTML = '<tr><td colspan="6" class="text-center py-4"><div class="spinner-border text-primary"></div> Mapeando base de pacientes...</td></tr>';
+
+  google.script.run
+    .withSuccessHandler(function(retornos) {
+      if (retornos.length === 0) {
+        corpo.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-success fw-bold">Nenhum retorno pendente! Todos estão em dia ou agendados.</td></tr>';
+        return;
+      }
+
+      corpo.innerHTML = retornos.map(r => {
+        let badgeStatus = '';
+        if (r.status === "AGENDADO") badgeStatus = '<span class="badge bg-success bg-opacity-10 text-success border border-success">Já Agendado</span>';
+        else if (r.status === "VENCIDO") badgeStatus = `<span class="badge bg-danger">Atrasado ${r.atraso}</span>`;
+        else badgeStatus = '<span class="badge bg-warning text-dark">Vence em breve</span>';
+
+        // Botão de WhatsApp inteligente
+        let btnWpp = '';
+        if (r.celular) {
+            let numero = r.celular.replace(/\D/g, '');
+            if (numero.length >= 10) {
+                if (numero.length === 10) numero = "55" + numero.substring(0,2) + "9" + numero.substring(2);
+                else if (numero.length === 11) numero = "55" + numero;
+                
+                let texto = encodeURIComponent(`Olá, ${r.paciente}! Aqui é da Clínica Ramos. Vimos que já está na hora do seu retorno para a ${r.procedimento}. Vamos agendar?`);
+                btnWpp = `<a href="https://api.whatsapp.com/send?phone=${numero}&text=${texto}" target="_blank" class="btn btn-sm btn-success rounded-pill fw-bold"><i class="fa-brands fa-whatsapp"></i> Chamar</a>`;
+            }
+        }
+
+        return `
+          <tr>
+            <td class="ps-4 fw-bold text-dark">${r.paciente}</td>
+            <td><span class="badge bg-light text-primary border">${r.procedimento.toUpperCase()}</span></td>
+            <td class="text-muted">${r.ultimaData}</td>
+            <td class="fw-bold ${r.status === 'VENCIDO' ? 'text-danger' : 'text-dark'}">${r.vencimento}</td>
+            <td>${badgeStatus}</td>
+            <td class="text-center pe-4">
+              ${r.status !== 'AGENDADO' ? btnWpp : '<span class="text-muted small">Aguardando Consulta</span>'}
+            </td>
+          </tr>
+        `;
+      }).join('');
+    })
+    .calcularRetornosPendentes(REGRAS_CLINICA);
+}
+
+
+// ABRIR MODAL INTELIGENTE (Evita sobreposição de telas pretas)
+function abrirModalRecall() {
+  const modalEl = document.getElementById('modalRecall');
+  
+  // Pega o modal se ele já existir na memória, se não, cria UM SÓ
+  let modalInstancia = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+  modalInstancia.show();
+  
+  carregarPainelRetornos();
+}
+
+// FECHAR MODAL À FORÇA (Limpa qualquer tela travada)
+function fecharModalRecall() {
+  const modalEl = document.getElementById('modalRecall');
+  const modalInstancia = bootstrap.Modal.getInstance(modalEl);
+  if (modalInstancia) modalInstancia.hide();
+  
+  // O "Trator": Arranca qualquer fundo escuro que tenha ficado travado na tela
+  document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+  document.body.classList.remove('modal-open');
+  document.body.style.overflow = 'auto';
+  document.body.style.paddingRight = '';
+}
 
 function abrirDashboard() { google.script.run.withSuccessHandler(url => window.open(url + "?page=Index", "_blank")).getScriptURL(); }
 function gerarRelatorio() { google.script.run.withSuccessHandler(url => window.open(url + "?page=RelatorioGeral", "_blank")).getScriptURL(); }
@@ -2377,3 +2562,4 @@ function gerarResultado() { google.script.run.withSuccessHandler(url => window.o
     </div>
   </div>
 </div>
+
