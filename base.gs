@@ -1486,3 +1486,73 @@ function apiRegrasRecorrencia(acao, procNome, dias) {
     }
   } finally { lock.releaseLock(); }
 }
+
+// ==========================================
+// MÓDULO DE LABORATÓRIO E NOTIFICAÇÕES
+// ==========================================
+
+function apiSalvarLaboratorio(dados) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const aba = ss.getSheetByName("LABORATORIO") || ss.insertSheet("LABORATORIO");
+  
+  // Se for nova aba, coloca cabeçalho
+  if (aba.getLastRow() === 0) {
+    aba.appendRow(["ID_LAB", "PACIENTE", "NOME_LABORATORIO", "DATA_ENVIO", "PRAZO_DIAS", "PREVISAO_ENTREGA", "STATUS"]);
+  }
+
+  const idLab = "LAB_" + new Date().getTime();
+  const hoje = new Date();
+  const previsao = new Date();
+  previsao.setDate(hoje.getDate() + parseInt(dados.prazo));
+
+  aba.appendRow([
+    idLab,
+    dados.paciente,
+    dados.nomeLab,
+    Utilities.formatDate(hoje, "GMT-3", "dd/MM/yyyy"),
+    dados.prazo,
+    Utilities.formatDate(previsao, "GMT-3", "dd/MM/yyyy"),
+    "PENDENTE"
+  ]);
+
+  return { success: true, id: idLab };
+}
+
+function apiGetNotificacoes() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const abaLab = ss.getSheetByName("LABORATORIO");
+  const notificacoes = [];
+  const hoje = new Date();
+  hoje.setHours(0,0,0,0);
+
+  if (abaLab) {
+    const dados = abaLab.getDataRange().getValues();
+    for (let i = 1; i < dados.length; i++) {
+      const [id, paciente, lab, envio, prazo, previsaoStr, status] = dados[i];
+      
+      if (status === "FINALIZADO") continue;
+
+      // Converte string dd/MM/yyyy para objeto Date
+      const partes = previsaoStr.split('/');
+      const dataPrevisao = new Date(partes[2], partes[1] - 1, partes[0]);
+      
+      const diffTime = dataPrevisao - hoje;
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+      if (diffDays <= 1) { // Notifica se falta 1 dia ou se já venceu
+        notificacoes.push({
+          tipo: "LABORATORIO",
+          titulo: diffDays === 1 ? "Entrega de Lab Amanhã" : "Atraso de Laboratório!",
+          mensagem: `${paciente} - ${lab} (Previsto: ${previsaoStr})`,
+          paciente: paciente,
+          idRef: id,
+          urgencia: diffDays < 0 ? "alta" : "media"
+        });
+      }
+    }
+  }
+
+  // Aqui você pode adicionar lógica para outras notificações (estoque baixo, aniversários, etc)
+  
+  return notificacoes;
+}
