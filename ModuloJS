@@ -2532,55 +2532,6 @@ function excluirRegra(proc) {
   document.getElementById("tabelaConfigRegras").innerHTML = '<tr><td class="text-center">Excluindo...</td></tr>';
   google.script.run.withSuccessHandler(function() { carregarRegrasNaTabela(); carregarPainelRetornos(); }).apiRegrasRecorrencia("EXCLUIR", proc);
 }
-// ==========================================
-// A MÁGICA: ATUALIZAR SUA FUNÇÃO DE RECALL
-// ==========================================
-// Substitua a sua função carregarPainelRetornos() INTEIRA por esta:
-
-function carregarPainelRetornos() {
-  const corpo = document.getElementById("tabelaRetornos");
-  corpo.innerHTML = '<tr><td colspan="6" class="text-center py-4"><div class="spinner-border text-primary spinner-border-sm"></div> Lendo Motor de Regras e analisando pacientes...</td></tr>';
-
-  // 1º: O sistema vai lá no banco perguntar "Quais são as regras ativas?"
-  google.script.run.withSuccessHandler(function(regrasCadastradas) {
-      
-      // 2º: Com as regras na mão, ele manda processar as datas dos pacientes!
-      google.script.run.withSuccessHandler(function(retornos) {
-          if (retornos.length === 0) {
-            corpo.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-success fw-bold">Nenhum retorno pendente na clínica!</td></tr>';
-            return;
-          }
-
-          corpo.innerHTML = retornos.map(r => {
-            let badgeStatus = r.status === "AGENDADO" 
-              ? '<span class="badge bg-success bg-opacity-10 text-success border border-success">Agendado</span>'
-              : (r.status === "VENCIDO" ? `<span class="badge bg-danger">Atrasado ${r.atraso}</span>` : '<span class="badge bg-warning text-dark">Em breve</span>');
-
-            let btnWpp = '';
-            if (r.celular && r.status !== 'AGENDADO') {
-                let numero = r.celular.replace(/\D/g, '');
-                if (numero.length >= 10) {
-                    if (numero.length === 10) numero = "55" + numero.substring(0,2) + "9" + numero.substring(2);
-                    else if (numero.length === 11) numero = "55" + numero;
-                    let texto = encodeURIComponent(`Olá, ${r.paciente}! Aqui é da Clínica Ramos. Vimos que está na hora do seu retorno para a ${r.procedimento}. Vamos agendar?`);
-                    btnWpp = `<a href="https://api.whatsapp.com/send?phone=${numero}&text=${texto}" target="_blank" class="btn btn-sm btn-success rounded-pill fw-bold" title="WhatsApp"><span class="material-icons" style="font-size: 16px; vertical-align: middle;">chat</span></a>`;
-                }
-            }
-
-            return `<tr>
-                <td class="ps-4 fw-bold text-dark">${r.paciente}</td>
-                <td><span class="badge bg-light text-primary border">${r.procedimento.toUpperCase()}</span></td>
-                <td class="text-muted">${r.ultimaData}</td>
-                <td class="fw-bold ${r.status === 'VENCIDO' ? 'text-danger' : 'text-dark'}">${r.vencimento}</td>
-                <td>${badgeStatus}</td>
-                <td class="text-center pe-4">${btnWpp || '<span class="text-muted small">-</span>'}</td>
-              </tr>`;
-          }).join('');
-      }).calcularRetornosPendentes(regrasCadastradas); // Injeta as regras do banco aqui!
-
-  }).apiRegrasRecorrencia("LER"); // Chama a função que criamos no backend!
-}
-
 
 
 // ABRIR MODAL INTELIGENTE (Evita sobreposição de telas pretas)
