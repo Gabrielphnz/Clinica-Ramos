@@ -227,52 +227,59 @@
   }
 </style>
 
-<div class="modal fade" id="modalRecall" tabindex="-1" style="z-index: 1050;">
-  <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
-    <div class="modal-content border-0 shadow-lg bg-light" style="border-radius: 20px;">
-      
-      <div class="card border-0 shadow-none bg-transparent" id="moduloRecorrencia">
-        <div class="card-header bg-white border-bottom p-4 d-flex justify-content-between align-items-center" style="border-top-left-radius: 20px; border-top-right-radius: 20px;">
-          <div>
-            <h5 class="fw-bold mb-0 text-dark d-flex align-items-center gap-2">
-              <span class="material-icons text-warning">update</span> Central de Retornos (Recall)
-            </h5>
-            <small class="text-muted">Pacientes que precisam ser contatados para novos ciclos de tratamento.</small>
-          </div>
-          <div class="d-flex gap-2">
-            <button class="btn btn-outline-primary fw-bold rounded-pill" onclick="carregarPainelRetornos()">
-              <span class="material-icons align-middle" style="font-size: 18px;">refresh</span> Atualizar
-            </button>
-            
-            <button type="button" class="btn-close ms-3 mt-2" onclick="fecharModalRecall()"></button>
-            
-          </div>
-        </div>
-        
-        <div class="card-body p-0">
-          <div class="table-responsive" style="max-height: 60vh;">
-            <table class="table table-hover align-middle mb-0 bg-white">
-              <thead class="table-light text-muted small" style="position: sticky; top: 0; z-index: 1;">
-                <tr>
-                  <th class="ps-4 py-3">PACIENTE</th>
-                  <th>PROCEDIMENTO BASE</th>
-                  <th>ÚLTIMA VEZ</th>
-                  <th>VENCIMENTO</th>
-                  <th>STATUS</th>
-                  <th class="text-center pe-4">AÇÃO</th>
-                </tr>
-              </thead>
-              <tbody id="tabelaRetornos">
-                <tr><td colspan="6" class="text-center py-5 text-muted">Carregando lista de retornos...</td></tr>
-              </tbody>
-            </table>
+<div class="modal fade" id="modalRecall" tabindex="-1" style="z-index: 9999; background: rgba(0,0,0,0.6);" data-bs-backdrop="false">
+      <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg bg-light" style="border-radius: 20px;">
+          <div class="card border-0 shadow-none bg-transparent">
+            <div class="card-header bg-white border-bottom p-4 d-flex justify-content-between align-items-center" style="border-top-left-radius: 20px; border-top-right-radius: 20px;">
+              <div>
+                <h5 class="fw-bold mb-0 text-dark d-flex align-items-center gap-2"><span class="material-icons text-warning">update</span> Central de Retornos (Recall)</h5>
+                <small class="text-muted">Pacientes para novos ciclos de tratamento.</small>
+              </div>
+              <div class="d-flex gap-2 align-items-center">
+                <button class="btn btn-light text-secondary border rounded-circle p-2 d-flex align-items-center shadow-sm" onclick="abrirModalConfig()" title="Configurar Regras"><span class="material-icons" style="font-size: 20px;">settings</span></button>
+                <button class="btn btn-outline-primary fw-bold rounded-pill px-3 ms-2" onclick="carregarPainelRetornos()"><span class="material-icons align-middle" style="font-size: 18px;">refresh</span> Atualizar</button>
+                <button type="button" class="btn-close ms-2" onclick="fecharModalRecall()"></button>
+              </div>
+            </div>
+            <div class="card-body p-0">
+              <div class="table-responsive" style="max-height: 60vh;">
+                <table class="table table-hover align-middle mb-0 bg-white">
+                  <thead class="table-light text-muted small" style="position: sticky; top: 0; z-index: 1;">
+                    <tr><th class="ps-4 py-3">PACIENTE</th><th>PROCEDIMENTO</th><th>ÚLTIMA VEZ</th><th>VENCIMENTO</th><th>STATUS</th><th class="text-center pe-4">AÇÕES</th></tr>
+                  </thead>
+                  <tbody id="tabelaRetornos"><tr><td colspan="6" class="text-center py-5 text-muted">Carregando lista...</td></tr></tbody>
+                </table>
+              </div>
+            </div>
           </div>
         </div>
       </div>
-
     </div>
-  </div>
-</div>
+
+    <div class="modal fade" id="modalConfigRegras" tabindex="-1" style="z-index: 10000; background: rgba(0,0,0,0.7);" data-bs-backdrop="false">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
+          <div class="modal-header bg-light border-bottom-0" style="border-top-left-radius: 16px; border-top-right-radius: 16px;">
+            <h6 class="modal-title fw-bold text-dark"><span class="material-icons align-middle text-primary">settings</span> Motor de Recorrência</h6>
+            <button type="button" class="btn-close" onclick="fecharModalConfig()"></button>
+          </div>
+          <div class="modal-body p-4 bg-white">
+            <div class="row g-2 mb-4 align-items-end">
+              <div class="col-7"><label class="small text-muted fw-bold">Procedimento</label><input type="text" class="form-control" id="cfg_proc" placeholder="Ex: Botox"></div>
+              <div class="col-3"><label class="small text-muted fw-bold">Dias</label><input type="number" class="form-control text-center" id="cfg_dias" placeholder="180"></div>
+              <div class="col-2"><button class="btn btn-primary w-100 fw-bold" onclick="salvarRegra()"><span class="material-icons">add</span></button></div>
+            </div>
+            <p class="small fw-bold text-muted mb-2 border-bottom pb-2">REGRAS ATIVAS</p>
+            <div class="table-responsive" style="max-height: 200px;">
+              <table class="table table-sm align-middle table-hover"><tbody id="tabelaConfigRegras"></tbody></table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+
 
 <script>
 // ==========================================
@@ -2412,61 +2419,168 @@ function carregarOdontograma(nomePaciente) {
 }
 
 // ==========================================
-// CONFIGURAÇÃO DE REGRAS DE RECORRÊNCIA
+// MÓDULO RECALL: ABRIR/FECHAR TELAS
 // ==========================================
-const REGRAS_CLINICA = [
-  { proc: "Manutenção", dias: 30 },
-  { proc: "Limpeza", dias: 180 }, // 6 meses
-  { proc: "Profilaxia", dias: 180 }, // Outro nome para Limpeza
-  { proc: "Clareamento", dias: 365 }
-];
+function abrirModalRecall() {
+  const modalEl = document.getElementById('modalRecall');
+  if (modalEl) {
+    const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+    modal.show(); carregarPainelRetornos();
+  }
+}
+function fecharModalRecall() {
+  const modalEl = document.getElementById('modalRecall');
+  if (modalEl) { const m = bootstrap.Modal.getInstance(modalEl); if (m) m.hide(); }
+}
+function abrirModalConfig() {
+  const modalEl = document.getElementById('modalConfigRegras');
+  const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+  modal.show(); carregarRegrasNaTabela();
+}
+function fecharModalConfig() {
+  const m = bootstrap.Modal.getInstance(document.getElementById('modalConfigRegras'));
+  if (m) m.hide();
+}
+
+// ==========================================
+// MÓDULO RECALL: CARREGAR TABELA PRINCIPAL
+// ==========================================
+// ==========================================
+// MÓDULO RECALL: CARREGAR TABELA PRINCIPAL
+// ==========================================
+function carregarPainelRetornos() {
+  const corpo = document.getElementById("tabelaRetornos");
+  corpo.innerHTML = '<tr><td colspan="6" class="text-center py-4"><div class="spinner-border text-primary spinner-border-sm"></div> Processando pacientes...</td></tr>';
+
+  google.script.run.withSuccessHandler(function(regrasCadastradas) {
+      google.script.run.withSuccessHandler(function(retornos) {
+          if (retornos.length === 0) {
+            corpo.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-success fw-bold">Nenhum retorno pendente!</td></tr>';
+            return;
+          }
+          corpo.innerHTML = retornos.map(r => {
+            let badgeStatus = r.status === "AGENDADO" ? '<span class="badge bg-success bg-opacity-10 text-success border border-success">Agendado</span>' : (r.status === "VENCIDO" ? `<span class="badge bg-danger">Atrasado ${r.atraso}</span>` : '<span class="badge bg-warning text-dark">Em breve</span>');
+            
+            // --- OS 3 BOTÕES DE AÇÃO ---
+            let btnWpp = '';
+            if (r.celular && r.status !== 'AGENDADO') {
+                let num = r.celular.replace(/\D/g, '');
+                if (num.length >= 10) {
+                    num = num.length === 10 ? "55" + num.substring(0,2) + "9" + num.substring(2) : "55" + num;
+                    let txt = encodeURIComponent(`Olá, ${r.paciente}! Aqui é da Clínica Ramos. Já está na hora do retorno para ${r.procedimento}. Vamos agendar?`);
+                    btnWpp = `<a href="https://api.whatsapp.com/send?phone=${num}&text=${txt}" target="_blank" class="btn btn-sm btn-success rounded-circle p-2 d-inline-flex" title="WhatsApp"><span class="material-icons" style="font-size: 16px;">chat</span></a>`;
+                }
+            }
+            
+            // BOTÃO PRONTUÁRIO
+            let btnProntuario = `<button class="btn btn-sm btn-outline-primary rounded-circle p-2 d-inline-flex ms-1" onclick="abrirProntuario('${r.paciente}')" title="Prontuário"><span class="material-icons" style="font-size: 16px;">assignment_ind</span></button>`;
+            
+            // BOTÃO LIXEIRA (X)
+            let btnApagar = `<button class="btn btn-sm btn-outline-danger rounded-circle p-2 d-inline-flex ms-1" onclick="ocultarPacienteDaLista('${r.paciente}', '${r.procedimento}', '${r.ultimaData}')" title="Ignorar esta data"><span class="material-icons" style="font-size: 16px;">delete_outline</span></button>`;
+            // ---------------------------
+
+            return `<tr>
+                <td class="ps-4 fw-bold text-dark">${r.paciente}</td>
+                <td><span class="badge bg-light text-primary border">${r.procedimento.toUpperCase()}</span></td>
+                <td class="text-muted">${r.ultimaData}</td>
+                <td class="fw-bold ${r.status === 'VENCIDO' ? 'text-danger' : 'text-dark'}">${r.vencimento}</td>
+                <td>${badgeStatus}</td>
+                <td class="text-center pe-4">
+                   <div class="d-flex justify-content-center align-items-center">
+                      ${r.status !== 'AGENDADO' ? btnWpp : ''}
+                      ${btnProntuario}
+                      ${btnApagar}
+                   </div>
+                </td>
+              </tr>`;
+          }).join('');
+      }).calcularRetornosPendentes(regrasCadastradas);
+  }).apiRegrasRecorrencia("LER");
+}
+
+// Ação de confirmar e apagar (A LIXEIRA)
+function ocultarPacienteDaLista(paciente, procedimento, data) {
+  if(!confirm(`Deseja ignorar o alerta de "${procedimento}" do paciente "${paciente}" referente à data ${data}?`)) return;
+  
+  document.getElementById("tabelaRetornos").innerHTML = '<tr><td colspan="6" class="text-center py-4 text-danger fw-bold"><div class="spinner-border text-danger spinner-border-sm"></div> Ignorando registro...</td></tr>';
+  
+  google.script.run.withSuccessHandler(function() { 
+      carregarPainelRetornos(); // Recarrega a tabela limpa
+  }).apiOcultarRecall(paciente, procedimento, data);
+}
+
+// ==========================================
+// MÓDULO RECALL: REGRAS (CONFIGURAÇÕES)
+// ==========================================
+function carregarRegrasNaTabela() {
+  document.getElementById("tabelaConfigRegras").innerHTML = '<tr><td class="text-center">Carregando...</td></tr>';
+  google.script.run.withSuccessHandler(function(regras) {
+    const tbody = document.getElementById("tabelaConfigRegras");
+    if(regras.length === 0) { tbody.innerHTML = '<tr><td class="text-center text-muted small">Nenhuma regra criada.</td></tr>'; return; }
+    tbody.innerHTML = regras.map(r => `<tr><td class="fw-bold text-dark">${r.proc}</td><td class="text-center"><span class="badge bg-light text-dark border">${r.dias} dias</span></td><td class="text-end"><button class="btn btn-sm btn-outline-danger border-0" onclick="excluirRegra('${r.proc}')"><span class="material-icons" style="font-size: 16px;">delete</span></button></td></tr>`).join('');
+  }).apiRegrasRecorrencia("LER");
+}
+function salvarRegra() {
+  const proc = document.getElementById("cfg_proc").value.trim(); const dias = document.getElementById("cfg_dias").value;
+  if(!proc || !dias) return alert("Preencha procedimento e dias!");
+  document.getElementById("cfg_proc").value = ""; document.getElementById("cfg_dias").value = "";
+  document.getElementById("tabelaConfigRegras").innerHTML = '<tr><td class="text-center">Salvando...</td></tr>';
+  google.script.run.withSuccessHandler(function() { carregarRegrasNaTabela(); carregarPainelRetornos(); }).apiRegrasRecorrencia("SALVAR", proc, dias);
+}
+function excluirRegra(proc) {
+  if(!confirm("Excluir a regra para: " + proc + "?")) return;
+  document.getElementById("tabelaConfigRegras").innerHTML = '<tr><td class="text-center">Excluindo...</td></tr>';
+  google.script.run.withSuccessHandler(function() { carregarRegrasNaTabela(); carregarPainelRetornos(); }).apiRegrasRecorrencia("EXCLUIR", proc);
+}
+// ==========================================
+// A MÁGICA: ATUALIZAR SUA FUNÇÃO DE RECALL
+// ==========================================
+// Substitua a sua função carregarPainelRetornos() INTEIRA por esta:
 
 function carregarPainelRetornos() {
   const corpo = document.getElementById("tabelaRetornos");
-  corpo.innerHTML = '<tr><td colspan="6" class="text-center py-4"><div class="spinner-border text-primary"></div> Mapeando base de pacientes...</td></tr>';
+  corpo.innerHTML = '<tr><td colspan="6" class="text-center py-4"><div class="spinner-border text-primary spinner-border-sm"></div> Lendo Motor de Regras e analisando pacientes...</td></tr>';
 
-  google.script.run
-    .withSuccessHandler(function(retornos) {
-      if (retornos.length === 0) {
-        corpo.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-success fw-bold">Nenhum retorno pendente! Todos estão em dia ou agendados.</td></tr>';
-        return;
-      }
+  // 1º: O sistema vai lá no banco perguntar "Quais são as regras ativas?"
+  google.script.run.withSuccessHandler(function(regrasCadastradas) {
+      
+      // 2º: Com as regras na mão, ele manda processar as datas dos pacientes!
+      google.script.run.withSuccessHandler(function(retornos) {
+          if (retornos.length === 0) {
+            corpo.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-success fw-bold">Nenhum retorno pendente na clínica!</td></tr>';
+            return;
+          }
 
-      corpo.innerHTML = retornos.map(r => {
-        let badgeStatus = '';
-        if (r.status === "AGENDADO") badgeStatus = '<span class="badge bg-success bg-opacity-10 text-success border border-success">Já Agendado</span>';
-        else if (r.status === "VENCIDO") badgeStatus = `<span class="badge bg-danger">Atrasado ${r.atraso}</span>`;
-        else badgeStatus = '<span class="badge bg-warning text-dark">Vence em breve</span>';
+          corpo.innerHTML = retornos.map(r => {
+            let badgeStatus = r.status === "AGENDADO" 
+              ? '<span class="badge bg-success bg-opacity-10 text-success border border-success">Agendado</span>'
+              : (r.status === "VENCIDO" ? `<span class="badge bg-danger">Atrasado ${r.atraso}</span>` : '<span class="badge bg-warning text-dark">Em breve</span>');
 
-        // Botão de WhatsApp inteligente
-        let btnWpp = '';
-        if (r.celular) {
-            let numero = r.celular.replace(/\D/g, '');
-            if (numero.length >= 10) {
-                if (numero.length === 10) numero = "55" + numero.substring(0,2) + "9" + numero.substring(2);
-                else if (numero.length === 11) numero = "55" + numero;
-                
-                let texto = encodeURIComponent(`Olá, ${r.paciente}! Aqui é da Clínica Ramos. Vimos que já está na hora do seu retorno para a ${r.procedimento}. Vamos agendar?`);
-                btnWpp = `<a href="https://api.whatsapp.com/send?phone=${numero}&text=${texto}" target="_blank" class="btn btn-sm btn-success rounded-pill fw-bold"><i class="fa-brands fa-whatsapp"></i> Chamar</a>`;
+            let btnWpp = '';
+            if (r.celular && r.status !== 'AGENDADO') {
+                let numero = r.celular.replace(/\D/g, '');
+                if (numero.length >= 10) {
+                    if (numero.length === 10) numero = "55" + numero.substring(0,2) + "9" + numero.substring(2);
+                    else if (numero.length === 11) numero = "55" + numero;
+                    let texto = encodeURIComponent(`Olá, ${r.paciente}! Aqui é da Clínica Ramos. Vimos que está na hora do seu retorno para a ${r.procedimento}. Vamos agendar?`);
+                    btnWpp = `<a href="https://api.whatsapp.com/send?phone=${numero}&text=${texto}" target="_blank" class="btn btn-sm btn-success rounded-pill fw-bold" title="WhatsApp"><span class="material-icons" style="font-size: 16px; vertical-align: middle;">chat</span></a>`;
+                }
             }
-        }
 
-        return `
-          <tr>
-            <td class="ps-4 fw-bold text-dark">${r.paciente}</td>
-            <td><span class="badge bg-light text-primary border">${r.procedimento.toUpperCase()}</span></td>
-            <td class="text-muted">${r.ultimaData}</td>
-            <td class="fw-bold ${r.status === 'VENCIDO' ? 'text-danger' : 'text-dark'}">${r.vencimento}</td>
-            <td>${badgeStatus}</td>
-            <td class="text-center pe-4">
-              ${r.status !== 'AGENDADO' ? btnWpp : '<span class="text-muted small">Aguardando Consulta</span>'}
-            </td>
-          </tr>
-        `;
-      }).join('');
-    })
-    .calcularRetornosPendentes(REGRAS_CLINICA);
+            return `<tr>
+                <td class="ps-4 fw-bold text-dark">${r.paciente}</td>
+                <td><span class="badge bg-light text-primary border">${r.procedimento.toUpperCase()}</span></td>
+                <td class="text-muted">${r.ultimaData}</td>
+                <td class="fw-bold ${r.status === 'VENCIDO' ? 'text-danger' : 'text-dark'}">${r.vencimento}</td>
+                <td>${badgeStatus}</td>
+                <td class="text-center pe-4">${btnWpp || '<span class="text-muted small">-</span>'}</td>
+              </tr>`;
+          }).join('');
+      }).calcularRetornosPendentes(regrasCadastradas); // Injeta as regras do banco aqui!
+
+  }).apiRegrasRecorrencia("LER"); // Chama a função que criamos no backend!
 }
+
 
 
 // ABRIR MODAL INTELIGENTE (Evita sobreposição de telas pretas)
@@ -2562,4 +2676,3 @@ function gerarResultado() { google.script.run.withSuccessHandler(url => window.o
     </div>
   </div>
 </div>
-
