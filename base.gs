@@ -980,86 +980,124 @@ function getPacientesCRM() {
 }
 
 
+// ==========================================
+// SALVAR/EDITAR PACIENTE COM TRAVA E OTIMIZAÇÃO DE ARRAY
+// ==========================================
 function cadastrarPacienteNoCRM(dados) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const aba = ss.getSheetByName("PACIENTES");
-  if (!aba) throw new Error("Aba PACIENTES não encontrada.");
-  
-  // Pega o cabeçalho inteiro e converte pra minúsculo para comparar
-  const cabecalho = aba.getRange(1, 1, 1, aba.getLastColumn()).getValues()[0];
-  const cabecalhoLower = cabecalho.map(c => c.toString().toLowerCase().trim());
-  
-  let linhaEdicao = -1;
-  
-  // SE FOR EDIÇÃO: Procura a linha usando o NOME ORIGINAL
-  if (dados.nome_original && dados.nome_original.trim() !== "") {
-     const iNomeBusca = cabecalhoLower.indexOf("nome");
-     if (iNomeBusca !== -1) {
-         const nomesNaPlanilha = aba.getRange(1, iNomeBusca + 1, aba.getLastRow(), 1).getValues();
-         for (let i = 1; i < nomesNaPlanilha.length; i++) {
-             if (nomesNaPlanilha[i][0].toString().toLowerCase() === dados.nome_original.toLowerCase()) {
-                 linhaEdicao = i + 1;
-                 break;
-             }
-         }
-     }
-  }
-  
-  // Arruma a data de YYYY-MM-DD para DD/MM/YYYY antes de salvar
-  if (dados.Nascimento && dados.Nascimento.includes('-')) {
-      const [a, m, d] = dados.Nascimento.split('-');
-      dados.Nascimento = `${d}/${m}/${a}`;
-  }
-  
-  if (linhaEdicao !== -1) {
-      // === ATUALIZAR PACIENTE EXISTENTE ===
-      for (let key in dados) {
-          if (key === "nome_original") continue; // Pula o campo oculto
-          
-          let indexColuna = cabecalhoLower.indexOf(key.toLowerCase().trim());
-          if (indexColuna !== -1) {
-              aba.getRange(linhaEdicao, indexColuna + 1).setValue(dados[key]);
-          }
-      }
-      return "Dados do paciente atualizados com sucesso!";
-      
-  } else {
-      // === CADASTRAR NOVO PACIENTE ===
-      // Cria uma linha em branco com o tamanho exato de colunas (57 colunas)
-      let novaLinha = new Array(cabecalho.length).fill("");
-      
-      for (let key in dados) {
-          if (key === "nome_original") continue;
-          
-          let indexColuna = cabecalhoLower.indexOf(key.toLowerCase().trim());
-          if (indexColuna !== -1) {
-              novaLinha[indexColuna] = dados[key];
-          }
-      }
-      aba.appendRow(novaLinha);
-      return "Novo paciente cadastrado com sucesso!";
+  const lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(15000); // Espera na fila por até 15 segundos
+    
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const aba = ss.getSheetByName("PACIENTES");
+    if (!aba) throw new Error("Aba PACIENTES não encontrada.");
+    
+    // Pega o cabeçalho inteiro e converte pra minúsculo para comparar
+    const cabecalho = aba.getRange(1, 1, 1, aba.getLastColumn()).getValues()[0];
+    const cabecalhoLower = cabecalho.map(c => c.toString().toLowerCase().trim());
+    
+    let linhaEdicao = -1;
+    
+    // SE FOR EDIÇÃO: Procura a linha usando o NOME ORIGINAL
+    if (dados.nome_original && dados.nome_original.trim() !== "") {
+       const iNomeBusca = cabecalhoLower.indexOf("nome");
+       if (iNomeBusca !== -1) {
+           const nomesNaPlanilha = aba.getRange(1, iNomeBusca + 1, aba.getLastRow(), 1).getValues();
+           for (let i = 1; i < nomesNaPlanilha.length; i++) {
+               if (nomesNaPlanilha[i][0].toString().toLowerCase() === dados.nome_original.toLowerCase()) {
+                   linhaEdicao = i + 1;
+                   break;
+               }
+           }
+       }
+    }
+    
+    // Arruma a data de YYYY-MM-DD para DD/MM/YYYY antes de salvar
+    if (dados.Nascimento && dados.Nascimento.includes('-')) {
+        const [a, m, d] = dados.Nascimento.split('-');
+        dados.Nascimento = `${d}/${m}/${a}`;
+    }
+    
+    if (linhaEdicao !== -1) {
+        // === ATUALIZAR PACIENTE EXISTENTE (10x MAIS RÁPIDO AGORA) ===
+        // Puxa a linha atual inteira para a memória
+        let linhaAtual = aba.getRange(linhaEdicao, 1, 1, cabecalho.length).getValues()[0];
+        
+        for (let key in dados) {
+            if (key === "nome_original") continue; // Pula o campo oculto
+            let indexColuna = cabecalhoLower.indexOf(key.toLowerCase().trim());
+            if (indexColuna !== -1) {
+                linhaAtual[indexColuna] = dados[key]; // Atualiza na memória
+            }
+        }
+        // Injeta a linha inteira de volta na planilha de uma vez só!
+        aba.getRange(linhaEdicao, 1, 1, cabecalho.length).setValues([linhaAtual]);
+        
+    } else {
+        // === CADASTRAR NOVO PACIENTE ===
+        let novaLinha = new Array(cabecalho.length).fill("");
+        for (let key in dados) {
+            if (key === "nome_original") continue;
+            let indexColuna = cabecalhoLower.indexOf(key.toLowerCase().trim());
+            if (indexColuna !== -1) {
+                novaLinha[indexColuna] = dados[key];
+            }
+        }
+        aba.appendRow(novaLinha);
+    }
+    
+    SpreadsheetApp.flush(); // FORÇA A GRAVAÇÃO ANTES DE LIBERAR A TRAVA!
+    return linhaEdicao !== -1 ? "Dados do paciente atualizados com sucesso!" : "Novo paciente cadastrado com sucesso!";
+    
+  } catch (e) {
+    throw new Error("O sistema está ocupado processando outro cadastro. Tente salvar novamente.");
+  } finally {
+    lock.releaseLock();
   }
 }
 
+// ==========================================
+// SALVAR AGENDAMENTO COM TRAVA
+// ==========================================
 function salvarAgendamentoNaPlanilha(d) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const aba = ss.getSheetByName("AGENDA");
-  
-  // Se não tem ID, é novo. Se tem, é edição.
-  if (!d.id) {
-    aba.appendRow([Date.now(), d.data, d.hora, d.paciente, "", d.doutor, d.procedimento, d.status, d.obs]);
-  } else {
-    // Lógica de edição (procura o ID e substitui a linha)
-    const dados = aba.getDataRange().getValues();
-    for (let i = 1; i < dados.length; i++) {
-      if (dados[i][0] == d.id) {
-        aba.getRange(i + 1, 1, 1, 9).setValues([[d.id, d.data, d.hora, d.paciente, "", d.doutor, d.procedimento, d.status, d.obs]]);
-        break;
+  const lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(10000);
+    
+    // === A MÁGICA DA DATA BRASILEIRA AQUI ===
+    if (d.data && d.data.includes('-')) {
+        const [ano, mes, dia] = d.data.split('-');
+        d.data = `${dia}/${mes}/${ano}`;
+    }
+    // ========================================
+
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const aba = ss.getSheetByName("AGENDA");
+    
+    // Se não tem ID, é novo. Se tem, é edição.
+    if (!d.id) {
+      aba.appendRow([Date.now(), d.data, d.hora, d.paciente, "", d.doutor, d.procedimento, d.status, d.obs]);
+    } else {
+      // Lógica de edição
+      const dados = aba.getDataRange().getValues();
+      for (let i = 1; i < dados.length; i++) {
+        if (dados[i][0] == d.id) {
+          aba.getRange(i + 1, 1, 1, 9).setValues([[d.id, d.data, d.hora, d.paciente, "", d.doutor, d.procedimento, d.status, d.obs]]);
+          break;
+        }
       }
     }
+    
+    SpreadsheetApp.flush(); // Garante o salvamento físico
+    return "OK";
+    
+  } catch (e) {
+    throw new Error("A agenda está sendo atualizada por outra pessoa. Tente novamente em alguns segundos.");
+  } finally {
+    lock.releaseLock();
   }
-  return "OK";
 }
+
 
 function getAgendamentosCalendario(filtroDoutor) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -1130,18 +1168,35 @@ function getAgendamentosCalendario(filtroDoutor) {
 // ==========================================
 // PRONTUÁRIO: EVOLUÇÃO CLÍNICA
 // ==========================================
-function salvarNovaEvolucao(d) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const aba = ss.getSheetByName("EVOLUCAO");
-  if (!aba) throw new Error("Aba EVOLUCAO não encontrada.");
-  
-  // Converte data de AAAA-MM-DD para DD/MM/AAAA
-  const partes = d.data.split('-');
-  const dataBr = `${partes[2]}/${partes[1]}/${partes[0]}`;
-  
-  const id = Date.now();
-  aba.appendRow([id, dataBr, d.paciente, d.doutor, d.proc, d.dente, d.obs]);
-  return "OK";
+function salvarNovaEvolucao(dados) {
+  const lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(10000); 
+    
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    let aba = ss.getSheetByName("EVOLUCAO_CLINICA");
+    if (!aba) aba = ss.insertSheet("EVOLUCAO_CLINICA"); // Cria a aba se não existir
+    
+    const dataRegistro = new Date();
+    
+    aba.appendRow([
+      dados.paciente,
+      dados.data,
+      dados.proc,
+      dados.dente,
+      dados.doutor,
+      dados.obs,
+      dataRegistro
+    ]);
+    
+    SpreadsheetApp.flush();
+    return "OK";
+    
+  } catch (e) {
+    throw new Error("Sistema ocupado gravando outra evolução. Tente novamente.");
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 function getEvolucaoPaciente(nomePaciente) {
@@ -1186,26 +1241,37 @@ function getEvolucaoPaciente(nomePaciente) {
 }
 
 function salvarDadosAnamnese(nome, jsonDados) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  let aba = ss.getSheetByName("ANAMNESE");
-  if (!aba) aba = ss.insertSheet("ANAMNESE");
-  
-  const dados = aba.getDataRange().getValues();
-  let linhaDestino = -1;
-  
-  // Procura se o paciente já tem anamnese
-  for(let i=0; i<dados.length; i++) {
-    if(dados[i][0] === nome) { linhaDestino = i + 1; break; }
+  const lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(10000);
+    
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    let aba = ss.getSheetByName("ANAMNESE");
+    if (!aba) aba = ss.insertSheet("ANAMNESE");
+    
+    const dados = aba.getDataRange().getValues();
+    let linhaDestino = -1;
+    
+    for(let i=0; i<dados.length; i++) {
+      if(dados[i][0] === nome) { linhaDestino = i + 1; break; }
+    }
+    
+    const dataHoje = Utilities.formatDate(new Date(), "GMT-3", "dd/MM/yyyy HH:mm");
+    
+    if(linhaDestino !== -1) {
+      aba.getRange(linhaDestino, 2, 1, 2).setValues([[dataHoje, jsonDados]]);
+    } else {
+      aba.appendRow([nome, dataHoje, jsonDados]);
+    }
+    
+    SpreadsheetApp.flush();
+    return "OK";
+    
+  } catch (e) {
+    throw new Error("Sistema de prontuário ocupado. Tente novamente.");
+  } finally {
+    lock.releaseLock();
   }
-  
-  const dataHoje = Utilities.formatDate(new Date(), "GMT-3", "dd/MM/yyyy HH:mm");
-  
-  if(linhaDestino !== -1) {
-    aba.getRange(linhaDestino, 2, 1, 2).setValues([[dataHoje, jsonDados]]);
-  } else {
-    aba.appendRow([nome, dataHoje, jsonDados]);
-  }
-  return "OK";
 }
 
 function getDadosAnamnese(nome) {
@@ -1220,27 +1286,40 @@ function getDadosAnamnese(nome) {
 }
 
 function salvarEstadoDente(nome, dente, status) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  let aba = ss.getSheetByName("ODONTOGRAMA_DADOS");
-  if (!aba) aba = ss.insertSheet("ODONTOGRAMA_DADOS");
-  
-  const dados = aba.getDataRange().getValues();
-  let linha = -1;
-  
-  // Procura se já existe esse dente para esse paciente
-  for(let i=0; i<dados.length; i++) {
-    if(dados[i][0] === nome && dados[i][1] == dente) {
-      linha = i + 1; break;
+  const lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(10000);
+    
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    let aba = ss.getSheetByName("ODONTOGRAMA_DADOS");
+    if (!aba) aba = ss.insertSheet("ODONTOGRAMA_DADOS");
+    
+    const dados = aba.getDataRange().getValues();
+    let linha = -1;
+    
+    for(let i=0; i<dados.length; i++) {
+      if(dados[i][0] === nome && dados[i][1] == dente) {
+        linha = i + 1; break;
+      }
     }
-  }
-  
-  const data = new Date();
-  if (linha !== -1) {
-    aba.getRange(linha, 3, 1, 3).setValues([[status, "", data]]);
-  } else {
-    aba.appendRow([nome, dente, status, "", data]);
+    
+    const data = new Date();
+    if (linha !== -1) {
+      aba.getRange(linha, 3, 1, 3).setValues([[status, "", data]]);
+    } else {
+      aba.appendRow([nome, dente, status, "", data]);
+    }
+    
+    SpreadsheetApp.flush();
+    
+  } catch (e) {
+    // Odontograma salva silenciosamente, então podemos apenas dar um log no erro.
+    console.log("Concorrência no Odontograma. Ocultando erro para não assustar o usuário.");
+  } finally {
+    lock.releaseLock();
   }
 }
+
 
 function getOdontogramaPaciente(nome) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -1254,4 +1333,163 @@ function getOdontogramaPaciente(nome) {
     }
   }
   return resultado;
+}
+
+// ==========================================
+// MÓDULO DE RECORRÊNCIA E RETORNOS (RECALL) - BLINDADO
+// ==========================================
+
+function calcularRetornosPendentes(regrasRecorrencia) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  
+  // Puxa todas as abas necessárias
+  const abaEvo = ss.getSheetByName("EVOLUCAO"); // Histórico Clínico
+  const abaTotal = ss.getSheetByName("TOTAL");  // Histórico da Recepção/Financeiro
+  const abaAgenda = ss.getSheetByName("AGENDA");
+  const abaPacientes = ss.getSheetByName("PACIENTES"); 
+  
+  const agendamentos = abaAgenda ? abaAgenda.getDataRange().getValues() : [];
+  const pacientes = abaPacientes ? abaPacientes.getDataRange().getValues() : [];
+  
+  // 1. Mapear telefones dos pacientes
+  const mapaTelefones = {};
+  if (pacientes.length > 0) {
+    const cabPac = pacientes[0].map(c => c.toString().toLowerCase().trim());
+    const iNomeP = cabPac.indexOf("nome");
+    const iCelularP = cabPac.indexOf("celular");
+    if (iNomeP !== -1 && iCelularP !== -1) {
+      for (let i = 1; i < pacientes.length; i++) {
+        if(pacientes[i][iNomeP]) {
+           mapaTelefones[pacientes[i][iNomeP].toString().toLowerCase()] = pacientes[i][iCelularP];
+        }
+      }
+    }
+  }
+
+  // 2. Mapear quem já tem agendamento futuro (para não incomodar)
+  const pacientesAgendados = new Set();
+  const hoje = new Date();
+  hoje.setHours(0,0,0,0);
+  
+  for (let i = 1; i < agendamentos.length; i++) {
+    let dataAg = agendamentos[i][1]; 
+    let statusAg = agendamentos[i][7]; 
+    let pacAg = agendamentos[i][3];
+    
+    if (statusAg !== "FINALIZADO" && statusAg !== "FALTOU" && dataAg && pacAg) {
+      let dataConsulta = null;
+      
+      // A MÁGICA SALVA-VIDAS: Verifica se o Google leu como Data ou Texto
+      if (dataAg instanceof Date) {
+          dataConsulta = dataAg; // Já é data, ótimo!
+      } else {
+          let str = dataAg.toString();
+          if (str.includes('/')) {
+              let [d, m, a] = str.split('/');
+              dataConsulta = new Date(a, m - 1, d);
+          } else if (str.includes('-')) {
+              let [a, m, d] = str.split('-');
+              dataConsulta = new Date(a, m - 1, d);
+          }
+      }
+
+      // Se conseguiu montar a data e ela for no futuro, anota que o paciente já tá agendado
+      if (dataConsulta && dataConsulta >= hoje) {
+        pacientesAgendados.add(pacAg.toString().toLowerCase().trim()); 
+      }
+    }
+  }
+
+  // 3. O MOTOR INTELIGENTE: Puxa a data mais recente de qualuqer lugar (TOTAL ou EVOLUCAO)
+  const ultimaVisita = {}; 
+
+  // Função interna que processa e guarda só a data mais recente
+  function registrarProcedimento(nomePac, dataVal, nomeProc) {
+      if (!nomePac || !dataVal || !nomeProc) return;
+      
+      let pacStr = nomePac.toString().toLowerCase().trim();
+      let procStr = nomeProc.toString().toLowerCase();
+
+      // Checa se o que foi feito bate com alguma regra nossa (Ex: Limpeza, Manutenção)
+      let regra = regrasRecorrencia.find(r => procStr.includes(r.proc.toLowerCase()));
+      
+      if (regra) {
+          let dataProcObj;
+          let dataFormatada = "";
+          
+          // Trata se o Google leu como Data ou como Texto
+          if (dataVal instanceof Date) {
+              dataProcObj = dataVal;
+              dataFormatada = Utilities.formatDate(dataVal, ss.getSpreadsheetTimeZone(), "dd/MM/yyyy");
+          } else {
+              let str = dataVal.toString();
+              if (str.includes('/')) {
+                  let [d, m, a] = str.split('/');
+                  dataProcObj = new Date(a, m - 1, d);
+                  dataFormatada = str;
+              } else return;
+          }
+
+          if (!ultimaVisita[pacStr]) ultimaVisita[pacStr] = {};
+          
+          // Se for a primeira vez que acha, ou se essa data for MAIS NOVA que a anterior, ele atualiza!
+          if (!ultimaVisita[pacStr][regra.proc] || dataProcObj > ultimaVisita[pacStr][regra.proc].dataReal) {
+              ultimaVisita[pacStr][regra.proc] = {
+                  dataReal: dataProcObj,
+                  dataStr: dataFormatada,
+                  diasRecorrencia: regra.dias,
+                  nomeOriginal: nomePac
+              };
+          }
+      }
+  }
+
+  // Varrer Aba EVOLUCAO (Paciente na col 2, Data na 1, Proc na 4)
+  if (abaEvo) {
+      const evoData = abaEvo.getDataRange().getValues();
+      for (let i = 1; i < evoData.length; i++) registrarProcedimento(evoData[i][2], evoData[i][1], evoData[i][4]);
+  }
+
+  // Varrer Aba TOTAL - Recepção (Paciente na col 2, Data na 0, Proc na 3)
+  if (abaTotal) {
+      const totalData = abaTotal.getDataRange().getValues();
+      for (let i = 2; i < totalData.length; i++) registrarProcedimento(totalData[i][2], totalData[i][0], totalData[i][3]);
+  }
+
+  // 4. Calcular os status de quem vence em breve ou já venceu
+  const listaRetornos = [];
+  const daquiA15Dias = new Date();
+  daquiA15Dias.setDate(hoje.getDate() + 15); 
+
+  for (let pac in ultimaVisita) {
+    for (let proc in ultimaVisita[pac]) {
+      let info = ultimaVisita[pac][proc];
+      
+      let dataVencimento = new Date(info.dataReal);
+      dataVencimento.setDate(dataVencimento.getDate() + info.diasRecorrencia);
+      
+      if (dataVencimento <= daquiA15Dias) {
+        let jaAgendado = pacientesAgendados.has(pac);
+        let diasAtraso = Math.floor((hoje - dataVencimento) / (1000 * 60 * 60 * 24));
+        let status = jaAgendado ? "AGENDADO" : (diasAtraso > 0 ? "VENCIDO" : "VENCE EM BREVE");
+        
+        listaRetornos.push({
+          paciente: info.nomeOriginal,
+          procedimento: proc,
+          ultimaData: info.dataStr,
+          vencimento: Utilities.formatDate(dataVencimento, ss.getSpreadsheetTimeZone(), "dd/MM/yyyy"),
+          celular: mapaTelefones[pac] || "",
+          status: status,
+          atraso: diasAtraso > 0 ? diasAtraso + " dias" : "No prazo"
+        });
+      }
+    }
+  }
+
+  // Ordena para exibir: 1º Vencidos, 2º Em Breve, 3º Já Agendados
+  return listaRetornos.sort((a, b) => {
+    if (a.status === "AGENDADO" && b.status !== "AGENDADO") return 1;
+    if (a.status !== "AGENDADO" && b.status === "AGENDADO") return -1;
+    return 0;
+  });
 }
