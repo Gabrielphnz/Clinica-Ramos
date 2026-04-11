@@ -1336,22 +1336,19 @@ function getOdontogramaPaciente(nome) {
 }
 
 // ==========================================
-// MÓDULO DE RECORRÊNCIA E RETORNOS (RECALL) - BLINDADO
+// 1. O MOTOR DE REGRAS E CÁLCULO
 // ==========================================
-
 function calcularRetornosPendentes(regrasRecorrencia) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  
-  // Puxa todas as abas necessárias
-  const abaEvo = ss.getSheetByName("EVOLUCAO"); // Histórico Clínico
-  const abaTotal = ss.getSheetByName("TOTAL");  // Histórico da Recepção/Financeiro
+  const abaEvo = ss.getSheetByName("EVOLUCAO"); 
+  const abaTotal = ss.getSheetByName("TOTAL");  
   const abaAgenda = ss.getSheetByName("AGENDA");
   const abaPacientes = ss.getSheetByName("PACIENTES"); 
   
   const agendamentos = abaAgenda ? abaAgenda.getDataRange().getValues() : [];
   const pacientes = abaPacientes ? abaPacientes.getDataRange().getValues() : [];
   
-  // 1. Mapear telefones dos pacientes
+  // Mapear telefones
   const mapaTelefones = {};
   if (pacientes.length > 0) {
     const cabPac = pacientes[0].map(c => c.toString().toLowerCase().trim());
@@ -1359,14 +1356,12 @@ function calcularRetornosPendentes(regrasRecorrencia) {
     const iCelularP = cabPac.indexOf("celular");
     if (iNomeP !== -1 && iCelularP !== -1) {
       for (let i = 1; i < pacientes.length; i++) {
-        if(pacientes[i][iNomeP]) {
-           mapaTelefones[pacientes[i][iNomeP].toString().toLowerCase()] = pacientes[i][iCelularP];
-        }
+        if(pacientes[i][iNomeP]) mapaTelefones[pacientes[i][iNomeP].toString().toLowerCase()] = pacientes[i][iCelularP];
       }
     }
   }
 
-  // 2. Mapear quem já tem agendamento futuro (para não incomodar)
+  // Mapear Agendados
   const pacientesAgendados = new Set();
   const hoje = new Date();
   hoje.setHours(0,0,0,0);
@@ -1378,93 +1373,60 @@ function calcularRetornosPendentes(regrasRecorrencia) {
     
     if (statusAg !== "FINALIZADO" && statusAg !== "FALTOU" && dataAg && pacAg) {
       let dataConsulta = null;
-      
-      // A MÁGICA SALVA-VIDAS: Verifica se o Google leu como Data ou Texto
-      if (dataAg instanceof Date) {
-          dataConsulta = dataAg; // Já é data, ótimo!
-      } else {
+      if (dataAg instanceof Date) dataConsulta = dataAg;
+      else {
           let str = dataAg.toString();
-          if (str.includes('/')) {
-              let [d, m, a] = str.split('/');
-              dataConsulta = new Date(a, m - 1, d);
-          } else if (str.includes('-')) {
-              let [a, m, d] = str.split('-');
-              dataConsulta = new Date(a, m - 1, d);
-          }
+          if (str.includes('/')) { let [d, m, a] = str.split('/'); dataConsulta = new Date(a, m - 1, d); } 
+          else if (str.includes('-')) { let [a, m, d] = str.split('-'); dataConsulta = new Date(a, m - 1, d); }
       }
-
-      // Se conseguiu montar a data e ela for no futuro, anota que o paciente já tá agendado
-      if (dataConsulta && dataConsulta >= hoje) {
-        pacientesAgendados.add(pacAg.toString().toLowerCase().trim()); 
-      }
+      if (dataConsulta && dataConsulta >= hoje) pacientesAgendados.add(pacAg.toString().toLowerCase().trim()); 
     }
   }
 
-  // 3. O MOTOR INTELIGENTE: Puxa a data mais recente de qualuqer lugar (TOTAL ou EVOLUCAO)
   const ultimaVisita = {}; 
-
-  // Função interna que processa e guarda só a data mais recente
   function registrarProcedimento(nomePac, dataVal, nomeProc) {
       if (!nomePac || !dataVal || !nomeProc) return;
-      
       let pacStr = nomePac.toString().toLowerCase().trim();
       let procStr = nomeProc.toString().toLowerCase();
-
-      // Checa se o que foi feito bate com alguma regra nossa (Ex: Limpeza, Manutenção)
       let regra = regrasRecorrencia.find(r => procStr.includes(r.proc.toLowerCase()));
       
       if (regra) {
-          let dataProcObj;
-          let dataFormatada = "";
-          
-          // Trata se o Google leu como Data ou como Texto
-          if (dataVal instanceof Date) {
-              dataProcObj = dataVal;
-              dataFormatada = Utilities.formatDate(dataVal, ss.getSpreadsheetTimeZone(), "dd/MM/yyyy");
-          } else {
+          let dataProcObj; let dataFormatada = "";
+          if (dataVal instanceof Date) { dataProcObj = dataVal; dataFormatada = Utilities.formatDate(dataVal, ss.getSpreadsheetTimeZone(), "dd/MM/yyyy"); } 
+          else {
               let str = dataVal.toString();
-              if (str.includes('/')) {
-                  let [d, m, a] = str.split('/');
-                  dataProcObj = new Date(a, m - 1, d);
-                  dataFormatada = str;
-              } else return;
+              if (str.includes('/')) { let [d, m, a] = str.split('/'); dataProcObj = new Date(a, m - 1, d); dataFormatada = str; } 
+              else return;
           }
-
           if (!ultimaVisita[pacStr]) ultimaVisita[pacStr] = {};
-          
-          // Se for a primeira vez que acha, ou se essa data for MAIS NOVA que a anterior, ele atualiza!
           if (!ultimaVisita[pacStr][regra.proc] || dataProcObj > ultimaVisita[pacStr][regra.proc].dataReal) {
-              ultimaVisita[pacStr][regra.proc] = {
-                  dataReal: dataProcObj,
-                  dataStr: dataFormatada,
-                  diasRecorrencia: regra.dias,
-                  nomeOriginal: nomePac
-              };
+              ultimaVisita[pacStr][regra.proc] = { dataReal: dataProcObj, dataStr: dataFormatada, diasRecorrencia: regra.dias, nomeOriginal: nomePac };
           }
       }
   }
 
-  // Varrer Aba EVOLUCAO (Paciente na col 2, Data na 1, Proc na 4)
-  if (abaEvo) {
-      const evoData = abaEvo.getDataRange().getValues();
-      for (let i = 1; i < evoData.length; i++) registrarProcedimento(evoData[i][2], evoData[i][1], evoData[i][4]);
-  }
+  if (abaEvo) { const evoData = abaEvo.getDataRange().getValues(); for (let i = 1; i < evoData.length; i++) registrarProcedimento(evoData[i][2], evoData[i][1], evoData[i][4]); }
+  if (abaTotal) { const totalData = abaTotal.getDataRange().getValues(); for (let i = 2; i < totalData.length; i++) registrarProcedimento(totalData[i][2], totalData[i][0], totalData[i][3]); }
 
-  // Varrer Aba TOTAL - Recepção (Paciente na col 2, Data na 0, Proc na 3)
-  if (abaTotal) {
-      const totalData = abaTotal.getDataRange().getValues();
-      for (let i = 2; i < totalData.length; i++) registrarProcedimento(totalData[i][2], totalData[i][0], totalData[i][3]);
-  }
-
-  // 4. Calcular os status de quem vence em breve ou já venceu
   const listaRetornos = [];
-  const daquiA15Dias = new Date();
-  daquiA15Dias.setDate(hoje.getDate() + 15); 
+  const daquiA15Dias = new Date(); daquiA15Dias.setDate(hoje.getDate() + 15); 
+
+  // Puxar Lixeira
+  const abaOcultos = ss.getSheetByName("RECALL_OCULTOS");
+  const listaNegra = new Set();
+  if (abaOcultos) {
+      const dadosOcultos = abaOcultos.getDataRange().getValues();
+      for (let i = 1; i < dadosOcultos.length; i++) {
+          let chave = dadosOcultos[i][0].toString().toLowerCase().trim() + "|" + dadosOcultos[i][1].toString().toLowerCase().trim() + "|" + dadosOcultos[i][2].toString().trim();
+          listaNegra.add(chave);
+      }
+  }
 
   for (let pac in ultimaVisita) {
     for (let proc in ultimaVisita[pac]) {
       let info = ultimaVisita[pac][proc];
-      
+      if (listaNegra.has(pac + "|" + proc.toLowerCase().trim() + "|" + info.dataStr.trim())) continue; // Pula os apagados
+
       let dataVencimento = new Date(info.dataReal);
       dataVencimento.setDate(dataVencimento.getDate() + info.diasRecorrencia);
       
@@ -1473,23 +1435,54 @@ function calcularRetornosPendentes(regrasRecorrencia) {
         let diasAtraso = Math.floor((hoje - dataVencimento) / (1000 * 60 * 60 * 24));
         let status = jaAgendado ? "AGENDADO" : (diasAtraso > 0 ? "VENCIDO" : "VENCE EM BREVE");
         
-        listaRetornos.push({
-          paciente: info.nomeOriginal,
-          procedimento: proc,
-          ultimaData: info.dataStr,
-          vencimento: Utilities.formatDate(dataVencimento, ss.getSpreadsheetTimeZone(), "dd/MM/yyyy"),
-          celular: mapaTelefones[pac] || "",
-          status: status,
-          atraso: diasAtraso > 0 ? diasAtraso + " dias" : "No prazo"
-        });
+        listaRetornos.push({ paciente: info.nomeOriginal, procedimento: proc, ultimaData: info.dataStr, vencimento: Utilities.formatDate(dataVencimento, ss.getSpreadsheetTimeZone(), "dd/MM/yyyy"), celular: mapaTelefones[pac] || "", status: status, atraso: diasAtraso > 0 ? diasAtraso + " dias" : "No prazo" });
       }
     }
   }
+  return listaRetornos.sort((a, b) => { if (a.status === "AGENDADO" && b.status !== "AGENDADO") return 1; if (a.status !== "AGENDADO" && b.status === "AGENDADO") return -1; return 0; });
+}
 
-  // Ordena para exibir: 1º Vencidos, 2º Em Breve, 3º Já Agendados
-  return listaRetornos.sort((a, b) => {
-    if (a.status === "AGENDADO" && b.status !== "AGENDADO") return 1;
-    if (a.status !== "AGENDADO" && b.status === "AGENDADO") return -1;
-    return 0;
-  });
+// ==========================================
+// 2. API DA LIXEIRA INTELIGENTE
+// ==========================================
+function apiOcultarRecall(paciente, procedimento, dataAtendimento) {
+  const lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(10000);
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    let aba = ss.getSheetByName("RECALL_OCULTOS");
+    if(!aba) { aba = ss.insertSheet("RECALL_OCULTOS"); aba.appendRow(["PACIENTE_IGNORADO", "PROCEDIMENTO", "DATA_ATENDIMENTO", "DATA_REMOCAO"]); }
+    aba.appendRow([paciente, procedimento, dataAtendimento, new Date()]);
+    SpreadsheetApp.flush();
+    return "Registro específico ignorado!";
+  } finally { lock.releaseLock(); }
+}
+
+// ==========================================
+// 3. API DAS CONFIGURAÇÕES
+// ==========================================
+function apiRegrasRecorrencia(acao, procNome, dias) {
+  const lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(10000);
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    let aba = ss.getSheetByName("CONFIG_REGRAS");
+    if(!aba) { aba = ss.insertSheet("CONFIG_REGRAS"); aba.appendRow(["PROCEDIMENTO", "DIAS_RECORRENCIA"]); aba.appendRow(["Limpeza", 180]); aba.appendRow(["Manutenção", 30]); }
+    const dados = aba.getDataRange().getValues();
+
+    if(acao === "LER") {
+      let regras = [];
+      for(let i=1; i<dados.length; i++) if(dados[i][0]) regras.push({ proc: dados[i][0].toString(), dias: Number(dados[i][1]) });
+      return regras;
+    }
+    if(acao === "SALVAR") {
+      let linha = -1;
+      for(let i=1; i<dados.length; i++) if(dados[i][0].toString().toLowerCase() === procNome.toLowerCase()) { linha = i + 1; break; }
+      if(linha !== -1) aba.getRange(linha, 2).setValue(dias); else aba.appendRow([procNome, dias]);
+      SpreadsheetApp.flush(); return "Salvo";
+    }
+    if(acao === "EXCLUIR") {
+      for(let i=1; i<dados.length; i++) if(dados[i][0].toString().toLowerCase() === procNome.toLowerCase()) { aba.deleteRow(i + 1); SpreadsheetApp.flush(); return "Excluído"; }
+    }
+  } finally { lock.releaseLock(); }
 }
