@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+    
+    body { background: #f4f7fe; font-family: 'Plus Jakarta Sans', sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 20px; }
+    .card-aceite { background: white; border-radius: 24px; padding: 40px; box-shadow: 0 20px 40px rgba(112,144,176,0.12); max-width: 450px; width: 100%; text-align: center; }
+    
+    .btn-aceitar { background: #05CD99; color: white; border: none; padding: 18px; border-radius: 16px; width: 100%; font-weight: 800; font-size: 16px; transition: 0.3s; }
+    .btn-aceitar:hover { transform: translateY(-2px); background: #04A67C; box-shadow: 0 10px 20px rgba(5, 205, 153, 0.3); }
+    
+    .hash-badge { background: #E9EDF7; color: #2B3674; padding: 6px 15px; border-radius: 8px; font-family: monospace; font-size: 13px; font-weight: bold; }
+    
+    #foto-preview { width: 100%; display: none; border-radius: 16px; border: 4px solid #05CD99; box-shadow: 0 10px 20px rgba(5, 205, 153, 0.2); object-fit: cover; }
+  </style>
+</head>
+<body>
+  <div class="card-aceite" id="box">
+    <div class="mb-3">
+      <span class="material-icons text-primary bg-primary bg-opacity-10 p-3 rounded-circle" style="font-size: 48px;">face_retouching_natural</span>
+    </div>
+    <h4 class="fw-bold text-dark">Validação de Identidade</h4>
+    <p class="text-muted small mb-4">Para sua segurança jurídica, solicitamos uma foto para concluir a assinatura eletrônica do documento.</p>
+    
+    <img id="foto-preview" class="mb-3" alt="Sua foto de assinatura">
+    
+    <input type="file" id="cameraInput" accept="image/*" capture="user" style="display: none;" onchange="processarFoto(event)">
+
+    <div class="d-grid gap-3 my-4">
+      <button class="btn btn-outline-primary fw-bold py-3 shadow-sm" style="border-radius: 14px;" onclick="window.open('<?= getDocumentUrl(hash) ?>', '_blank')">
+        <span class="material-icons align-middle me-1" style="font-size: 20px;">visibility</span> 1. LER DOCUMENTO
+      </button>
+      
+      <button class="btn btn-dark fw-bold py-3 shadow-sm" style="border-radius: 14px;" id="btnAtivarCam" onclick="document.getElementById('cameraInput').click()">
+        <span class="material-icons align-middle me-1" style="font-size: 20px;">photo_camera</span> 2. TIRAR FOTO
+      </button>
+      
+      <button class="btn-aceitar shadow-lg" id="btnConfirmar" onclick="confirmarAceiteAvancado()" style="display: none;">
+        <span class="material-icons align-middle me-1" style="font-size: 20px;">verified</span> 3. CONCLUIR ASSINATURA
+      </button>
+    </div>
+
+    <div class="mt-4 border-top pt-3">
+      <small class="text-muted d-block mb-1">Chave de Segurança:</small>
+      <span class="hash-badge"><?= hash ?></span>
+    </div>
+  </div>
+
+  <script>
+    let coords = { lat: 0, lng: 0 };
+    const hashOriginal = "<?= hash ?>";
+
+    // 1. Tenta capturar a localização (GPS) em segundo plano
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+            pos => { coords.lat = pos.coords.latitude; coords.lng = pos.coords.longitude; },
+            err => { console.warn("Localização negada ou indisponível."); }
+        );
+    }
+
+    // 2. Transforma a foto tirada pelo aplicativo de câmera do celular em formato de dados (Base64)
+    function processarFoto(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const btnAtivar = document.getElementById('btnAtivarCam');
+        btnAtivar.disabled = true;
+        btnAtivar.innerHTML = `<span class="spinner-border spinner-border-sm align-middle me-1"></span> Lendo foto...`;
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const dataUrl = e.target.result;
+            const img = document.getElementById('foto-preview');
+            
+            // Mostra a foto na tela
+            img.src = dataUrl;
+            img.style.display = 'block';
+            
+            // Some com o botão de tirar foto e mostra o de concluir assinatura
+            btnAtivar.style.display = 'none';
+            document.getElementById('btnConfirmar').style.display = 'block';
+        };
+        // Lê o arquivo gerado pela câmera
+        reader.readAsDataURL(file);
+    }
+
+    // 3. Envia o pacote completo (Foto Base64 + GPS + Hash) para o Servidor
+    function confirmarAceiteAvancado() {
+        const btn = document.getElementById('btnConfirmar');
+        
+        if (!hashOriginal || hashOriginal === "") {
+            alert("Erro crítico: Chave de segurança não encontrada.");
+            return;
+        }
+
+        btn.disabled = true; 
+        btn.innerHTML = `<span class="spinner-border spinner-border-sm align-middle me-2"></span> ENVIANDO BIOMETRIA...`;
+        
+        const dadosEnvio = {
+            hash: hashOriginal,
+            foto: document.getElementById('foto-preview').src,
+            lat: coords.lat,
+            lng: coords.lng
+        };
+        
+        google.script.run
+            .withSuccessHandler(function(res) {
+                document.getElementById('box').innerHTML = `
+                    <div style="text-align:center; padding: 20px; animation: fadeIn 0.5s ease;">
+                        <span class="material-icons text-success" style="font-size: 80px; color: #05CD99;">verified</span>
+                        <h3 style="font-weight: 800; color: #2B3674; margin-top: 15px;">Assinatura Concluída!</h3>
+                        <p style="color: #A3AED0;">Obrigado, <b>${res.paciente}</b>.<br>Sua identidade e aceite foram registrados com segurança.</p>
+                        <div style="background: #f0fff4; color: #276749; padding: 15px; border-radius: 12px; font-size: 13px; font-weight: bold; margin-top: 20px;">
+                            ✅ Você já pode fechar esta aba.
+                        </div>
+                    </div>
+                `;
+            })
+            .withFailureHandler(function(err) { 
+                alert("Erro ao registrar assinatura: " + err); 
+                btn.disabled = false; 
+                btn.innerHTML = `<span class="material-icons align-middle me-1">verified</span> TENTAR NOVAMENTE`; 
+            })
+            .apiProcessarAssinaturaAvancada(dadosEnvio);
+    }
+  </script>
+</body>
+</html>
