@@ -15,7 +15,7 @@
         <div class="d-flex gap-2">
            <button class="btn btn-outline-primary fw-bold" onclick="abrirModalAgendamento('', '')">📅 AGENDAR</button>
            <button class="btn btn-outline-danger fw-bold" onclick="abrirFinanceiroPaciente()">💰 FINANCEIRO</button>
-           <button class="btn btn-outline-secondary fw-bold" onclick="imprimirProntuario()">🖨️ IMPRIMIR</button>
+            <button class="btn btn-light fw-bold shadow-sm" onclick="abrirGeradorDocumentos()">🖨️ IMPRIMIR</button>
            <button type="button" class="btn-close" onclick="fecharProntuario()"></button>
         </div>
       </div>
@@ -86,10 +86,10 @@
                 #tabsProntuario .nav-link.active { color: #4318FF !important; border-bottom: 3px solid #4318FF !important; }
               </style>
               <ul class="nav nav-tabs border-0" id="tabsProntuario" role="tablist">
-                <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabFicha" type="button" role="tab">📋 Ficha Pessoal</button></li>
+                <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tabFicha" type="button" role="tab">📋 Ficha Pessoal</button></li>
                 <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabAnamnese" type="button" role="tab">📝 Anamnese</button></li>
                 <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabOdontograma" type="button" role="tab">🦷 Odontograma</button></li>
-                <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tabEvolucao" type="button" role="tab">📈 Evolução Clínica</button></li>
+                <li class="nav-item"><button class="nav-link " data-bs-toggle="tab" data-bs-target="#tabEvolucao" type="button" role="tab">📈 Evolução Clínica</button></li>
                 <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabOrto" type="button" role="tab">😬 Ortodontia</button></li>
                 <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabExames" type="button" role="tab">🔬 Exames</button></li>
                 <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabDocumentos" type="button" role="tab">📎 Documentos</button></li>
@@ -99,7 +99,7 @@
             <div class="tab-content p-4 h-100 overflow-auto">
               
               <!-- TAB 1: FICHA PESSOAL MELHORADA -->
-              <div class="tab-pane fade" id="tabFicha" role="tabpanel">
+              <div class="tab-pane fade show active" id="tabFicha" role="tabpanel">
                 <div class="row g-4">
                   <div class="col-md-5">
                     <div class="card border-0 shadow-sm rounded-4 h-100">
@@ -734,7 +734,7 @@
 </div>
 
               <!-- TAB 3: EVOLUÇÃO CLÍNICA -->
-              <div class="tab-pane fade show active" id="tabEvolucao" role="tabpanel">
+              <div class="tab-pane fade" id="tabEvolucao" role="tabpanel">
                 <div class="card border-0 shadow-sm rounded-4 mb-4">
                   <div class="card-header bg-white border-0 p-4 d-flex justify-content-between align-items-center flex-wrap gap-2">
                     <h6 class="fw-bold mb-0 text-dark"><span class="material-icons align-middle text-primary">edit_note</span> Evolução Clínica</h6>
@@ -902,15 +902,20 @@
                 <div class="card border-0 shadow-sm rounded-4">
                   <div class="card-header bg-white border-0 p-4 d-flex justify-content-between align-items-center">
                     <h6 class="fw-bold mb-0 text-dark"><span class="material-icons align-middle text-secondary">folder</span> Documentos do Paciente</h6>
-                    <button class="btn btn-primary btn-sm rounded-pill" onclick="uploadDocumento()">+ Adicionar Documento</button>
+                    <button class="btn btn-primary fw-bold px-4" onclick="abrirGeradorDocumentos()">+ Adicionar Documento</button>
                   </div>
+                        <div class="input-group mb-4 shadow-sm" style="border-radius: 12px; overflow: hidden;">
+                            <span class="input-group-text bg-white border-0"><span class="material-icons text-muted">search</span></span>
+                            <input type="text" class="form-control border-0 bg-white" placeholder="Pesquisar por receita, data, atestado..." onkeyup="filtrarDocsProntuario(this.value)">
+                          </div>
+
                   <div class="card-body p-0">
                     <div class="table-responsive">
                       <table class="table table-hover align-middle mb-0">
                         <thead class="table-light text-muted small">
                           <tr><th class="ps-4">DATA</th><th>TIPO</th><th>DESCRIÇÃO</th><th class="text-center pe-4">ARQUIVO</th></tr>
                         </thead>
-                        <tbody id="tabelaDocumentos">
+                        <tbody id="tabelaDocsProntuario">
                           <tr><td colspan="4" class="text-center py-4 text-muted">Nenhum documento anexado</td></tr>
                         </tbody>
                       </table>
