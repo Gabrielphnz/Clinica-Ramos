@@ -227,69 +227,6 @@
   }
 </style>
 
-<div class="modal fade" id="modalRecall" tabindex="-1" style="z-index: 9999; background: rgba(0,0,0,0.6);" data-bs-backdrop="false">
-      <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
-        <div class="modal-content border-0 shadow-lg bg-light" style="border-radius: 20px;">
-          <div class="card border-0 shadow-none bg-transparent">
-            <div class="card-header bg-white border-bottom p-4 d-flex justify-content-between align-items-center" style="border-top-left-radius: 20px; border-top-right-radius: 20px;">
-              <div>
-                <h5 class="fw-bold mb-0 text-dark d-flex align-items-center gap-2"><span class="material-icons text-warning">update</span> Central de Retornos (Recall)</h5>
-                <small class="text-muted">Pacientes para novos ciclos de tratamento.</small>
-              </div>
-              <div class="d-flex gap-2 align-items-center">
-                <button class="btn btn-light text-secondary border rounded-circle p-2 d-flex align-items-center shadow-sm" onclick="abrirModalConfig()" title="Configurar Regras"><span class="material-icons" style="font-size: 20px;">settings</span></button>
-                <button class="btn btn-outline-primary fw-bold rounded-pill px-3 ms-2" onclick="carregarPainelRetornos()"><span class="material-icons align-middle" style="font-size: 18px;">refresh</span> Atualizar</button>
-                <button type="button" class="btn-close ms-2" onclick="fecharModalRecall()"></button>
-              </div>
-            </div>
-            <div class="card-body p-0">
-              <div class="table-responsive" style="max-height: 60vh;">
-                <table class="table table-hover align-middle mb-0 bg-white">
-                  <thead class="table-light text-muted small" style="position: sticky; top: 0; z-index: 1;">
-                    <tr><th class="ps-4 py-3">PACIENTE</th><th>PROCEDIMENTO</th><th>ÚLTIMA VEZ</th><th>VENCIMENTO</th><th>STATUS</th><th class="text-center pe-4">AÇÕES</th></tr>
-                  </thead>
-                  <tbody id="tabelaRetornos"><tr><td colspan="6" class="text-center py-5 text-muted">Carregando lista...</td></tr></tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="modal fade" id="modalConfigRegras" tabindex="-1" style="z-index: 10000; background: rgba(0,0,0,0.7);" data-bs-backdrop="false">
-      <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
-          <div class="modal-header bg-light border-bottom-0" style="border-top-left-radius: 16px; border-top-right-radius: 16px;">
-            <h6 class="modal-title fw-bold text-dark"><span class="material-icons align-middle text-primary">settings</span> Motor de Recorrência</h6>
-            <button type="button" class="btn-close" onclick="fecharModalConfig()"></button>
-          </div>
-          <div class="modal-body p-4 bg-white">
-            <div class="row g-2 mb-4 align-items-end">
-              <div class="col-7"><label class="small text-muted fw-bold">Procedimento</label><input type="text" class="form-control" id="cfg_proc" placeholder="Ex: Botox"></div>
-              <div class="col-3"><label class="small text-muted fw-bold">Dias</label><input type="number" class="form-control text-center" id="cfg_dias" placeholder="180"></div>
-              <div class="col-2"><button class="btn btn-primary w-100 fw-bold" onclick="salvarRegra()"><span class="material-icons">add</span></button></div>
-            </div>
-            <p class="small fw-bold text-muted mb-2 border-bottom pb-2">REGRAS ATIVAS</p>
-            <div class="table-responsive" style="max-height: 200px;">
-              <table class="table table-sm align-middle table-hover"><tbody id="tabelaConfigRegras"></tbody></table>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-    
-
-    <div id="painelNotificacoes" class="shadow-lg bg-white position-fixed top-0 end-0 h-100 border-start" style="width: 350px; z-index: 1100; transform: translateX(100%); transition: 0.3s; overflow-y: auto;">
-  <div class="p-4 border-bottom d-flex justify-content-between align-items-center bg-light">
-    <h6 class="fw-bold mb-0 text-primary">Notificações</h6>
-    <button class="btn-close" onclick="toggleNotificacoes()"></button>
-  </div>
-  <div id="listaNotificacoes" class="p-3">
-    <p class="text-center text-muted small py-5">Nenhuma notificação nova.</p>
-  </div>
-</div>
-
 
 <script>
 // ==========================================
@@ -535,31 +472,57 @@ function exibirTabela(dados) {
   const dataMaisRecente = datasOrdenadas.length > 0 ? datasOrdenadas[0] : new Date().toLocaleDateString('pt-BR');
   const dadosHoje = dadosLocais.filter(r => r.data === dataMaisRecente);
 
-  // SÓ DESENHA A ESTRUTURA SE ELA NÃO EXISTIR (Acaba com a tela piscando e apagando)
+
+// SÓ DESENHA A ESTRUTURA SE ELA NÃO EXISTIR
   if (document.getElementById("minhaTabela") === null) {
       let htmlStructure = `
-        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+        <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3 p-2 bg-white rounded-3 shadow-sm border">
+            
             <div class="d-flex gap-2">
-               <button class="btn btn-outline-secondary btn-sm" onclick="gerarRelatorio()">RELATÓRIO</button>
-               <button class="btn btn-outline-secondary btn-sm" onclick="gerarHolerite()">HOLERITE</button>
-               <button class="btn btn-outline-secondary btn-sm" onclick="gerarResultado()">RESULTADO</button>
-               <button class="btn btn-outline-secondary btn-sm" onclick="abrirConfiguracao()">⚙️ CONFIG</button>
-               <button class="btn btn-outline-primary btn-sm fw-bold" onclick="abrirAlmoxarifado()">📦 ESTOQUE</button>
-               <button class="btn btn-warning text-dark fw-bold shadow-sm w-100 mb-3 d-flex align-items-center justify-content-center gap-2 rounded-3 py-2" onclick="abrirModalRecall()">
-                    <span class="material-icons">notifications_active</span>
-                       Retornos Pendentes
-                /button>
+                <div class="dropdown">
+                    <button class="btn btn-outline-secondary btn-sm dropdown-toggle fw-bold d-flex align-items-center gap-1" type="button" data-bs-toggle="dropdown">
+                        <span class="material-icons" style="font-size: 16px;">bar_chart</span> RELATÓRIOS
+                    </button>
+                    <ul class="dropdown-menu shadow border-0" style="border-radius: 12px; font-size: 14px;">
+                        <li><button class="dropdown-item py-2" type="button" onclick="gerarRelatorio()"><span class="material-icons align-middle me-2 text-muted" style="font-size: 18px;">description</span> Relatório Geral</button></li>
+                        <li><button class="dropdown-item py-2" type="button" onclick="gerarHolerite()"><span class="material-icons align-middle me-2 text-muted" style="font-size: 18px;">receipt_long</span> Holerite</button></li>
+                        <li><button class="dropdown-item py-2" type="button" onclick="gerarResultado()"><span class="material-icons align-middle me-2 text-muted" style="font-size: 18px;">insights</span> Resultado da Clínica</button></li>
+                    </ul>
+                </div>
 
+                <div class="dropdown">
+                    <button class="btn btn-outline-primary btn-sm dropdown-toggle fw-bold d-flex align-items-center gap-1" type="button" data-bs-toggle="dropdown">
+                        <span class="material-icons" style="font-size: 16px;">app_registration</span> GERENCIAMENTO
+                    </button>
+                    <ul class="dropdown-menu shadow border-0" style="border-radius: 12px; font-size: 14px;">
+                        <li><button class="dropdown-item py-2" type="button" onclick="abrirModalRecall()"><span class="material-icons align-middle me-2 text-warning" style="font-size: 18px;">update</span> Retornos (Recall)</button></li>
+                        <li><button class="dropdown-item py-2" type="button" onclick="abrirAlmoxarifado()"><span class="material-icons align-middle me-2 text-success" style="font-size: 18px;">inventory_2</span> Estoque</button></li>
+                        <li><button class="dropdown-item py-2" type="button" onclick="abrirGerenciamentoLab()"><span class="material-icons align-middle me-2 text-info" style="font-size: 18px;">biotech</span> Laboratório</button></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><button class="dropdown-item py-2" type="button" onclick="abrirConfiguracao()"><span class="material-icons align-middle me-2 text-secondary" style="font-size: 18px;">settings</span> Configurações</button></li>
+                    </ul>
+                </div>
             </div>
-            <div class="position-relative me-3" onclick="toggleNotificacoes()" style="cursor: pointer;">
-  <span class="material-icons text-secondary" style="font-size: 28px;">notifications</span>
-  <span id="badgeNotificacao" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="display: none; font-size: 10px;">
-    0
-  </span>
-</div>
-            <div class="d-flex gap-2 align-items-center">
-               <button class="btn btn-info btn-sm text-white" onclick="abrirDashboard()"><span class="material-icons" style="font-size:20px; line-height: 1;">bar_chart</span></button>
-               <button class="btn btn-primary btn-sm fw-bold shadow-sm" onclick="abrirFormulario()">+ NOVO LANÇAMENTO</button>
+
+            <div class="d-flex gap-3 align-items-center">
+                <div class="position-relative mt-1" onclick="toggleNotificacoes()" style="cursor: pointer;" title="Notificações">
+                  <span class="material-icons text-secondary" style="font-size: 28px;">notifications</span>
+                  <span id="badgeNotificacao" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger border border-white" style="display: none; font-size: 10px;">0</span>
+                </div>
+                
+                <div style="border-left: 1px solid #dee2e6; height: 30px;"></div>
+
+                <button class="btn btn-info btn-sm text-white d-flex align-items-center shadow-sm" onclick="abrirDashboard()" title="Painel Gráfico">
+                    <span class="material-icons" style="font-size:20px;">pie_chart</span>
+                </button>
+                
+                <button class="btn btn-success btn-sm fw-bold shadow-sm d-flex align-items-center gap-1" onclick="abrirModalPaciente()">
+                    <span class="material-icons" style="font-size: 18px;">person_add</span> PACIENTE
+                </button>
+
+                <button class="btn btn-primary btn-sm fw-bold shadow-sm d-flex align-items-center gap-1" onclick="abrirFormulario()">
+                    <span class="material-icons" style="font-size: 18px;">add_circle</span> LANÇAMENTO
+                </button>
             </div>
         </div>
         
@@ -567,12 +530,12 @@ function exibirTabela(dados) {
         <table id="minhaTabela" class="table table-striped table-hover w-100"></table>
         
         <div class="row g-3 mt-3 mb-2" id="cardsResumoFinanceiro">
-            <div class="col-md-6"><div class="card bg-success shadow-sm"><div class="card-body p-4 text-center"><h6 class="mb-2" id="titPartDia">💰 TOTAL PARTICULAR</h6><h4 class="mb-0" id="partDia">R$ 0,00</h4></div></div></div>
-            <div class="col-md-6"><div class="card bg-primary shadow-sm"><div class="card-body p-4 text-center"><h6 class="mb-2" id="titPlanoDia">📋 TOTAL PLANO</h6><h4 class="mb-0" id="planoDia">R$ 0,00</h4></div></div></div>
+            <div class="col-md-6"><div class="card bg-success shadow-sm"><div class="card-body p-4 text-center"><h6 class="mb-2 text-white" id="titPartDia">💰 TOTAL PARTICULAR</h6><h4 class="mb-0 text-white" id="partDia">R$ 0,00</h4></div></div></div>
+            <div class="col-md-6"><div class="card bg-primary shadow-sm"><div class="card-body p-4 text-center"><h6 class="mb-2 text-white" id="titPlanoDia">📋 TOTAL PLANO</h6><h4 class="mb-0 text-white" id="planoDia">R$ 0,00</h4></div></div></div>
         </div>
         <div id="cardsFiltrados" style="display: none;" class="row g-3 mt-2 mb-3">
-            <div class="col-md-6"><div class="card bg-success shadow-sm" style="opacity: 0.85;"><div class="card-body p-4 text-center"><h6 class="mb-2">💰 PARTICULAR - FILTRADO</h6><h4 class="mb-0" id="resumoPartHtml">R$ 0,00</h4></div></div></div>
-            <div class="col-md-6"><div class="card bg-primary shadow-sm" style="opacity: 0.85;"><div class="card-body p-4 text-center"><h6 class="mb-2">📋 PLANO - FILTRADO</h6><h4 class="mb-0" id="resumoPlanoHtml">R$ 0,00</h4></div></div></div>
+            <div class="col-md-6"><div class="card bg-success shadow-sm" style="opacity: 0.85;"><div class="card-body p-4 text-center"><h6 class="mb-2 text-white">💰 PARTICULAR - FILTRADO</h6><h4 class="mb-0 text-white" id="resumoPartHtml">R$ 0,00</h4></div></div></div>
+            <div class="col-md-6"><div class="card bg-primary shadow-sm" style="opacity: 0.85;"><div class="card-body p-4 text-center"><h6 class="mb-2 text-white">📋 PLANO - FILTRADO</h6><h4 class="mb-0 text-white" id="resumoPlanoHtml">R$ 0,00</h4></div></div></div>
         </div>
       `;
       $("#conteudo").html(htmlStructure);
@@ -665,41 +628,68 @@ function exibirTabela(dados) {
   $("#loader").hide(); $("#conteudo").show();
 }
 
-function salvarLancamento() {
-  const form = document.getElementById("formCadastro");
-  if (!form.checkValidity()) { form.reportValidity(); return; }
-  const dataInput = form.data.value;
-  if (!dataInput.match(/^\d{2}\/\d{2}\/\d{4}$/)) { mostrarNotificacao("❌ Data inválida!", "erro"); return; }
+function getPacientesCRM() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const aba = ss.getSheetByName("PACIENTES"); 
+  if (!aba) return [];
 
-  const nomeDigitado = form.paciente.value.trim().toLowerCase();
-  const pacienteValido = basePacientesCRM.find(p => p.nome.toLowerCase() === nomeDigitado);
-  if (!pacienteValido) {
-    mostrarNotificacao("❌ Paciente não cadastrado! Selecione na lista ou clique no +.", "erro");
-    document.getElementById('f_paciente').focus(); return;
-  }
+  const dados = aba.getDataRange().getValues();
+  if (dados.length < 2) return [];
 
-  const btnSalvar = document.getElementById("btnSalvar");
-  btnSalvar.disabled = true; btnSalvar.innerHTML = "SALVANDO...";
-  const dados = {
-    idLinha: document.getElementById("idLinha").value || "", data: form.data.value, doutor: form.doutor.value, paciente: form.paciente.value,
-    procedimento: form.procedimento.value, plano: form.plano.value, pagamento: form.pagamento.value, obs: form.obs.value,
-    particular: formatarParaCalculo(form.particular.value), vplano: formatarParaCalculo(form.vplano.value), vlab: formatarParaCalculo(form.vlab.value)
+  // Remove acentos e converte para minúsculo para busca infalível
+  const cabecalho = dados[0].map(c => c.toString().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim());
+
+  // Caçador inteligente de colunas
+  const achar = (palavras) => {
+     for(let i=0; i<cabecalho.length; i++) {
+        for(let p of palavras) {
+           if(cabecalho[i] === p || cabecalho[i].includes(p)) return i;
+        }
+     }
+     return -1;
   };
-  
-  mostrarNotificacao("⏳ Salvando...", "info");
-  google.script.run.withSuccessHandler(function(resposta) {
-      mostrarNotificacao("✅ " + resposta, "sucesso");
-      bootstrap.Modal.getInstance(document.getElementById('modalCadastro')).hide();
-      btnSalvar.disabled = false; btnSalvar.innerHTML = "SALVAR";
-      
-      // O 'true' AQUI FAZ A ATUALIZAÇÃO SER SILENCIOSA!
-      atualizarTabelaGlobal(true); 
-      
-  }).withFailureHandler(function(erro) {
-      mostrarNotificacao("❌ Erro: " + erro, "erro");
-      btnSalvar.disabled = false; btnSalvar.innerHTML = "SALVAR";
-  }).salvarLancamentoUnificado(dados);
+
+  const iNome = achar(["nome"]);
+  const iCpf = achar(["cpf"]);
+  const iRg = achar(["rg", "identidade"]);
+  const iNasc = achar(["nascimento", "nasc"]);
+  const iCel = achar(["celular", "whats"]);
+  const iTel = achar(["telefone", "fixo", "recado"]);
+  const iEmail = achar(["email", "mail"]);
+  const iConv = achar(["convenio", "plano"]);
+  const iEnd = achar(["endereco", "end"]);
+  const iResp = achar(["responsavel", "menor", "resp"]);
+  const iProf = achar(["profissao", "prof"]);
+  const iSexo = achar(["sexo", "genero"]);
+
+  const lista = [];
+  for (let i = 1; i < dados.length; i++) {
+    const r = dados[i];
+    if (iNome === -1 || !r[iNome] || r[iNome].toString().trim() === "") continue;
+
+    let dtNasc = iNasc >= 0 ? r[iNasc] : "";
+    if (dtNasc instanceof Date) {
+      dtNasc = Utilities.formatDate(dtNasc, ss.getSpreadsheetTimeZone(), "dd/MM/yyyy");
+    }
+
+    lista.push({
+      nome: String(r[iNome]).trim(),
+      cpf: iCpf >= 0 ? String(r[iCpf] || "") : "",
+      rg: iRg >= 0 ? String(r[iRg] || "") : "",
+      nascimento: dtNasc ? String(dtNasc) : "",
+      celular: iCel >= 0 ? String(r[iCel] || "") : "",
+      telefone: iTel >= 0 ? String(r[iTel] || "") : "",
+      email: iEmail >= 0 ? String(r[iEmail] || "") : "",
+      convenio: iConv >= 0 ? String(r[iConv] || "") : "Particular",
+      endereco: iEnd >= 0 ? String(r[iEnd] || "") : "",
+      responsavel: iResp >= 0 ? String(r[iResp] || "") : "",
+      profissao: iProf >= 0 ? String(r[iProf] || "") : "",
+      sexo: iSexo >= 0 ? String(r[iSexo] || "") : ""
+    });
+  }
+  return lista;
 }
+
 
 function selecionarPacienteCRM(nome, convenio) {
   document.getElementById('f_paciente').value = nome;
@@ -771,6 +761,59 @@ function abrirFormulario() {
   document.getElementById('formCadastro').vplano.value = "0,00";
   document.getElementById('formCadastro').vlab.value = "0,00";
   new bootstrap.Modal(document.getElementById('modalCadastro')).show();
+}
+
+// ==========================================
+// FUNÇÃO PARA SALVAR O LANÇAMENTO FINANCEIRO
+// ==========================================
+function salvarLancamento() {
+  const form = document.getElementById("formCadastro");
+  
+  // Verifica se os campos obrigatórios foram preenchidos
+  if (!form.checkValidity()) { 
+    form.reportValidity(); 
+    return; 
+  }
+
+  const btn = document.getElementById("btnSalvar");
+  const textoOriginal = btn.innerHTML;
+  btn.disabled = true; 
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> SALVANDO...';
+
+  // Coleta todos os dados digitados no modal
+  const dados = {
+    idLinha: document.getElementById("idLinha").value,
+    data: form.data.value,
+    paciente: form.paciente.value,
+    doutor: form.doutor.value,
+    procedimento: form.procedimento.value,
+    plano: form.plano.value,
+    pagamento: form.pagamento.value,
+    particular: form.particular.value,
+    vplano: form.vplano.value,
+    vlab: form.vlab.value,
+    obs: form.obs.value
+  };
+
+  mostrarNotificacao("⏳ Registrando no financeiro...", "info");
+
+  // Envia o pacote de dados para o Servidor (Google Apps Script)
+  google.script.run
+    .withSuccessHandler(function(res) {
+      // Se deu certo: avisa, fecha a tela e recarrega a tabela de finanças
+      mostrarNotificacao("✅ " + res, "sucesso");
+      bootstrap.Modal.getInstance(document.getElementById('modalCadastro')).hide();
+      btn.disabled = false; 
+      btn.innerHTML = textoOriginal;
+      atualizarTabelaGlobal(); 
+    })
+    .withFailureHandler(function(err) {
+      // Se deu erro: avisa e destrava o botão
+      mostrarNotificacao("❌ Erro: " + err, "erro");
+      btn.disabled = false; 
+      btn.innerHTML = textoOriginal;
+    })
+    .salvarLancamento(dados); // <--- Essa é a chamada que aciona o Servidor!
 }
 
 function editarRegistro(idLinha) {
@@ -858,47 +901,62 @@ $(document).ready(function() {
   });
 });
 
-function autocompletePaciente(valor) {
-  var listEl = document.getElementById('autocomplete-list');
-  
-  if (basePacientesCRM.length === 0) {
-     console.log("Atenção: A base de pacientes está vazia no momento.");
-  }
+// ==============================================================
+// MOTOR DE BUSCA UNIFICADO E BLINDADO (RESOLVE O ERRO DE FILTER)
+// ==============================================================
+function motorAutocomplete(valor, idLista, idInput) {
+  const listEl = document.getElementById(idLista);
+  if (!listEl) return;
 
-  if (!valor || valor.length < 2) { 
+  if (!valor || valor.trim().length < 2 || !basePacientesCRM) { 
     listEl.style.display = 'none'; 
     return; 
   }
   
-  var sugestoes = basePacientesCRM.filter(function(p) {
-    if (!p || !p.nome) return false;
-    // O String() garante que mesmo que seja um número, ele não trave
-    return String(p.nome).toLowerCase().includes(valor.toLowerCase());
-  }).slice(0, 10);
-  
-  if (sugestoes.length === 0) { 
-    listEl.innerHTML = '<div class="p-3 text-muted small fw-bold">Paciente não encontrado. Clique no botão <span class="badge bg-primary">+</span> ao lado para cadastrar.</div>';
-    listEl.style.display = 'block'; 
-    return; 
+  const busca = valor.toString().toLowerCase().trim();
+
+  // 🛡️ BLINDAGEM TOTAL: Só entra no filtro se o paciente E o nome existirem
+  const sugestoes = basePacientesCRM.filter(p => {
+    try {
+      if (p && p.nome) {
+        return String(p.nome).toLowerCase().includes(busca);
+      }
+    } catch (e) { return false; }
+    return false;
+  }).slice(0, 8);
+
+  if (sugestoes.length === 0) {
+    listEl.innerHTML = '<div class="p-3 text-muted small fw-bold text-center">Paciente não encontrado.</div>';
+    listEl.style.display = 'block';
+    return;
   }
-  
-  var html = '';
-  for (var i = 0; i < sugestoes.length; i++) {
-    var sug = sugestoes[i];
-    // Removemos qualquer aspa simples ou dupla para não quebrar o clique
-    var nomeSeguro = String(sug.nome).replace(/['"]/g, "");
-    var convSeguro = sug.convenio ? String(sug.convenio).replace(/['"]/g, "") : '';
-    var textoConvenio = sug.convenio ? '💳 ' + sug.convenio : 'Sem convênio cadastrado';
-    
-    html += '<div class="p-3 border-bottom" style="cursor:pointer; background:#fff;" onmouseover="this.style.background=\'#F4F7FE\'" onmouseout="this.style.background=\'#fff\'" onclick="selecionarPacienteCRM(\'' + nomeSeguro + '\', \'' + convSeguro + '\')">' +
-              '<strong style="color:#2B3674; font-size:14px;">' + sug.nome + '</strong><br>' +
-              '<small style="color:#A3AED0; font-weight:600;">' + textoConvenio + '</small>' +
-            '</div>';
-  }
-  
-  listEl.innerHTML = html; 
+
+  listEl.innerHTML = sugestoes.map(s => {
+    const nomeSeguro = String(s.nome || "Sem Nome").replace(/['"]/g, "");
+    const convSeguro = String(s.convenio || "Particular").replace(/['"]/g, "");
+    return `
+      <div class="p-3 border-bottom" style="cursor:pointer;" 
+           onmouseover="this.style.background='#F4F7FE'" onmouseout="this.style.background='#fff'"
+           onclick="finalizarSelecaoAutocomplete('${nomeSeguro}', '${convSeguro}', '${idInput}', '${idLista}')">
+        <strong style="color:#2B3674;">${s.nome}</strong><br>
+        <small style="color:#A3AED0;">💳 ${convSeguro}</small>
+      </div>`;
+  }).join('');
   listEl.style.display = 'block';
 }
+
+function finalizarSelecaoAutocomplete(nome, convenio, idInput, idLista) {
+  const input = document.getElementById(idInput);
+  if (input) input.value = nome;
+  const lista = document.getElementById(idLista);
+  if (lista) lista.style.display = 'none';
+  if (idInput === 'f_paciente') selecionarPacienteCRM(nome, convenio); 
+}
+
+// Atalhos para o sistema (NÃO APAGUE)
+function autocompletePaciente(v) { motorAutocomplete(v, 'autocomplete-list', 'f_paciente'); }
+function autocompletePacienteAgenda(v) { motorAutocomplete(v, 'ag-autocomplete-list', 'ag_paciente'); }
+
 
 function selecionarPacienteCRM(nome, convenio) {
   document.getElementById('f_paciente').value = nome;
@@ -1566,9 +1624,11 @@ function salvarEdicaoProduto() {
 // ==========================================
 // 8. CONFIGURAÇÕES, CRUD DE USUÁRIOS E DEMAIS
 // ==========================================
+  // ==========================================
+// 8. CONFIGURAÇÕES, PREÇOS E USUÁRIOS
+// ==========================================
 function abrirConfiguracao() {
   google.script.run.withSuccessHandler(function(listas) {
-      let listaProc = ''; listas.procedimentos.forEach(p => listaProc += '<div class="list-group-item d-flex justify-content-between align-items-center">' + p + '</div>');
       let listaPlanos = ''; listas.planos.forEach(p => listaPlanos += '<div class="list-group-item d-flex justify-content-between align-items-center">' + p + '</div>');
       let listaDoutores = ''; listas.doutores.forEach(d => listaDoutores += '<div class="list-group-item d-flex justify-content-between align-items-center">' + d + '</div>');
       let listaPagamentos = ''; listas.pagamentos.forEach(p => listaPagamentos += '<div class="list-group-item d-flex justify-content-between align-items-center">' + p + '</div>');
@@ -1576,7 +1636,7 @@ function abrirConfiguracao() {
       const modalHtml = `
           <div class="modal fade" id="modalConfig" tabindex="-1">
               <div class="modal-dialog modal-lg">
-                  <div class="modal-content" style="border-radius: 24px; border: none; box-shadow: 0 20px 50px rgba(0,0,0,0.1);">
+                  <div class="modal-content border-0 shadow-lg" style="border-radius: 24px;">
                       <div class="modal-header bg-primary text-white" style="padding: 20px 30px; border-bottom: none;">
                           <h5 class="modal-title fw-bold">⚙️ CONFIGURAÇÕES DO SISTEMA</h5>
                           <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
@@ -1589,14 +1649,29 @@ function abrirConfiguracao() {
                               <li class="nav-item"><a class="nav-link rounded-3 fw-bold" data-bs-toggle="pill" href="#pagamentos">PAGAMENTOS</a></li>
                               <li class="nav-item ms-auto"><a class="nav-link rounded-3 fw-bold text-primary" data-bs-toggle="pill" href="#usuarios">👥 USUÁRIOS</a></li>
                           </ul>
+                          
                           <div class="tab-content bg-white p-4 rounded-4 shadow-sm border" style="border-color: #E9EDF7 !important;">
+                              
                               <div class="tab-pane fade show active" id="procedimentos">
-                                  <div class="input-group mb-3">
-                                      <input type="text" class="form-control bg-light border-0" id="novoProcedimento" placeholder="Digite o novo procedimento...">
-                                      <button class="btn btn-success px-4 fw-bold" onclick="cadastrarItem('procedimento')">ADICIONAR</button>
+                                  <div class="row g-2 mb-4 bg-light p-3 rounded-4 border">
+                                      <div class="col-md-7">
+                                          <label class="small text-muted fw-bold mb-1">Procedimento</label>
+                                          <input type="text" class="form-control border-0 shadow-sm fw-bold" id="novoProcNome" placeholder="Ex: Limpeza">
+                                      </div>
+                                      <div class="col-md-3">
+                                          <label class="small text-muted fw-bold mb-1">Preço Base (R$)</label>
+                                          <input type="number" class="form-control border-0 shadow-sm text-success fw-bold" id="novoProcPreco" placeholder="0.00" step="0.01">
+                                      </div>
+                                      <div class="col-md-2 d-flex align-items-end">
+                                          <button class="btn btn-success w-100 fw-bold shadow-sm" style="height: 38px;" onclick="cadastrarProcedimentoPreco()">➕ ADD</button>
+                                      </div>
                                   </div>
-                                  <div class="list-group list-group-flush border" style="max-height: 300px; overflow-y: auto; border-radius: 12px;">${listaProc}</div>
+                                  <p class="small fw-bold text-muted mb-2 border-bottom pb-2">TABELA CADASTRADA</p>
+                                  <div class="list-group list-group-flush border shadow-sm" id="listaProcedimentosConfig" style="max-height: 300px; overflow-y: auto; border-radius: 12px;">
+                                      <div class="text-center p-4 text-muted"><div class="spinner-border spinner-border-sm text-primary"></div> Carregando...</div>
+                                  </div>
                               </div>
+
                               <div class="tab-pane fade" id="planos">
                                   <div class="input-group mb-3">
                                       <input type="text" class="form-control bg-light border-0" id="novoPlano" placeholder="Digite o novo plano...">
@@ -1660,10 +1735,64 @@ function abrirConfiguracao() {
       `;
       $('#modalConfig').remove();
       document.body.insertAdjacentHTML('beforeend', modalHtml);
+      
+      // Gatilhos de carregamento ao abrir as abas
       $('#modalConfig').on('shown.bs.tab', 'a[data-bs-toggle="pill"][href="#usuarios"]', function () { carregarUsuariosConfig(); });
+      carregarTabelaProcedimentosConfig(); // Carrega os preços na hora que a tela abre!
+      
       new bootstrap.Modal(document.getElementById('modalConfig')).show();
   }).getListasParaForm();
 }
+
+// ----------------------------------------------------
+// AÇÕES EXCLUSIVAS DA TABELA DE PREÇOS
+// ----------------------------------------------------
+function carregarTabelaProcedimentosConfig() {
+   google.script.run.withSuccessHandler(function(procs) {
+      const div = document.getElementById("listaProcedimentosConfig");
+      if (!div) return;
+      if (procs.length === 0) {
+         div.innerHTML = '<div class="text-center p-4 text-muted">Nenhum procedimento cadastrado.</div>';
+         return;
+      }
+      div.innerHTML = procs.map(p => `
+         <div class="list-group-item d-flex justify-content-between align-items-center py-3">
+            <span class="fw-bold text-dark" style="font-size: 15px;">${p.proc}</span>
+            <div class="d-flex align-items-center gap-3">
+               <span class="badge bg-success bg-opacity-10 text-success border border-success px-3 py-2" style="font-size: 14px;">R$ ${Number(p.preco).toLocaleString('pt-BR', {minimumFractionDigits:2})}</span>
+               <button class="btn btn-sm btn-light text-danger border-0 shadow-sm rounded-circle d-flex align-items-center justify-content-center p-2" onclick="excluirProcedimentoPreco('${p.proc}')" title="Excluir">
+                   <span class="material-icons" style="font-size: 18px;">delete_outline</span>
+               </button>
+            </div>
+         </div>
+      `).join('');
+   }).apiGetProcedimentosComPreco();
+}
+
+function cadastrarProcedimentoPreco() {
+   const nome = document.getElementById("novoProcNome").value.trim();
+   const preco = document.getElementById("novoProcPreco").value;
+
+   if (!nome) return mostrarNotificacao("Preencha o nome do procedimento!", "erro");
+
+   mostrarNotificacao("⏳ Salvando...", "info");
+   google.script.run.withSuccessHandler(function(res) {
+       mostrarNotificacao("✅ " + res, "sucesso");
+       document.getElementById("novoProcNome").value = "";
+       document.getElementById("novoProcPreco").value = "";
+       carregarTabelaProcedimentosConfig();
+   }).apiSalvarProcedimentoComPreco(nome, preco || "0");
+}
+
+function excluirProcedimentoPreco(nome) {
+   if (!confirm("Tem certeza que deseja excluir " + nome + " ?")) return;
+   mostrarNotificacao("⏳ Excluindo...", "info");
+   google.script.run.withSuccessHandler(function(res) {
+       mostrarNotificacao("✅ " + res, "sucesso");
+       carregarTabelaProcedimentosConfig();
+   }).apiExcluirProcedimentoComPreco(nome);
+}
+
 
 function cadastrarItem(tipo) {
   const inputId = `novo${tipo.charAt(0).toUpperCase() + tipo.slice(1)}`;
@@ -1760,49 +1889,81 @@ function salvarPacienteCRM() {
   if (!form.checkValidity()) { form.reportValidity(); return; }
 
   const btn = event.target;
-  btn.disabled = true; btn.innerText = "CADASTRANDO...";
+  btn.disabled = true; btn.innerText = "PROCESSANDO...";
 
-  const dados = {};
-  const formData = new FormData(form);
-  formData.forEach((value, key) => { dados[key] = value; });
+  const dadosRaw = {};
+  new FormData(form).forEach((value, key) => { dadosRaw[key] = value; });
 
-  // === TRAVA DE DUPLICIDADE ===
-  // Limpa tudo que não for número para comparar perfeitamente
-  const cpfDigitado = dados.CPF ? dados.CPF.replace(/\D/g, '') : '';
-  const celDigitado = dados.Celular ? dados.Celular.replace(/\D/g, '') : '';
+  const nomeOriginal = dadosRaw.nome_original ? dadosRaw.nome_original.trim() : "";
+  const ehEdicao = nomeOriginal !== "";
 
-  if (basePacientesCRM && basePacientesCRM.length > 0) {
-    const pacienteDuplicado = basePacientesCRM.find(p => {
-      let pCpf = p.cpf ? p.cpf.replace(/\D/g, '') : '';
-      let pCel = p.celular ? p.celular.replace(/\D/g, '') : '';
-      
-      return (cpfDigitado && cpfDigitado.length > 8 && pCpf === cpfDigitado) || 
-             (celDigitado && celDigitado.length > 8 && pCel === celDigitado);
-    });
+  // Caçador de dados do formulário (Ignora IDs ou Names errados)
+  const extrair = (palavrasChave) => {
+      for (let k of Object.keys(dadosRaw)) {
+          const kLimpa = k.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+          if (palavrasChave.some(p => kLimpa.includes(p))) return dadosRaw[k];
+      }
+      return "";
+  };
 
-    if (pacienteDuplicado) {
-      mostrarNotificacao(`❌ Erro: O paciente "${pacienteDuplicado.nome}" já está cadastrado com este CPF ou Celular!`, "erro");
-      btn.disabled = false; btn.innerText = "💾 CADASTRAR PACIENTE";
-      return; // Trava o envio aqui!
-    }
-  }
-  // ============================
+  // Monta o pacote EXATO que o backend espera
+  const payloadBackend = {
+      Nome: extrair(["nome"]),
+      CPF: extrair(["cpf"]),
+      RG: extrair(["rg", "identidade"]),
+      Nascimento: extrair(["nascimento", "nasc"]),
+      Celular: extrair(["celular", "whats"]),
+      Telefone: extrair(["telefone", "fixo", "recado"]),
+      Email: extrair(["email", "mail"]),
+      sexo: extrair(["sexo", "genero"]),
+      profissao: extrair(["profissao", "prof"]),
+      convenio: extrair(["convenio", "plano"]),
+      Endereco: extrair(["endereco", "end"]),
+      Responsavel: extrair(["responsavel", "menor", "resp"]),
+      nome_original: nomeOriginal
+  };
+
+  mostrarNotificacao("⏳ Salvando dados...", "info");
 
   google.script.run
     .withSuccessHandler(function(res) {
-      mostrarNotificacao("✅ Paciente salvo com sucesso!", "sucesso");
-      bootstrap.Modal.getInstance(document.getElementById('modalPaciente')).hide();
-      btn.disabled = false; btn.innerText = "💾 CADASTRAR PACIENTE";
+      mostrarNotificacao("✅ " + res, "sucesso");
       
-      // Atualiza a memória local para o paciente já aparecer no autocomplete de Lançamentos
-      google.script.run.withSuccessHandler(r => { basePacientesCRM = r || []; }).getPacientesCRM();
+      // Fecha modal de edição
+      const m = bootstrap.Modal.getInstance(document.getElementById('modalPaciente'));
+      if(m) m.hide();
+
+      // INJEÇÃO INSTANTÂNEA NA MEMÓRIA (Acaba com a necessidade de F5)
+      const pNovo = {
+        nome: payloadBackend.Nome, cpf: payloadBackend.CPF, rg: payloadBackend.RG, 
+        nascimento: payloadBackend.Nascimento, celular: payloadBackend.Celular, 
+        telefone: payloadBackend.Telefone, email: payloadBackend.Email, 
+        sexo: payloadBackend.sexo, profissao: payloadBackend.profissao, 
+        convenio: payloadBackend.convenio, endereco: payloadBackend.Endereco, 
+        responsavel: payloadBackend.Responsavel
+      };
+
+      if (ehEdicao) {
+        const idx = basePacientesCRM.findIndex(p => p.nome.toLowerCase() === nomeOriginal.toLowerCase());
+        if (idx !== -1) basePacientesCRM[idx] = pNovo;
+      } else {
+        basePacientesCRM.push(pNovo);
+      }
+
+      // REPINTA O PRONTUÁRIO NA HORA!
+      abrirProntuario(payloadBackend.Nome);
+      
+      btn.disabled = false; btn.innerText = "💾 SALVAR PACIENTE";
     })
     .withFailureHandler(function(err) {
-      mostrarNotificacao("❌ Erro ao salvar: " + err, "erro");
-      btn.disabled = false; btn.innerText = "💾 CADASTRAR PACIENTE";
+      mostrarNotificacao("❌ Erro: " + err, "erro");
+      btn.disabled = false; btn.innerText = "💾 SALVAR PACIENTE";
     })
-    .cadastrarPacienteNoCRM(dados);
+    .cadastrarPacienteNoCRM(payloadBackend);
 }
+
+
+
 
 function abrirNovoPacienteDoLancamento() {
   // 1. Abre o modal de paciente por cima do lançamento (ele vai limpar o form)
@@ -2011,18 +2172,7 @@ function abrirFinanceiroPeloAgendamento(ag) {
   }, 500);
 }
 
-function autocompletePacienteAgenda(valor) {
-  const listEl = document.getElementById('ag-autocomplete-list');
-  if (!valor || valor.length < 2) { listEl.style.display = 'none'; return; }
-  
-  const sugestoes = basePacientesCRM.filter(p => p.nome.toLowerCase().includes(valor.toLowerCase())).slice(0, 5);
-  listEl.innerHTML = sugestoes.map(s => 
-    `<div class="p-2 border-bottom" style="cursor:pointer;" onclick="document.getElementById('ag_paciente').value='${s.nome}'; document.getElementById('ag-autocomplete-list').style.display='none';">
-      <strong>${s.nome}</strong><br><small>${s.convenio || 'Particular'}</small>
-    </div>`
-  ).join('');
-  listEl.style.display = 'block';
-}
+
 function abrirProntuarioDaAgenda() {
   // Pega o nome que está digitado ou selecionado na caixinha da agenda
   const nomePaciente = document.getElementById('ag_paciente').value;
@@ -2045,111 +2195,210 @@ function abrirProntuarioDaAgenda() {
 var pacienteAtualProntuario = null;
 
 function abrirProntuario(nomePaciente) {
-  // 1. Acha o paciente no CRM
-  const paciente = basePacientesCRM.find(p => p.nome.toLowerCase() === nomePaciente.toLowerCase());
-  if (!paciente) return mostrarNotificacao("Paciente não encontrado no CRM!", "erro");
-  
+  if (!nomePaciente) return;
+  const busca = nomePaciente.toString().trim().toLowerCase();
+  const paciente = basePacientesCRM.find(p => (p && p.nome) ? p.nome.toString().trim().toLowerCase() === busca : false);
+
+  if (!paciente) return mostrarNotificacao("Paciente incompleto ou não localizado.", "erro");
   pacienteAtualProntuario = paciente;
 
-  // 2. Preenche a barra lateral
-  document.getElementById("prontuarioNomeHeader").innerText = paciente.nome;
-  document.getElementById("prontuarioNomeLateral").innerText = paciente.nome;
+  document.getElementById("prontuarioNomeHeader").innerText = paciente.nome || "Sem Nome";
+  document.getElementById("prontuarioNomeLateral").innerText = paciente.nome || "Sem Nome";
   document.getElementById("prontuarioConvenio").innerText = paciente.convenio || "Particular";
-  
-  const iniciais = paciente.nome.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase();
+
+  const iniciais = (paciente.nome || "SN").split(' ').filter(x=>x).map(n=>n[0]).join('').substring(0, 2).toUpperCase();
   document.getElementById("prontuarioIniciais").innerText = iniciais;
 
-  // 3. Preenche a Aba "Ficha Pessoal" COMPLETA
-  document.getElementById("ficha_nome").value = paciente.nome || '';
-  document.getElementById("ficha_cpf").value = paciente.cpf || '';
-  document.getElementById("ficha_rg").value = paciente.rg || '';
-  document.getElementById("ficha_nascimento").value = paciente.nascimento || '';
-  document.getElementById("ficha_celular").value = paciente.celular || '';
-  document.getElementById("ficha_telefone").value = paciente.telefone || '';
-  document.getElementById("ficha_email").value = paciente.email || '';
-  document.getElementById("ficha_convenio").value = paciente.convenio || 'Particular';
-  document.getElementById("ficha_endereco").value = paciente.endereco || '';
-  document.getElementById("ficha_responsavel").value = paciente.responsavel || '';
+  // Preenchedor Múltiplo (Tenta vários IDs possíveis do HTML)
+  const preencherVisor = (ids, valor) => {
+      for(let id of ids) {
+          const el = document.getElementById(id);
+          if (el) { el.value = valor || ""; return; }
+      }
+  };
 
-  // 4. Calcula a Idade automaticamente
-  if (paciente.nascimento && paciente.nascimento.length >= 8) {
-    try {
-      const [dia, mes, ano] = paciente.nascimento.split('/');
-      const dataNasc = new Date(ano, mes - 1, dia);
-      const hoje = new Date();
-      let idade = hoje.getFullYear() - dataNasc.getFullYear();
-      const m = hoje.getMonth() - dataNasc.getMonth();
-      if (m < 0 || (m === 0 && hoje.getDate() < dataNasc.getDate())) { idade--; }
-      document.getElementById("ficha_idade").value = idade + " anos";
-    } catch(e) { document.getElementById("ficha_idade").value = ""; }
-  } else {
-    document.getElementById("ficha_idade").value = "";
+  preencherVisor(["ficha_nome"], paciente.nome);
+  preencherVisor(["ficha_cpf"], paciente.cpf);
+  preencherVisor(["ficha_rg"], paciente.rg);
+  preencherVisor(["ficha_nascimento"], paciente.nascimento);
+  preencherVisor(["ficha_celular"], paciente.celular);
+  preencherVisor(["ficha_telefone", "ficha_telefonefixo", "telefonefixo", "ficha_telefonerecado"], paciente.telefone);
+  preencherVisor(["ficha_email"], paciente.email);
+  preencherVisor(["ficha_convenio", "ficha_plano"], paciente.convenio);
+  preencherVisor(["ficha_endereco"], paciente.endereco);
+  preencherVisor(["ficha_responsavel", "ficha_resp"], paciente.responsavel);
+
+  // Cálculo de Idade Imbatível
+  let dtNasc = null;
+  const nasc = (paciente.nascimento || "").toString();
+  if (nasc.includes('/')) {
+      let p = nasc.split('/'); dtNasc = new Date(p[2], p[1]-1, p[0]);
+  } else if (nasc.includes('-')) {
+      let p = nasc.split('-'); dtNasc = new Date(p[0], p[1]-1, p[2]);
   }
 
-  // 5. Ativa as novas funções
-  if(typeof setupAnamneseToggles === "function") setupAnamneseToggles();
-  if(typeof carregarFiltroDoutores === "function") carregarFiltroDoutores();
-  
-  // 6. Carrega Históricos e Dados
-  carregarHistoricoFinanceiroFicha(paciente.nome); // Nova chamada que arruma os totais!
-  carregarAnamneseCompleta();
+  if (dtNasc && !isNaN(dtNasc)) {
+      let idade = new Date().getFullYear() - dtNasc.getFullYear();
+      const m = new Date().getMonth() - dtNasc.getMonth();
+      if (m < 0 || (m === 0 && new Date().getDate() < dtNasc.getDate())) idade--;
+      preencherVisor(["ficha_idade", "idade"], (idade >= 0 ? idade + " anos" : "--"));
+  } else {
+      preencherVisor(["ficha_idade", "idade"], "--");
+  }
+
+  // Carrega painéis inferiores
+  carregarHistoricoFinanceiroFicha(paciente.nome);
+  carregarAnamneseCompleta(); 
   carregarOdontograma(paciente.nome);
   carregarEvolucao(paciente.nome);
+  carregarHistoricoDocumentos(paciente.nome);
 
-  // 7. Abre o modal e foca na aba Evolução
-  new bootstrap.Modal(document.getElementById('modalProntuario')).show();
-  var triggerEl = document.querySelector('#tabsProntuario button[data-bs-target="#tabEvolucao"]');
-  if(triggerEl) {
-      bootstrap.Tab.getInstance(triggerEl)?.show() || new bootstrap.Tab(triggerEl).show();
-  }
+  const modalElem = document.getElementById('modalProntuario');
+  if (modalElem) bootstrap.Modal.getOrCreateInstance(modalElem).show();
+  
+  setTimeout(() => {
+    const btn = document.querySelector('[data-bs-target="#tabFicha"]');
+    if(btn) bootstrap.Tab.getOrCreateInstance(btn).show();
+  }, 250);
 }
 
-function carregarHistoricoFinanceiroFicha(nome) {
-  const corpo = document.getElementById("ficha_tabela_procedimentos");
-  if (!corpo) return;
+function editarDadosPaciente() {
+  if (!pacienteAtualProntuario) return;
+  const p = pacienteAtualProntuario;
+  bootstrap.Modal.getOrCreateInstance(document.getElementById('modalPaciente')).show();
 
-  // Filtra todos os lançamentos financeiros desse paciente
-  const historico = dadosLocais.filter(r => r.paciente.toLowerCase() === nome.toLowerCase());
+  setTimeout(() => {
+    const form = document.getElementById('formPacienteCompleto');
+    const inputs = form.querySelectorAll('input, select, textarea');
+    
+    // Injetor Inteligente (Ignora names HTML esquisitos)
+    const injetar = (palavras, valor) => {
+        for (let inp of inputs) {
+            if (inp.name && palavras.some(pal => inp.name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().includes(pal))) {
+                inp.value = valor || ""; return;
+            }
+        }
+    };
+
+    injetar(["nome"], p.nome);
+    injetar(["cpf"], p.cpf);
+    injetar(["rg", "identidade"], p.rg);
+    injetar(["celular", "whats"], p.celular);
+    injetar(["telefone", "fixo", "recado"], p.telefone);
+    injetar(["email"], p.email);
+    injetar(["sexo", "genero"], p.sexo);
+    injetar(["profissao", "prof"], p.profissao);
+    injetar(["convenio", "plano"], p.convenio);
+    injetar(["endereco", "end"], p.endereco);
+    injetar(["responsavel", "menor", "resp"], p.responsavel);
+    
+    const inpOriginal = document.getElementById('paciente_original_nome');
+    if(inpOriginal) inpOriginal.value = p.nome;
+
+    // Tratamento exclusivo para Input type="date" ou "text"
+    const inNasc = Array.from(inputs).find(i => i.name && i.name.toLowerCase().includes("nasc"));
+    if (inNasc && p.nascimento) {
+        if (inNasc.type === 'date' && p.nascimento.includes('/')) {
+            const pts = p.nascimento.split('/');
+            inNasc.value = `${pts[2]}-${pts[1]}-${pts[0]}`;
+        } else {
+            inNasc.value = p.nascimento;
+        }
+    }
+
+    document.getElementById('tituloModalPaciente').innerHTML = '<span class="material-icons text-warning">edit</span> Editar Cadastro';
+    document.getElementById('btnSalvarPaciente').innerText = "💾 ATUALIZAR CADASTRO";
+    document.getElementById('btnSalvarPaciente').className = "btn btn-warning fw-bold px-5 rounded-pill shadow-sm";
+  }, 350);
+}
+
+
+function carregarHistoricoDocumentos(nomePaciente) {
+  const tbody = document.getElementById("tabelaDocsProntuario");
+  if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="5" class="text-center py-3">⏳ Sincronizando...</td></tr>';
+
+  google.script.run.withSuccessHandler(function(docs) {
+    if (docs.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5" class="text-center py-3">Sem documentos.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = docs.map(d => {
+      const isAssinado = (d.status || "").includes('ASSINADO');
+      const corStatus = isAssinado ? 'success' : 'warning';
+      
+      // BOTÃO WHATSAPP VIBRANTE (CORRIGE O "APAGADO")
+      let btnWpp = '';
+      if (!isAssinado && d.hash && d.hash.trim() !== "") {
+          btnWpp = `
+            <button class="btn shadow-sm p-0 me-2" 
+              style="background-color: #25D366 !important; color: white !important; width: 32px; height: 32px; border-radius: 50%; border: none; display: inline-flex; align-items: center; justify-content: center;" 
+              onclick="enviarWppDocumento('${d.url}', '${d.tipo}', '${pacienteAtualProntuario.celular}', '${d.hash}')">
+              <span class="material-icons" style="font-size: 16px;">send</span>
+            </button>`;
+      }
+
+      return `
+        <tr class="border-bottom align-middle">
+          <td class="ps-3 fw-bold small">${d.data}</td>
+          <td><span class="badge bg-light text-dark border">${d.tipo}</span></td>
+          <td><span class="badge bg-${corStatus} bg-opacity-10 text-${corStatus} border border-${corStatus}" style="font-size: 10px;">${d.status}</span></td>
+          <td class="text-end pe-3">
+            ${btnWpp}
+            <a href="${d.url}" target="_blank" class="btn btn-sm btn-primary rounded-circle p-2 shadow-sm">
+              <span class="material-icons" style="font-size: 16px;">visibility</span>
+            </a>
+          </td>
+        </tr>`;
+    }).join('');
+  }).apiGetDocumentosPaciente(nomePaciente);
+}
+
+// ==========================================
+// 4. HISTÓRICO FINANCEIRO (SUA FUNÇÃO ORIGINAL)
+// ==========================================
+function carregarHistoricoFinanceiroFicha(nomePaciente) {
+  if (!dadosLocais || dadosLocais.length === 0) {
+    injetarLinhasHistorico('<tr><td colspan="4" class="text-center text-muted py-4">Nenhum dado financeiro carregado.</td></tr>');
+    return;
+  }
+  const busca = nomePaciente.toString().trim().toLowerCase();
+  const historico = dadosLocais.filter(lanc => (lanc && lanc.paciente) ? lanc.paciente.toString().trim().toLowerCase() === busca : false);
 
   if (historico.length === 0) {
-    corpo.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-muted">Nenhum procedimento lançado.</td></tr>';
-    document.getElementById("prontuarioTotalAtendimentos").innerText = "0";
-    document.getElementById("prontuarioTotalGasto").innerText = "R$ 0,00";
-    document.getElementById("prontuarioUltimaConsulta").innerText = "--/--/----";
+    atualizarEstatisticasLateral("--/--/----", 0, 0);
+    injetarLinhasHistorico('<tr><td colspan="4" class="text-center text-muted py-4">Nenhum procedimento registrado.</td></tr>');
     return;
   }
 
-  // 1. Monta a tabela
-  let htmlProcs = '';
+  historico.sort((a, b) => {
+    const [dA, mA, yA] = a.data.split('/');
+    const [dB, mB, yB] = b.data.split('/');
+    return new Date(yB, mB - 1, dB) - new Date(yA, mA - 1, dA);
+  });
+
+  const extrairValor = (str) => {
+    if (!str) return 0;
+    if (typeof str === 'number') return str;
+    let limpo = str.toString().replace(/[^\d,-]/g, '').replace(',', '.');
+    return Number(limpo) || 0;
+  };
+
   let totalGasto = 0;
-  
-  historico.forEach(p => {
-    let valorTotal = (Number(p.particular) || 0) + (Number(p.vplano) || 0);
-    totalGasto += valorTotal;
-    
-    htmlProcs += '<tr>' +
-      '<td class="ps-4 fw-bold">' + p.data + '</td>' +
-      '<td><span class="badge bg-light text-primary border px-2 py-1">' + p.procedimento + '</span></td>' +
-      '<td class="text-muted"><span class="material-icons align-middle text-muted" style="font-size:14px">person</span> ' + p.doutor + '</td>' +
-      '<td class="text-success fw-bold text-end pe-4">R$ ' + valorTotal.toFixed(2).replace('.',',') + '</td>' +
-    '</tr>';
-  });
-  corpo.innerHTML = htmlProcs;
+  const linhasHTML = historico.map(lanc => {
+    const valorRow = extrairValor(lanc.particular) + extrairValor(lanc.vplano);
+    totalGasto += valorRow;
+    return `<tr class="border-bottom">
+        <td class="fw-bold text-dark align-middle ps-2 py-3">${lanc.data || '-'}</td>
+        <td class="align-middle"><span class="badge bg-light text-primary border px-2 py-1">${lanc.procedimento || '-'}</span></td>
+        <td class="text-muted small align-middle">${lanc.doutor || '-'}</td>
+        <td class="fw-bold text-success text-end align-middle pe-2">${valorRow.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}</td>
+      </tr>`;
+  }).join('');
 
-  // 2. Atualiza os Totais da Barra Lateral
-  document.getElementById("prontuarioTotalAtendimentos").innerText = historico.length;
-  document.getElementById("prontuarioTotalGasto").innerText = "R$ " + totalGasto.toLocaleString('pt-BR', {minimumFractionDigits: 2});
-
-  // 3. Descobre a data mais recente
-  const datasOrd = [...historico].filter(r => r.data && r.data.includes('/')).sort((a, b) => {
-      const [dA, mA, aA] = a.data.split('/');
-      const [dB, mB, aB] = b.data.split('/');
-      return new Date(aB, mB-1, dB) - new Date(aA, mA-1, dA);
-  });
-  
-  if (datasOrd.length > 0) {
-      document.getElementById("prontuarioUltimaConsulta").innerText = datasOrd[0].data;
-  }
+  atualizarEstatisticasLateral(historico[0].data, historico.length, totalGasto);
+  injetarLinhasHistorico(linhasHTML);
 }
 
 // --- PREENCHE A AGENDA DA FICHA ---
@@ -2182,13 +2431,52 @@ function carregarProximasConsultas(nome) {
   }).getAgendamentosCalendario('');
 }
 
-// --- FAZ O BOTÃO EDITAR FUNCIONAR ---
 function editarDadosPaciente() {
-  fecharProntuario();
-  // Se você tiver uma função que abre o formulário de pacientes (ex: abrirModalPaciente), chame ela aqui.
-  // Exemplo provisório se você usar o CRM em outra aba:
-  mostrarNotificacao("Para editar, acesse a aba CADASTRO/CRM.", "info");
+  if (!pacienteAtualProntuario) return;
+  const p = pacienteAtualProntuario;
+
+  const modalElem = document.getElementById('modalPaciente');
+  bootstrap.Modal.getOrCreateInstance(modalElem).show();
+
+  setTimeout(() => {
+    const form = document.getElementById('formPacienteCompleto');
+    
+    // Função auxiliar que busca pelo atributo 'name' do input
+    const set = (nameAttr, valor) => {
+      const el = form.querySelector('[name="' + nameAttr + '"]');
+      if (el) el.value = valor || "";
+    };
+
+    // MAPEAMENTO: [Nome no HTML] -> [Propriedade no Objeto do Backend]
+    set('Nome', p.nome);
+    set('CPF', p.cpf);
+    set('RG', p.rg);
+    set('Celular', p.celular);
+    set('Telefone', p.telefone);
+    set('Email', p.email);
+    set('sexo', p.sexo);
+    set('profissao', p.profissao);
+    set('convenio', p.convenio);
+    set('Endereco', p.endereco);
+    set('Responsavel', p.responsavel);
+    
+    // Campo invisível essencial para não duplicar o cadastro
+    const inputOriginal = document.getElementById('paciente_original_nome');
+    if(inputOriginal) inputOriginal.value = p.nome;
+
+    // Tratamento da Data de Nascimento para o input type="date"
+    const inputNasc = form.querySelector('[name="Nascimento"]');
+    if (inputNasc && p.nascimento && p.nascimento.includes('/')) {
+        const pts = p.nascimento.split('/');
+        inputNasc.value = pts[2] + '-' + pts[1] + '-' + pts[0]; // Formato yyyy-mm-dd
+    }
+    
+    document.getElementById('tituloModalPaciente').innerText = "Editar Cadastro";
+    document.getElementById('btnSalvarPaciente').innerText = "💾 ATUALIZAR CADASTRO";
+    document.getElementById('btnSalvarPaciente').className = "btn btn-warning fw-bold px-5 rounded-pill shadow-sm";
+  }, 400);
 }
+
 
 function fecharProntuario() {
   const modal = bootstrap.Modal.getInstance(document.getElementById('modalProntuario'));
@@ -2330,6 +2618,44 @@ function salvarAnamneseCompleta() {
 }
 
 // ==========================================
+// CARREGAR ANAMNESE SALVA
+// ==========================================
+function carregarAnamneseCompleta() {
+  const paciente = pacienteAtualProntuario;
+  if (!paciente) return;
+  
+  // Preencher identificação básica
+  document.getElementById('ana_nome').value = paciente.nome || '';
+  document.getElementById('ana_nascimento').value = paciente.nascimento || '';
+  document.getElementById('ana_sexo').value = paciente.sexo || '';
+  document.getElementById('ana_estado_civil').value = paciente.estado_civil || '';
+  document.getElementById('ana_profissao').value = paciente.profissao || '';
+  
+  // Calcular idade se tiver nascimento
+  if (paciente.nascimento) {
+    let nascParts = [];
+    if (paciente.nascimento.includes('/')) {
+        nascParts = paciente.nascimento.split('/');
+        nascParts = [nascParts[2], nascParts[1], nascParts[0]]; // Converte para YYYY, MM, DD
+    } else if (paciente.nascimento.includes('-')) {
+        nascParts = paciente.nascimento.split('-');
+    }
+    
+    if (nascParts.length === 3) {
+        const nasc = new Date(nascParts[0], nascParts[1] - 1, nascParts[2]);
+        const hoje = new Date();
+        let idade = hoje.getFullYear() - nasc.getFullYear();
+        const m = hoje.getMonth() - nasc.getMonth();
+        if (m < 0 || (m === 0 && hoje.getDate() < nasc.getDate())) idade--;
+        document.getElementById('ana_idade').value = idade;
+    }
+  }
+  
+  // Busca os dados completos no Servidor
+  carregarDadosAnamnese(paciente.nome);
+}
+
+// ==========================================
 // FUNÇÃO PARA CARREGAR ANAMNESE (OTIMIZADA)
 // ==========================================
 function carregarDadosAnamnese(nomePaciente) {
@@ -2459,9 +2785,91 @@ function fecharModalConfig() {
   if (m) m.hide();
 }
 
-// ==========================================
-// MÓDULO RECALL: CARREGAR TABELA PRINCIPAL
-// ==========================================
+
+function abrirModalPaciente() {
+  const form = document.getElementById('formPacienteCompleto');
+  form.reset();
+  
+  // Limpa o nome original (indica que é um novo cadastro)
+  document.getElementById('paciente_original_nome').value = "";
+  
+  // Reseta visual para "Novo"
+  document.getElementById('tituloModalPaciente').innerHTML = '<span class="material-icons">person_add</span> Novo Paciente';
+  document.getElementById('btnSalvarPaciente').innerHTML = '💾 SALVAR PACIENTE';
+  document.getElementById('btnSalvarPaciente').classList.replace('btn-warning', 'btn-primary');
+
+  new bootstrap.Modal(document.getElementById('modalPaciente')).show();
+}
+
+function abrirModalCadastroLab(paciente = "", proc = "") {
+  const inpPac = document.getElementById('lab_paciente_nome');
+  if (inpPac) inpPac.value = paciente;
+  
+  const inpProc = document.getElementById('lab_procedimento');
+  if (inpProc) inpProc.value = proc;
+  
+  const modalEl = document.getElementById('modalCadastroLab');
+  if (modalEl) {
+      new bootstrap.Modal(modalEl).show();
+  } else {
+      mostrarNotificacao("A tela do laboratório ainda não foi injetada no HTML.", "erro");
+  }
+}
+
+
+function invocarTelaLaboratorio(paciente = "", proc = "") {
+  let modalEl = document.getElementById('modalCadastroLab');
+  
+  // Se o HTML não existir, nós injetamos o Design Premium!
+  if (!modalEl) {
+    const modalHTML = `
+    <div class="modal fade" id="modalCadastroLab" tabindex="-1" style="z-index: 1060; background: rgba(0,0,0,0.5);" data-bs-backdrop="static">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 20px;">
+          <div class="modal-header bg-primary text-white border-0" style="border-top-left-radius: 20px; border-top-right-radius: 20px;">
+            <h6 class="modal-title fw-bold"><i class="material-icons align-middle me-2">biotech</i> Novo Pedido de Laboratório</h6>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body p-4">
+            <div class="mb-3">
+              <label class="small text-muted fw-bold">Paciente</label>
+              <input type="text" class="form-control bg-light border-0" id="lab_paciente_nome" readonly>
+            </div>
+            <div class="mb-3">
+              <label class="small text-muted fw-bold">Procedimento</label>
+              <input type="text" class="form-control bg-light border-0" id="lab_procedimento" readonly>
+            </div>
+            <div class="row g-2">
+              <div class="col-8">
+                <label class="small text-muted fw-bold">Nome do Laboratório</label>
+                <input type="text" class="form-control" id="lab_nome_empresa" placeholder="Ex: Protetic Lab">
+              </div>
+              <div class="col-4">
+                <label class="small text-muted fw-bold">Prazo (Dias)</label>
+                <input type="number" class="form-control text-center" id="lab_prazo_dias" value="7">
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer border-0 p-3">
+            <button class="btn btn-light fw-bold" data-bs-dismiss="modal">CANCELAR</button>
+            <button class="btn btn-primary fw-bold px-4" onclick="salvarTrabalhoLab()">CADASTRAR TRABALHO</button>
+          </div>
+        </div>
+      </div>
+    </div>`;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    modalEl = document.getElementById('modalCadastroLab');
+  }
+  
+  // Preenche os dados se foram enviados via código
+  if (paciente) document.getElementById('lab_paciente_nome').value = paciente;
+  if (proc) document.getElementById('lab_procedimento').value = proc;
+  
+  new bootstrap.Modal(modalEl).show();
+}
+
+
 // ==========================================
 // MÓDULO RECALL: CARREGAR TABELA PRINCIPAL
 // ==========================================
@@ -2515,14 +2923,19 @@ function carregarPainelRetornos() {
   }).apiRegrasRecorrencia("LER");
 }
 
-// Ação de confirmar e apagar (A LIXEIRA)
+// ==========================================
+// AÇÃO DA LIXEIRA (REMOVER PACIENTE DO RECALL)
+// ==========================================
 function ocultarPacienteDaLista(paciente, procedimento, data) {
   if(!confirm(`Deseja ignorar o alerta de "${procedimento}" do paciente "${paciente}" referente à data ${data}?`)) return;
   
+  // Mostra que está processando
   document.getElementById("tabelaRetornos").innerHTML = '<tr><td colspan="6" class="text-center py-4 text-danger fw-bold"><div class="spinner-border text-danger spinner-border-sm"></div> Ignorando registro...</td></tr>';
   
+  // Chama o backend para jogar na aba RECALL_OCULTOS
   google.script.run.withSuccessHandler(function() { 
-      carregarPainelRetornos(); // Recarrega a tabela limpa
+      // Ao terminar de apagar no Google Sheets, ele roda a função de montar a tabela de novo!
+      carregarPainelRetornos(); 
   }).apiOcultarRecall(paciente, procedimento, data);
 }
 
@@ -2582,6 +2995,189 @@ function toggleNotificacoes() {
   if (!aberto) carregarNotificacoes();
 }
 
+// ==========================================
+// FUNÇÕES DE AÇÃO DO LABORATÓRIO E NOTIFICAÇÕES
+// ==========================================
+// ==========================================
+// CENTRAL DE GERENCIAMENTO DE LABORATÓRIO
+// ==========================================
+function abrirGerenciamentoLab() {
+  let modalEl = document.getElementById('modalGerenciamentoLab');
+  
+  if (!modalEl) {
+    const html = `
+    <div class="modal fade" id="modalGerenciamentoLab" tabindex="-1" style="z-index: 1050; background: rgba(0,0,0,0.6);" data-bs-backdrop="false">
+      <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 20px;">
+          <div class="modal-header bg-info text-white border-0" style="border-top-left-radius: 20px; border-top-right-radius: 20px; padding: 20px 30px;">
+            <h5 class="fw-bold mb-0 d-flex align-items-center gap-2"><span class="material-icons">biotech</span> Central do Laboratório</h5>
+            <div class="d-flex gap-2 align-items-center">
+               <button class="btn btn-light text-info fw-bold btn-sm shadow-sm px-3 rounded-pill" onclick="invocarTelaLaboratorio()">+ NOVO PEDIDO</button>
+               <button type="button" class="btn-close btn-close-white ms-2" onclick="fecharGerenciamentoLab()"></button>
+            </div>
+          </div>
+          <div class="modal-body p-0 bg-light">
+            <div class="table-responsive" style="max-height: 65vh;">
+              <table class="table table-hover align-middle mb-0 bg-white">
+                <thead class="table-light text-muted small sticky-top" style="z-index: 1;">
+                  <tr>
+                    <th class="ps-4 py-3">PACIENTE</th>
+                    <th>PROCEDIMENTO</th>
+                    <th>LABORATÓRIO</th>
+                    <th>PREVISÃO</th>
+                    <th>STATUS</th>
+                    <th class="text-center pe-4">AÇÕES</th>
+                  </tr>
+                </thead>
+                <tbody id="tabelaGerenciamentoLab">
+                  <tr><td colspan="6" class="text-center py-5 text-muted"><div class="spinner-border spinner-border-sm text-info"></div> Carregando trabalhos...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+    document.body.insertAdjacentHTML('beforeend', html);
+    modalEl = document.getElementById('modalGerenciamentoLab');
+  }
+  
+  const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+  modal.show();
+  carregarTabelaLab();
+}
+
+function fecharGerenciamentoLab() {
+  const m = bootstrap.Modal.getInstance(document.getElementById('modalGerenciamentoLab'));
+  if (m) m.hide();
+}
+
+function carregarTabelaLab() {
+  const tbody = document.getElementById('tabelaGerenciamentoLab');
+  if (!tbody) return;
+  
+  tbody.innerHTML = '<tr><td colspan="6" class="text-center py-5 text-muted"><div class="spinner-border spinner-border-sm text-info"></div> Processando dados do laboratório...</td></tr>';
+  
+  google.script.run.withSuccessHandler(function(lista) {
+    // SALVA-VIDAS CONTRA O ERRO NULL:
+    if (!lista) lista = []; 
+
+    if (lista.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" class="text-center py-5 text-success fw-bold">Nenhum trabalho cadastrado no laboratório!</td></tr>';
+      return;
+    }
+    
+    let htmlLinhas = "";
+    lista.forEach(r => {
+      let badgeStatus = r.status === "FINALIZADO" 
+         ? '<span class="badge bg-success bg-opacity-10 text-success border border-success">Entregue</span>' 
+         : '<span class="badge bg-warning text-dark">Em andamento</span>';
+         
+      // Verifica Atraso se não estiver entregue
+      if (r.status !== "FINALIZADO") {
+          const hoje = new Date(); hoje.setHours(0,0,0,0);
+          const partes = (r.previsao || "").toString().split('/');
+          if (partes.length === 3) {
+              const prev = new Date(partes[2], partes[1]-1, partes[0]);
+              if (prev < hoje) badgeStatus = '<span class="badge bg-danger">Atrasado</span>';
+          }
+      }
+
+      // Os 4 Botões (Concluir, Agendar, Editar, Excluir)
+      let btnConcluir = r.status !== "FINALIZADO" ? `<button class="btn btn-sm btn-success rounded-circle p-2 d-inline-flex shadow-sm ms-1" onclick="finalizarAlertaLab('${r.id}')" title="Marcar como Recebido"><span class="material-icons" style="font-size: 16px;">check</span></button>` : '';
+      let btnAgendar = `<button class="btn btn-sm btn-primary rounded-circle p-2 d-inline-flex shadow-sm ms-1" onclick="abrirAgendamentoComNome('${r.paciente}'); fecharGerenciamentoLab();" title="Agendar Paciente"><span class="material-icons" style="font-size: 16px;">calendar_month</span></button>`;
+      let btnEditar = `<button class="btn btn-sm btn-warning rounded-circle p-2 d-inline-flex shadow-sm ms-1" onclick="editarPedidoLab('${r.id}', '${r.paciente}', '${r.proc}', '${r.lab}', '${r.prazo}')" title="Editar Pedido"><span class="material-icons text-white" style="font-size: 16px;">edit</span></button>`;
+      let btnApagar = `<button class="btn btn-sm btn-outline-danger rounded-circle p-2 d-inline-flex shadow-sm ms-1 border-0" onclick="excluirPedidoLab('${r.id}')" title="Excluir"><span class="material-icons" style="font-size: 16px;">delete_outline</span></button>`;
+
+      htmlLinhas += `<tr>
+        <td class="ps-4 fw-bold text-dark">${r.paciente}</td>
+        <td><span class="text-secondary fw-bold" style="font-size: 13px;">${r.proc}</span></td>
+        <td><span class="badge bg-light text-info border">${r.lab}</span></td>
+        <td class="fw-bold ${badgeStatus.includes('Atrasado') ? 'text-danger' : 'text-dark'}">${r.previsao}</td>
+        <td>${badgeStatus}</td>
+        <td class="text-center pe-4">
+          <div class="d-flex justify-content-center align-items-center">
+             ${btnConcluir}${btnAgendar}${btnEditar}${btnApagar}
+          </div>
+        </td>
+      </tr>`;
+    });
+    tbody.innerHTML = htmlLinhas;
+  }).apiGetTodosLaboratorios();
+}
+
+
+function excluirPedidoLab(id) {
+    if(!confirm("Excluir este pedido do laboratório permanentemente?")) return;
+    document.getElementById('tabelaGerenciamentoLab').innerHTML = '<tr><td colspan="6" class="text-center py-4 text-danger fw-bold"><div class="spinner-border text-danger spinner-border-sm"></div> Excluindo registro...</td></tr>';
+    google.script.run.withSuccessHandler(function(res) {
+        mostrarNotificacao(res, "sucesso");
+        carregarTabelaLab();
+        carregarNotificacoes();
+    }).apiExcluirLaboratorio(id);
+}
+
+function editarPedidoLab(id, paciente, proc, lab, prazo) {
+    invocarTelaLaboratorio(paciente, proc); // Abre a tela de cadastro por cima
+    
+    // Injeta os dados antigos na tela para você alterar
+    setTimeout(() => {
+        document.getElementById('lab_nome_empresa').value = lab;
+        document.getElementById('lab_prazo_dias').value = prazo;
+        
+        // Cria um campo invisível para o sistema saber que é uma edição
+        let hiddenId = document.getElementById('lab_id_edicao');
+        if (!hiddenId) {
+            hiddenId = document.createElement('input');
+            hiddenId.type = 'hidden';
+            hiddenId.id = 'lab_id_edicao';
+            document.getElementById('modalCadastroLab').appendChild(hiddenId);
+        }
+        hiddenId.value = id;
+    }, 300);
+}
+
+function salvarTrabalhoLab() {
+  const btn = event.target;
+  const hiddenIdEl = document.getElementById('lab_id_edicao');
+  
+  const dados = {
+    idEdicao: hiddenIdEl ? hiddenIdEl.value : null,
+    paciente: document.getElementById('lab_paciente_nome').value,
+    proc: document.getElementById('lab_procedimento').value,
+    nomeLab: document.getElementById('lab_nome_empresa').value,
+    prazo: document.getElementById('lab_prazo_dias').value
+  };
+
+  if (!dados.nomeLab || !dados.prazo) return mostrarNotificacao("Preencha o laboratório e prazo!", "erro");
+
+  btn.disabled = true; btn.innerText = "SALVANDO...";
+  google.script.run.withSuccessHandler(function(res) {
+    mostrarNotificacao("✅ " + res.msg, "sucesso");
+    bootstrap.Modal.getInstance(document.getElementById('modalCadastroLab')).hide();
+    btn.disabled = false; btn.innerText = "CADASTRAR TRABALHO";
+    if (hiddenIdEl) hiddenIdEl.value = ""; // Limpa a memória de edição
+    
+    carregarNotificacoes(); // Atualiza Sininho
+    if (document.getElementById('modalGerenciamentoLab')) carregarTabelaLab(); // Atualiza a Tabela Grande se estiver aberta
+    
+  }).withFailureHandler(function(err) {
+    mostrarNotificacao("❌ Erro: " + err, "erro");
+    btn.disabled = false; btn.innerText = "CADASTRAR TRABALHO";
+  }).apiSalvarLaboratorio(dados);
+}
+
+function finalizarAlertaLab(idRef) {
+  if(!confirm("A prótese/trabalho realmente chegou na clínica?\nO alerta será encerrado.")) return;
+
+  mostrarNotificacao("⏳ Baixando alerta...", "info");
+  google.script.run.withSuccessHandler(function() {
+    mostrarNotificacao("✅ Trabalho marcado como recebido!", "sucesso");
+    carregarNotificacoes(); // Recarrega o sininho na mesma hora
+  }).apiFinalizarLaboratorio(idRef);
+}
+
+// Renderiza o Design Premium dos Cards no Sininho
 function carregarNotificacoes() {
   google.script.run.withSuccessHandler(function(lista) {
     const container = document.getElementById('listaNotificacoes');
@@ -2598,10 +3194,13 @@ function carregarNotificacoes() {
               <span><i class="material-icons" style="font-size: 14px; vertical-align: middle;">biotech</i> Lab</span>
               <span class="fw-bold ${n.urgencia === 'alta' ? 'text-danger' : 'text-warning'}">${n.titulo}</span>
             </div>
-            <p class="mb-2 small text-dark fw-bold">${n.mensagem}</p>
-            <div class="d-grid">
-              <button class="btn btn-sm btn-primary fw-bold rounded-pill" onclick="abrirAgendamentoComNome('${n.paciente}')">
+            <p class="mb-3 small text-dark fw-bold" style="line-height: 1.2;">${n.mensagem}</p>
+            <div class="d-flex gap-2">
+              <button class="btn btn-sm btn-primary fw-bold rounded-pill w-100" onclick="abrirAgendamentoComNome('${n.paciente}')">
                 Agendar Paciente
+              </button>
+              <button class="btn btn-sm btn-success border-0 rounded-pill px-3 shadow-sm d-flex align-items-center justify-content-center" onclick="finalizarAlertaLab('${n.idRef}')" title="Marcar como recebido">
+                <span class="material-icons text-white" style="font-size: 18px;">check</span>
               </button>
             </div>
           </div>
@@ -2629,8 +3228,1283 @@ function abrirAgendamentoComNome(nome) {
   }, 500);
 }
 
+// ----------------------------------------------------
+// AÇÕES EXCLUSIVAS DA TABELA DE PREÇOS (ABA CONFIG)
+// ----------------------------------------------------
+function carregarTabelaProcedimentosConfig() {
+   google.script.run.withSuccessHandler(function(procs) {
+      const div = document.getElementById("listaProcedimentosConfig");
+      if (!div) return;
+      if (procs.length === 0) {
+         div.innerHTML = '<div class="text-center p-4 text-muted">Nenhum procedimento cadastrado.</div>';
+         return;
+      }
+      div.innerHTML = procs.map(p => `
+         <div class="list-group-item d-flex justify-content-between align-items-center py-3">
+            <span class="fw-bold text-dark" style="font-size: 15px;">${p.proc}</span>
+            <div class="d-flex align-items-center gap-2">
+               <span class="badge bg-success bg-opacity-10 text-success border border-success px-3 py-2 me-2" style="font-size: 14px;">R$ ${Number(p.preco).toLocaleString('pt-BR', {minimumFractionDigits:2})}</span>
+               
+               <button class="btn btn-sm btn-light text-warning border-0 shadow-sm rounded-circle d-flex align-items-center justify-content-center p-2" onclick="abrirEdicaoProcedimentoPreco('${encodeURIComponent(p.proc)}', '${p.preco}')" title="Editar">
+                   <span class="material-icons" style="font-size: 18px;">edit</span>
+               </button>
+
+               <button class="btn btn-sm btn-light text-danger border-0 shadow-sm rounded-circle d-flex align-items-center justify-content-center p-2" onclick="excluirProcedimentoPreco('${encodeURIComponent(p.proc)}')" title="Excluir">
+                   <span class="material-icons" style="font-size: 18px;">delete_outline</span>
+               </button>
+            </div>
+         </div>
+      `).join('');
+   }).apiGetProcedimentosComPreco();
+}
+
+function cadastrarProcedimentoPreco() {
+   const nome = document.getElementById("novoProcNome").value.trim();
+   const preco = document.getElementById("novoProcPreco").value;
+
+   if (!nome) return mostrarNotificacao("Preencha o nome do procedimento!", "erro");
+
+   mostrarNotificacao("⏳ Salvando...", "info");
+   google.script.run.withSuccessHandler(function(res) {
+       mostrarNotificacao("✅ " + res, "sucesso");
+       document.getElementById("novoProcNome").value = "";
+       document.getElementById("novoProcPreco").value = "";
+       carregarTabelaProcedimentosConfig();
+   }).apiSalvarProcedimentoComPreco(nome, preco || "0");
+}
+
+// NOVA FUNÇÃO: ABRE A TELINHA DE EDIÇÃO
+function abrirEdicaoProcedimentoPreco(nomeCoded, precoAtual) {
+   let nome = decodeURIComponent(nomeCoded);
+   
+   const htmlEdit = `
+     <div class="modal fade" id="modalEditaProc" tabindex="-1" style="z-index: 1060; background: rgba(0,0,0,0.6);" data-bs-backdrop="false">
+       <div class="modal-dialog modal-dialog-centered">
+         <div class="modal-content border-0 shadow-lg" style="border-radius:20px;">
+           <div class="modal-header bg-warning border-0" style="border-top-left-radius: 20px; border-top-right-radius: 20px;">
+             <h6 class="modal-title fw-bold text-dark d-flex align-items-center gap-2"><span class="material-icons">edit</span> Editar Procedimento</h6>
+             <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+           </div>
+           <div class="modal-body p-4 bg-light">
+             <input type="hidden" id="editProcNomeOriginal" value="${nome}">
+             <div class="mb-3">
+               <label class="form-label small fw-bold text-muted">Nome do Procedimento</label>
+               <input type="text" class="form-control fw-bold border-0 shadow-sm" id="editProcNomeNovo" value="${nome}">
+             </div>
+             <div class="mb-4">
+               <label class="form-label small fw-bold text-muted">Preço Base (R$)</label>
+               <input type="number" class="form-control text-success fw-bold border-0 shadow-sm" id="editProcPrecoNovo" value="${precoAtual}" step="0.01">
+             </div>
+             <button class="btn btn-warning w-100 fw-bold shadow-sm text-dark" onclick="salvarEdicaoProcedimentoPreco()">ATUALIZAR DADOS</button>
+           </div>
+         </div>
+       </div>
+     </div>`;
+     
+   $('#modalEditaProc').remove();
+   document.body.insertAdjacentHTML('beforeend', htmlEdit);
+   new bootstrap.Modal(document.getElementById('modalEditaProc')).show();
+}
+
+// NOVA FUNÇÃO: SALVA A EDIÇÃO
+function salvarEdicaoProcedimentoPreco() {
+   const nomeOriginal = document.getElementById("editProcNomeOriginal").value;
+   const nomeNovo = document.getElementById("editProcNomeNovo").value.trim();
+   const precoNovo = document.getElementById("editProcPrecoNovo").value;
+
+   if (!nomeNovo) return mostrarNotificacao("O nome não pode ficar vazio!", "erro");
+
+   mostrarNotificacao("⏳ Atualizando...", "info");
+   google.script.run.withSuccessHandler(function(res) {
+       mostrarNotificacao("✅ " + res, "sucesso");
+       bootstrap.Modal.getInstance(document.getElementById('modalEditaProc')).hide();
+       carregarTabelaProcedimentosConfig();
+   }).withFailureHandler(function(err) {
+       mostrarNotificacao("❌ Erro: " + err, "erro");
+   }).apiEditarProcedimentoComPreco(nomeOriginal, nomeNovo, precoNovo || "0");
+}
+
+function excluirProcedimentoPreco(nomeCoded) {
+   const nome = decodeURIComponent(nomeCoded);
+   if (!confirm("Tem certeza que deseja excluir " + nome + " ?")) return;
+   mostrarNotificacao("⏳ Excluindo...", "info");
+   google.script.run.withSuccessHandler(function(res) {
+       mostrarNotificacao("✅ " + res, "sucesso");
+       carregarTabelaProcedimentosConfig();
+   }).apiExcluirProcedimentoComPreco(nome);
+}
+
 // Inicia o sininho ao carregar o sistema
 setInterval(carregarNotificacoes, 300000); // Atualiza a cada 5 minutos
+
+// ==========================================
+// ASSISTENTE DE AUTO-PREENCHIMENTO DE PREÇOS
+// ==========================================
+
+// 1. Variável global para guardar a tabela de preços na memória
+var tabelaPrecosGlobal = [];
+
+// 2. Carrega a tabela de preços silenciosamente logo que o sistema abre
+$(document).ready(function() {
+    google.script.run.withSuccessHandler(function(precos) {
+        tabelaPrecosGlobal = precos;
+    }).apiGetProcedimentosComPreco();
+    
+    // 3. Conecta os "ouvidos" nos campos de Procedimento e Plano
+    $('#sel_proc, #sel_plano').on('change', sugerirPrecoAutomatico);
+});
+
+// 4. O Cérebro do Assistente
+function sugerirPrecoAutomatico() {
+    const form = document.getElementById("formCadastro");
+    if (!form) return;
+
+    const procSelecionado = form.procedimento.value;
+    const planoSelecionado = form.plano.value;
+
+    // Se o campo procedimento foi limpo, sai de fininho
+    if (!procSelecionado) return;
+
+    // Procura o procedimento na nossa memória global
+    const item = tabelaPrecosGlobal.find(p => p.proc.toUpperCase() === procSelecionado.toUpperCase());
+    
+    // Se não achar o procedimento cadastrado ou se o preço for zero, sai em silêncio (deixa o usuário digitar)
+    if (!item || !item.preco) return; 
+
+    // Formata o número para o padrão do Brasil (Ex: 1200 vira 1.200,00)
+    const precoFormatado = Number(item.preco).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+
+    // A LÓGICA DE DESTINO:
+    // Se o plano não foi preenchido OU se a palavra "Particular" estiver escrita nele
+    if (!planoSelecionado || planoSelecionado.toUpperCase().includes("PARTICULAR")) {
+        form.particular.value = precoFormatado; // Preenche o Verde
+        form.vplano.value = "0,00";             // Zera o Azul
+    } else {
+        // Se escolheu Unimed, Bradesco, etc...
+        form.vplano.value = precoFormatado;     // Preenche o Azul
+        form.particular.value = "0,00";         // Zera o Verde
+    }
+}
+
+// ==========================================
+// MÓDULO: INTERFACE DE IMPRESSÃO / PDF (COM CONTRATOS)
+// ==========================================
+function abrirGeradorDocumentos() {
+  if (!pacienteAtualProntuario) return mostrarNotificacao("Abra a ficha de um paciente primeiro!", "erro");
+
+  const modalAntigo = document.getElementById('modalGeradorDoc');
+  if (modalAntigo) modalAntigo.remove();
+
+  const html = `
+    <div class="modal fade" id="modalGeradorDoc" tabindex="-1" style="z-index: 1060; background: rgba(30, 41, 59, 0.6); backdrop-filter: blur(4px);" data-bs-backdrop="static">
+      <div class="modal-dialog modal-dialog-centered modal-lg"> 
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 28px; overflow: hidden; background: #ffffff;">
+          
+          <div class="modal-body p-4 p-sm-5 position-relative">
+            <button type="button" class="btn-close position-absolute shadow-none" data-bs-dismiss="modal" style="top: 24px; right: 24px; z-index: 10; opacity: 0.5;"></button>
+            
+            <div class="d-flex align-items-center gap-3 mb-4">
+              <div class="text-primary bg-primary bg-opacity-10 rounded-3 d-inline-flex align-items-center justify-content-center shadow-sm" style="width: 48px; height: 48px;">
+                <span class="material-icons" style="font-size: 24px;">print</span>
+              </div>
+              <div class="flex-grow-1">
+                <h5 class="fw-bold mb-0 text-dark">Central de Documentos</h5>
+                <small class="text-muted fw-bold">Paciente: <span class="text-primary">${pacienteAtualProntuario.nome}</span></small>
+              </div>
+              <button type="button" class="btn btn-sm btn-light text-secondary border shadow-sm fw-bold d-flex align-items-center gap-1 me-4" onclick="window.abrirAbaGestor()" title="Configurações">
+                <span class="material-icons text-primary" style="font-size: 18px;">settings</span> Ajustes
+              </button>
+            </div>
+
+            <ul class="nav nav-pills mb-4 d-flex flex-wrap gap-2" id="docsTabs">
+              <li class="nav-item flex-fill text-center"><button class="nav-link active w-100 fw-bold bg-white border shadow-sm text-secondary" data-bs-toggle="pill" data-bs-target="#tabReceita" style="font-size: 13px;">💊 Receita</button></li>
+              <li class="nav-item flex-fill text-center"><button class="nav-link w-100 fw-bold bg-white border shadow-sm text-secondary" data-bs-toggle="pill" data-bs-target="#tabAtestado" style="font-size: 13px;">🏥 Atestado</button></li>
+              <li class="nav-item flex-fill text-center"><button class="nav-link w-100 fw-bold bg-white border shadow-sm text-secondary" data-bs-toggle="pill" data-bs-target="#tabDeclaracao" style="font-size: 13px;">📄 Declaração</button></li>
+              <li class="nav-item flex-fill text-center"><button class="nav-link w-100 fw-bold bg-white border shadow-sm text-secondary" data-bs-toggle="pill" data-bs-target="#tabOrcamento" style="font-size: 13px;">💰 Orçamento</button></li>
+              <li class="nav-item flex-fill text-center"><button class="nav-link w-100 fw-bold bg-white border shadow-sm text-secondary" data-bs-toggle="pill" data-bs-target="#tabContrato" style="font-size: 13px;">📝 Contrato</button></li>
+            </ul>
+
+            <div class="tab-content bg-white p-4 rounded-4 shadow-sm border" style="min-height: 350px;">
+              
+              <div class="tab-pane fade show active" id="tabReceita">
+                <div class="p-3 bg-light rounded shadow-sm mb-3 border">
+                  <label class="form-label small fw-bold text-primary mb-1">Profissional Prescritor</label>
+                  <select id="recDoutorSelecionado" class="form-select border-0 shadow-sm fw-bold text-secondary" onchange="window.atualizarEnderecoDoutor()"></select>
+                  <div id="recEnderecoDoutor" class="text-muted mt-2 small fw-bold"></div>
+                </div>
+                <div id="containerMedicamentosReceita" class="d-flex flex-column gap-3 mb-3"></div>
+                <div class="text-center mb-4">
+                  <button type="button" class="btn btn-outline-primary btn-sm fw-bold rounded-pill px-4 shadow-sm" onclick="window.adicionarLinhaMedicamento()">
+                    <span class="material-icons align-middle" style="font-size: 16px;">add</span> Adicionar Medicamento
+                  </button>
+                </div>
+                <button class="btn btn-primary w-100 fw-bold shadow-sm py-3" style="border-radius: 12px;" onclick="gerarPDFFinal('RECEITA')">GERAR PDF DA RECEITA</button>
+              </div>
+
+              <div class="tab-pane fade" id="tabAtestado">
+                <div class="row g-3">
+                  <div class="col-md-6"><label class="form-label fw-bold small text-muted">Hora Início</label><input type="time" id="docAtIni" class="form-control border-0 bg-light py-2"></div>
+                  <div class="col-md-6"><label class="form-label fw-bold small text-muted">Hora Saída</label><input type="time" id="docAtFim" class="form-control border-0 bg-light py-2"></div>
+                  <div class="col-md-6"><label class="form-label fw-bold small text-muted">Dias de Repouso</label><input type="number" id="docAtDias" class="form-control border-0 bg-light text-center py-2" value="1" min="1"></div>
+                  <div class="col-md-6"><label class="form-label fw-bold small text-muted">CID (Opcional)</label><input type="text" id="docAtCid" class="form-control border-0 bg-light py-2" placeholder="Ex: K04.1"></div>
+                </div>
+                <button class="btn btn-primary w-100 fw-bold mt-4 shadow-sm py-3" style="border-radius: 12px;" onclick="gerarPDFFinal('ATESTADO')">GERAR PDF DO ATESTADO</button>
+              </div>
+
+              <div class="tab-pane fade" id="tabDeclaracao">
+                <div class="alert alert-info border-0 shadow-sm mb-3 small"><span class="material-icons align-middle" style="font-size:16px;">info</span> A declaração não indica repouso, apenas justifica horas.</div>
+                <div class="row g-3">
+                  <div class="col-md-6"><label class="form-label fw-bold small text-muted">Hora Início</label><input type="time" id="docDecIni" class="form-control border-0 bg-light py-2"></div>
+                  <div class="col-md-6"><label class="form-label fw-bold small text-muted">Hora Saída</label><input type="time" id="docDecFim" class="form-control border-0 bg-light py-2"></div>
+                </div>
+                <button class="btn btn-primary w-100 fw-bold mt-4 shadow-sm py-3" style="border-radius: 12px;" onclick="document.getElementById('docAtIni').value = document.getElementById('docDecIni').value; document.getElementById('docAtFim').value = document.getElementById('docDecFim').value; gerarPDFFinal('DECLARACAO')">GERAR DECLARAÇÃO</button>
+              </div>
+
+              <div class="tab-pane fade" id="tabOrcamento">
+                <div class="row g-2 mb-2">
+                   <div class="col-8"><input type="text" id="docOrcProc" class="form-control border-0 bg-light fw-bold py-2" placeholder="Procedimento..." list="listaProcOrcamento" onchange="puxarPrecoOrcamento(this.value)"></div>
+                   <div class="col-3"><input type="text" id="docOrcValor" class="form-control border-0 bg-light text-success fw-bold py-2" placeholder="0,00"></div>
+                   <div class="col-1"><button class="btn btn-success w-100 fw-bold shadow-sm h-100" onclick="addLinhaOrcamento()">+</button></div>
+                </div>
+                <table class="table table-sm mt-3 align-middle">
+                   <thead class="table-light small text-muted"><tr><th>PROCEDIMENTO</th><th class="text-end">VALOR (R$)</th><th width="40"></th></tr></thead>
+                   <tbody id="tabelaItensOrcamento"></tbody>
+                   <tfoot><tr><td class="fw-bold text-end">TOTAL:</td><td class="fw-bold text-primary text-end" id="docOrcTotal">R$ 0,00</td><td></td></tr></tfoot>
+                </table>
+                <button class="btn btn-primary w-100 fw-bold mt-2 shadow-sm py-3" style="border-radius: 12px;" onclick="gerarPDFFinal('ORCAMENTO')">GERAR PDF DO ORÇAMENTO</button>
+              </div>
+
+              <div class="tab-pane fade" id="tabContrato">
+                <div class="row g-2">
+                  <div class="col-md-6">
+                    <label class="form-label small fw-bold text-primary">Modelo de Documento</label>
+                    <select id="tipoContratoSel" class="form-select border-0 bg-light py-2 fw-bold" onchange="window.carregarModeloContrato()">
+                      <option value="">Selecione o modelo...</option>
+                      <optgroup label="Contratos & Interrupções">
+                        <option value="CONTRATO_GERAL">Contrato Geral de Prestação de Serviços</option>
+                        <option value="CONTRATO_ORTODONTIA">Contrato - Ortodontia (+ Manual)</option>
+                        <option value="TERMO_INTERRUPCAO">Declaração de Interrupção de Tratamento</option>
+                        <option value="TERMO_RETIRADA_DOCS">Termo de Retirada de Documentos</option>
+                      </optgroup>
+                      <optgroup label="Termos de Consentimento (TCLE)">
+                        <option value="TCLE_GERAL">TCLE Geral - Tratamento Clínico</option>
+                        <option value="TCLE_ALINHADORES">TCLE - Alinhadores Transparentes</option>
+                        <option value="TCLE_PROTESE">TCLE - Prótese e Lentes</option>
+                        <option value="TCLE_CLAREAMENTO">TCLE - Clareamento Dental</option>
+                        <option value="TCLE_IMPLANTE">TCLE - Implantes</option>
+                        <option value="TCLE_ENXERTO">TCLE - Cirurgia de Enxerto</option>
+                        <option value="TCLE_ENDO">TCLE - Endodontia (Canal)</option>
+                        <option value="TCLE_CIRURGIA">TCLE - Cirurgia Odontológica</option>
+                      </optgroup>
+                      <optgroup label="Harmonização Orofacial (HOF)">
+                        <option value="TCLE_BOTOX">TCLE - Toxina Botulínica (Botox)</option>
+                        <option value="TCLE_PREENCHIMENTO">TCLE - Preenchimento Orofacial</option>
+                        <option value="TCLE_BICHECTOMIA">TCLE - Bichectomia</option>
+                        <option value="TCLE_PAPADA">TCLE - Lipo de Papada (Ác. Deoxicólico)</option>
+                      </optgroup>
+                      <optgroup label="Termos de Entrega">
+                        <option value="TERMO_ENTREGA">Termo de Entrega de Prótese</option>
+                      </optgroup>
+                    </select>
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label small fw-bold text-success">Valor Total (R$)</label>
+                    <input type="text" id="valorContratoInp" class="form-control border-0 bg-light py-2 text-success fw-bold" placeholder="0,00" onkeyup="window.carregarModeloContrato()">
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label small fw-bold text-muted">Dente/Área</label>
+                    <input type="text" id="parcelasContratoInp" class="form-control border-0 bg-light py-2 fw-bold text-center" placeholder="Ex: 11, 12, 21" onkeyup="window.carregarModeloContrato()">
+                  </div>
+                  <div class="col-12 mt-3">
+                    <label class="form-label small fw-bold text-muted d-flex justify-content-between">
+                       <span>TEXTO DO DOCUMENTO (Pode editar livremente antes de gerar)</span>
+                       <span class="text-primary material-icons" style="font-size: 14px;">edit</span>
+                    </label>
+                    <textarea id="textoContratoInp" class="form-control border-0 bg-light p-3 text-dark" style="resize: vertical; min-height: 400px; font-size: 13px; line-height: 1.6; border-radius: 12px;" placeholder="Selecione um modelo acima para carregar o texto base..."></textarea>
+                  </div>
+                </div>
+                <button class="btn btn-dark w-100 fw-bold mt-3 shadow-sm py-3" style="border-radius: 12px; background: #1e293b;" onclick="gerarPDFFinal('CONTRATO')">GERAR DOCUMENTO EM PDF (COM ASSINATURA)</button>
+              </div>
+
+              <div class="tab-pane fade" id="tabGestor">
+                <div class="alert alert-secondary border-0 shadow-sm mb-3 small fw-bold"><span class="material-icons align-middle" style="font-size:16px;">settings</span> Configurações de Prescrições</div>
+                <div class="accordion" id="accordionGestor">
+                  <div class="accordion-item border-0 mb-3 shadow-sm">
+                    <h2 class="accordion-header"><button class="accordion-button collapsed fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#colProf">👨‍⚕️ Gerenciar Doutores</button></h2>
+                    <div id="colProf" class="accordion-collapse collapse p-3">
+                      <div class="d-flex flex-wrap gap-2 mb-3"><input type="text" id="gestorProfNome" class="form-control form-control-sm flex-grow-1" placeholder="Nome"><input type="text" id="gestorProfCro" class="form-control form-control-sm" style="width: 120px;" placeholder="CRO"><input type="text" id="gestorProfEnd" class="form-control form-control-sm flex-grow-1" placeholder="Endereço"><button class="btn btn-primary btn-sm fw-bold px-3" onclick="window.acaoGestor('PROFISSIONAIS', 'salvar')">Salvar</button></div>
+                      <div id="listaGestorProf"></div>
+                    </div>
+                  </div>
+                  <div class="accordion-item border-0 shadow-sm">
+                    <h2 class="accordion-header"><button class="accordion-button collapsed fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#colProt">💊 Gerenciar Protocolos</button></h2>
+                    <div id="colProt" class="accordion-collapse collapse p-3">
+                      <div class="row g-2 mb-3"><div class="col-md-6"><input type="text" id="gestorProtFin" class="form-control form-control-sm" placeholder="Finalidade"></div><div class="col-md-6"><input type="text" id="gestorProtMed" class="form-control form-control-sm" placeholder="Medicamento"></div><div class="col-md-3"><input type="text" id="gestorProtQtd" class="form-control form-control-sm" placeholder="Qtd"></div><div class="col-md-3"><input type="text" id="gestorProtUso" class="form-control form-control-sm" placeholder="Uso"></div><div class="col-md-6"><input type="text" id="gestorProtPos" class="form-control form-control-sm" placeholder="Posologia"></div><div class="col-12"><button class="btn btn-primary btn-sm w-100 fw-bold" onclick="window.acaoGestor('PROTOCOLOS', 'salvar')">Salvar Protocolo</button></div></div>
+                      <div id="listaGestorProt"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+            </div> 
+          </div>
+        </div>
+      </div>
+    </div>
+    <datalist id="listaProcOrcamento"></datalist>
+  `;
+  
+  document.body.insertAdjacentHTML('beforeend', html);
+  new bootstrap.Modal(document.getElementById('modalGeradorDoc')).show();
+  
+  if (typeof window.carregarConfiguracoesReceita === 'function') window.carregarConfiguracoesReceita();
+  
+  // Limpador do Gestor ao clicar em abas comuns
+  const abasComuns = document.querySelectorAll('#docsTabs .nav-link');
+  abasComuns.forEach(aba => {
+      aba.addEventListener('click', function() {
+          const telaGestor = document.getElementById('tabGestor');
+          if(telaGestor) telaGestor.classList.remove('show', 'active');
+      });
+  });
+}
+// ==========================================
+// FUNÇÃO PARA ABRIR O GESTOR (ANTI-BUG BOOTSTRAP)
+// ==========================================
+window.abrirAbaGestor = function() {
+    // 1. Remove o 'active' de todos os botões das abas principais
+    document.querySelectorAll('#docsTabs .nav-link').forEach(btn => {
+        btn.classList.remove('active', 'bg-primary', 'text-white');
+        btn.classList.add('bg-white', 'text-secondary');
+    });
+
+    // 2. Esconde todas as telas (panes) do tab-content
+    document.querySelectorAll('#modalGeradorDoc .tab-pane').forEach(tela => {
+        tela.classList.remove('show', 'active');
+    });
+
+    // 3. Mostra apenas a tela do Gestor
+    const telaGestor = document.getElementById('tabGestor');
+    if (telaGestor) {
+        telaGestor.classList.add('show', 'active');
+    }
+
+    // 4. Dá destaque visual ao botão de Ajustes (opcional)
+    const btnAjustes = event.target.closest('button');
+    if (btnAjustes) btnAjustes.classList.add('bg-primary', 'text-white');
+
+    if (typeof window.renderizarGestor === 'function') {
+        window.renderizarGestor();
+    }
+};
+
+// Efeito visual das abas
+function mudarCorAbaDoc(abaClicada) {
+    document.querySelectorAll('#docsTabs .nav-link').forEach(el => { el.classList.remove('bg-primary', 'text-white'); el.classList.add('bg-white', 'text-secondary'); });
+    abaClicada.classList.remove('bg-white', 'text-secondary'); abaClicada.classList.add('bg-primary', 'text-white');
+}
+
+// -----------------------------------------
+// LÓGICA DO ORÇAMENTO INTELIGENTE
+// -----------------------------------------
+let itensOrcamentoAtuais = [];
+
+function puxarPrecoOrcamento(procDigitado) {
+    if (!tabelaPrecosGlobal) return;
+    const item = tabelaPrecosGlobal.find(p => p.proc.toUpperCase() === procDigitado.toUpperCase());
+    if (item && item.preco) {
+        document.getElementById('docOrcValor').value = Number(item.preco).toLocaleString('pt-BR', {minimumFractionDigits: 2});
+    }
+}
+
+function addLinhaOrcamento() {
+    const proc = document.getElementById('docOrcProc').value;
+    const valor = document.getElementById('docOrcValor').value;
+    if (!proc || !valor) return;
+    
+    itensOrcamentoAtuais.push({ proc: proc, valor: valor });
+    document.getElementById('docOrcProc').value = ''; document.getElementById('docOrcValor').value = '';
+    renderizarTabelaOrcamento();
+}
+
+function removerLinhaOrcamento(index) {
+    itensOrcamentoAtuais.splice(index, 1);
+    renderizarTabelaOrcamento();
+}
+
+function renderizarTabelaOrcamento() {
+    const tbody = document.getElementById('tabelaItensOrcamento');
+    let total = 0;
+    tbody.innerHTML = itensOrcamentoAtuais.map((item, index) => {
+        total += parseFloat(item.valor.replace(/\./g, '').replace(',', '.'));
+        return `<tr><td class="fw-bold">${item.proc}</td><td class="text-end text-success">R$ ${item.valor}</td><td class="text-center"><span class="material-icons text-danger" style="font-size:16px; cursor:pointer;" onclick="removerLinhaOrcamento(${index})">delete</span></td></tr>`;
+    }).join('');
+    document.getElementById('docOrcTotal').innerText = `R$ ${total.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
+}
+
+// ==========================================
+// MÁQUINA DE TEXTOS DE CONTRATO E TERMOS
+// ==========================================
+window.carregarModeloContrato = function() {
+    const tipo = document.getElementById('tipoContratoSel').value;
+    const editor = document.getElementById('textoContratoInp');
+    const valor = document.getElementById('valorContratoInp').value || "0,00";
+    const infoExtra = document.getElementById('parcelasContratoInp').value || "_____"; 
+    
+    if(!tipo || !pacienteAtualProntuario) { 
+        editor.value = ""; 
+        return; 
+    }
+
+    const p = pacienteAtualProntuario;
+    const docPaciente = p.cpf ? p.cpf : (p.rg ? p.rg : "[DOCUMENTO NÃO INFORMADO]");
+    const rgPaciente = p.rg ? p.rg : "[NÃO INFORMADO]";
+    const endereco = p.endereco ? p.endereco : "[ENDEREÇO NÃO INFORMADO]";
+    const profissao = p.profissao ? p.profissao : "[NÃO INFORMADA]";
+
+    // Dados da Clínica
+    const nomeDoutora = "Giovanna Ramos";
+    const croDoutora = "CRO 19773";
+    const docDoutora = "CPF/CNPJ 477.521.538-85";
+    const endClinica = "Rua Caetano Silveira de Matos, 2668, Palhoça";
+
+    let textoBase = "";
+
+    // ----------------------------------------------------
+    // GRUPO: CONTRATOS E INTERRUPÇÕES
+    // ----------------------------------------------------
+    if (tipo === 'CONTRATO_GERAL') {
+        textoBase += `CONTRATO DE PRESTAÇÃO DE SERVIÇOS ODONTOLÓGICOS\n\n`;
+        textoBase += `Pelo presente instrumento particular de contrato de prestação de serviços odontológicos, os contratantes, de um lado:\n`;
+        textoBase += `${nomeDoutora}, ${croDoutora}, ${docDoutora} com consultório situado na ${endClinica}, doravante denominado simplesmente cirurgiã(o)-dentista.\n\n`;
+        textoBase += `E, do outro lado:\n${p.nome.toUpperCase()}, CPF/RG: ${docPaciente}, doravante denominado simplesmente de paciente.\nTêm entre si justo e contratado, na melhor forma do direito as seguintes condições:\n\n`;
+        textoBase += `Cláusula Primeira – Do Objetivo\nO objetivo do presente contrato constitui-se na prestação de serviços odontológicos, pelo cirurgião-dentista ao paciente, de acordo com o plano de tratamento aprovado e constante do prontuário odontológico do paciente.\n\n`;
+        textoBase += `Cláusula Segunda – Do Valor e Do Pagamento dos Honorários\nO valor total dos honorários profissionais é de R$ ${valor} e seu pagamento deverá ser realizado nas datas indicadas no orçamento aprovado.\n`;
+        textoBase += `1° – O valor dos honorários poderá sofrer alteração caso seja necessário modificar o plano de tratamento inicialmente aprovado.\n`;
+        textoBase += `2° – Os pagamentos vencidos estarão sujeitos a atualização monetária e a multa de mora de 2% e juros de 1% ao mês.\n\n`;
+        textoBase += `Cláusula Terceira – Das Garantias\nO paciente foi devidamente informado sobre propósitos, riscos e alternativas de tratamento, bem como que a Odontologia não é uma ciência exata e que os resultados esperados poderão não se concretizar em face da resposta biológica do paciente.\n\n`;
+        textoBase += `Cláusula Quarta – Das Obrigações do Cirurgião-Dentista\nO cirurgião-dentista se compromete a utilizar as técnicas e os materiais adequados à execução do plano de tratamento aprovado, assumir a responsabilidade pelos serviços prestados, resguardar a privacidade do paciente e o necessário sigilo.\n\n`;
+        textoBase += `Cláusula Quinta – Das Obrigações do Paciente\nO paciente se compromete a seguir rigorosamente as orientações do cirurgião-dentista, comparecer pontualmente as consultas marcadas, justificando as faltas com antecedência mínima de 24 horas. As faltas não justificadas serão cobradas no valor correspondente a uma consulta.\n\n`;
+        textoBase += `Cláusula Sexta – Da Duração do Contrato\nO presente contrato tem duração pelo período necessário para realização do tratamento.\n\n`;
+        textoBase += `Cláusula Sétima – Da Rescisão\nEste contrato poderá ser rescindido a qualquer tempo, por qualquer das partes, sendo cobrados os valores relativos aos trabalhos efetivamente realizados. Será caracterizado abandono do tratamento a ausência sem justificativa por mais de 45 dias ou três faltas consecutivas.\n\n`;
+        textoBase += `Cláusula Oitava\nPara dirimir quaisquer dúvidas fica eleito o foro da Cidade de Palhoça/SC. E por estarem de acordo, assinam o presente contrato.`;
+    } 
+    else if (tipo === 'CONTRATO_ORTODONTIA') {
+        textoBase += `CONTRATO DE PRESTAÇÃO DE SERVIÇOS ORTODÔNTICOS\n\n`;
+        textoBase += `PACIENTE: ${p.nome.toUpperCase()}, Endereço: ${endereco}, CPF: ${docPaciente}, RG: ${rgPaciente}, Profissão: ${profissao}\n`;
+        textoBase += `CONTRATADO: ${nomeDoutora}, ${docDoutora}, cirurgiã(o)-dentista inscrito no ${croDoutora}, com consultório situado à ${endClinica}.\n\n`;
+        textoBase += `CLÁUSULA PRIMEIRA: Tem por objetivo a prestação de serviços profissionais ortodônticos ao paciente ${p.nome.toUpperCase()}, na instalação de aparatologia para correção de desvios da oclusão normal.\n\n`;
+        textoBase += `CLÁUSULA SEGUNDA: Fica estabelecido que o contratado responsável não estabelece prazo para finalização do tratamento.\n\n`;
+        textoBase += `CLÁUSULA TERCEIRA A OITAVA: O paciente será atendido dentro dos horários disponíveis, obriga-se a seguir as recomendações do MANUAL DE INSTRUÇÃO DO TRATAMENTO ORTODÔNTICO (Anexo 01), providenciar documentações solicitadas e manter higiene bucal. Faltas, quebras e inadimplência podem gerar interrupção do tratamento.\n\n`;
+        textoBase += `CLÁUSULA NONA E DÉCIMA: Tratamentos complementares correrão às expensas do contratante. Ao final do tratamento fixo será necessário o uso de contensor(es), cobrados à parte, com retornos periódicos por até 5 anos.\n\n`;
+        textoBase += `CLÁUSULA DÉCIMA PRIMEIRA: O orçamento é composto da taxa de manutenção: R$ ${valor} mensais, que será atualizada caso haja alterações econômicas.\n\n`;
+        textoBase += `CLÁUSULA DÉCIMA SEGUNDA A OITAVA: O acúmulo de 3 parcelas em atraso suspende o tratamento. A taxa não cobre reposição de peças quebradas/perdidas. As partes elegem o foro de Palhoça/SC.\n\n`;
+        textoBase += `-----------------------------------------------------------\n\n`;
+        textoBase += `ANEXO 01 - MANUAL DE INSTRUÇÃO DO TRATAMENTO ORTODÔNTICO\n\n`;
+        textoBase += `ITENS NECESSÁRIOS: Fio dental, Passa fio, Creme Dental, Cera Ortodôntica (Obrigatórios). Escova Interdental e Ortodôntica (Opcionais).\n`;
+        textoBase += `ALIMENTAÇÃO: Evite alimentos duros (chocolate gelado, nozes, pipoca), alimentos grudentos e refrigerantes.\n`;
+        textoBase += `HIGIENE: Utilize fio dental com o passa fio. Dê preferência para escovas ortodônticas.\n`;
+        textoBase += `INCONVENIENTES E LIMITAÇÕES: Nas primeiras 48h é normal dificuldade na fala e mastigação. O tempo de tratamento depende da resposta biológica do organismo. O uso do contensor pós-aparelho é OBRIGATÓRIO.`;
+    }
+    else if (tipo === 'TERMO_INTERRUPCAO') {
+        textoBase += `DECLARAÇÃO DE INTERRUPÇÃO DO TRATAMENTO\n\n`;
+        textoBase += `Eu, ${p.nome.toUpperCase()}, doravante denominado simplesmente de paciente, declaro para os devidos fins que estou ciente do término da fase do tratamento ortodôntico realizado, com o uso da aparatologia fixa.\n\n`;
+        textoBase += `Declaro ainda que estou ciente da necessidade de continuidade do tratamento com o uso dos aparelhos de contenção, de acordo com o prazo e instruções prestadas pelo(a) ${nomeDoutora}.\n\n`;
+        textoBase += `Por fim, declaro estar ciente de que os resultados propostos com o tratamento ortodôntico somente serão alcançados se seguidas todas as recomendações dadas.\n\n`;
+        textoBase += `-----------------------------------------------------------\n\n`;
+        textoBase += `CONTENÇÃO (INFORMATIVO)\n`;
+        textoBase += `A odontologia não é uma ciência exata. As arcadas dentárias estão em constantes alterações por fatores fisiológicos (crescimento, envelhecimento) e não fisiológicos (hábitos, tratamentos), os quais podem modificar o equilíbrio conseguido pelo tratamento.\n\n`;
+        textoBase += `Os aparelhos de contenção são parte do tratamento para manter as novas posições dentárias até haver neoformação óssea. Para tanto, são indispensáveis o uso pelo período recomendado, evitar quebras, manter higienização e não faltar às consultas de controle.\n\n`;
+        textoBase += `A retirada da aparatologia fixa ocorreu após o cumprimento das etapas propostas. Nesta data, estou ciente e esclarecido sobre os procedimentos e em plena concordância com esse informativo.\n\n`;
+        textoBase += `-----------------------------------------------------------\n\n`;
+        textoBase += `DECLARAÇÃO DE DESISTÊNCIA / ABANDONO A PEDIDO\n`;
+        textoBase += `Eu, ${p.nome.toUpperCase()}, nesta data, estou interrompendo o tratamento ortodôntico iniciado nesta clínica, a pedido próprio, por motivos particulares.\n`;
+        textoBase += `Declaro estar ciente das consequências que poderão advir desta interrupção, bem como eximo o(a) ${nomeDoutora} (${croDoutora}) de qualquer responsabilidade sobre este ato. Deste modo, encerra-se, nesta data, a responsabilidade do profissional supracitado pelo meu tratamento.`;
+    }
+    else if (tipo === 'TERMO_RETIRADA_DOCS') {
+        textoBase += `TERMO DE RETIRADA DE DOCUMENTOS\n\n\n`;
+        textoBase += `Eu, ${p.nome.toUpperCase()}, doravante denominado simplesmente de paciente, declaro ter retirado nesta data os seguintes documentos abaixo relacionados:\n\n`;
+        textoBase += `- ${infoExtra}\n\n\n`; 
+        textoBase += `Palhoça/SC, ${new Date().toLocaleDateString('pt-BR')}`;
+    }
+
+    // ----------------------------------------------------
+    // GRUPO: TERMOS DE CONSENTIMENTO (TCLE)
+    // ----------------------------------------------------
+    else if (tipo === 'TCLE_GERAL') {
+        textoBase += `TERMO DE CONSENTIMENTO LIVRE E ESCLARECIDO\n\n`;
+        textoBase += `Pelo presente termo eu, ${p.nome.toUpperCase()}, doravante denominado de paciente, declaro que o (a) cirurgião(ã)-dentista ${nomeDoutora} (${croDoutora}) com consultório à ${endClinica}, me esclareceu o planejamento de tratamento constante em meu prontuário:\n\n`;
+        textoBase += `- A ficha de anamnese foi preenchida com a verdade, não tendo omitido dados sobre saúde ou medicamentos, ciente de que omissões podem ocasionar danos irreversíveis e até risco de morte.\n`;
+        textoBase += `- Fui esclarecido sobre o diagnóstico, alternativas e riscos do planejamento terapêutico.\n`;
+        textoBase += `- O tratamento será realizado aproximadamente em ${infoExtra}, podendo sofrer prorrogação pela complexidade ou resposta biológica.\n`;
+        textoBase += `- A Odontologia não é uma ciência exata e os resultados poderão não se concretizar devido à limitação da ciência e resposta do organismo.\n`;
+        textoBase += `- Estou ciente do dever de comparecer pontualmente, manter higiene e seguir as prescrições, sob pena de interrupção do tratamento.\n`;
+        textoBase += `- Concordo com a possibilidade, se necessária, da realização de extrações parciais ou totais de dentes, após meu consentimento expresso.\n`;
+        textoBase += `- Ao término, deverei retornar para consultas de acompanhamento, visando manter o tratamento, pois não é possível garantir tempo de durabilidade sem manutenção.\n`;
+        textoBase += `- Concordo e autorizo expressamente a utilização do meu prontuário para fins de publicações científicas ou acadêmicas (Código de Ética Odontológica).`;
+    }
+    else if (tipo === 'TCLE_ALINHADORES') {
+        textoBase += `CONSENTIMENTO E CONCORDÂNCIA DO PACIENTE AO TRATAMENTO COM ALINHADORES\n\n`;
+        textoBase += `Eu, ${p.nome.toUpperCase()}, compreendo que, apesar do tratamento com alinhadores ser mais confortável, qualquer tratamento ortodôntico possui limitações e riscos.\n\n`;
+        textoBase += `PROCESSO: O planejamento virtual (3D) é feito baseado em escaneamento e radiografias. Os alinhadores devem ser usados de 20 a 22 horas por dia, removidos apenas para alimentação e higiene. Poderá ser necessária a colagem de attachments (botões de resina) e elásticos, bem como alinhadores de refinamento.\n\n`;
+        textoBase += `BENEFÍCIOS: São praticamente imperceptíveis, menos invasivos, permitem melhor higienização, maior conforto e não possuem fios metálicos.\n\n`;
+        textoBase += `RISCOS E INCONVENIÊNCIAS:\n`;
+        textoBase += `I) A falta de uso prolonga o tratamento e afeta o resultado;\n`;
+        textoBase += `II) O planejamento 3D é uma simulação e não garantia de resultado exato;\n`;
+        textoBase += `III) Sensibilidade após troca, irritação na bochecha/gengiva e leve alteração temporária na fala (ceceio);\n`;
+        textoBase += `IV) Risco de cáries ou descalcificação se não houver higiene adequada;\n`;
+        textoBase += `V) Attachments podem cair e precisarão ser refeitos;\n`;
+        textoBase += `VI) Pode ser necessário desgaste interproximal (stripping) para criar espaço;\n`;
+        textoBase += `VII) A mordida pode sofrer alteração temporária;\n`;
+        textoBase += `VIII) Pode ocorrer o aparecimento de 'triângulos negros' (falta de gengiva entre dentes desapinhados);\n`;
+        textoBase += `IX) Tratamentos complexos podem exigir aparelhos auxiliares, elásticos ou restaurações;\n`;
+        textoBase += `X) Condições gerais de saúde, medicamentos e ossos podem afetar a movimentação e, raramente, reduzir o comprimento das raízes ou a vida útil do dente;\n`;
+        textoBase += `XI) Alinhadores podem quebrar em apinhamentos severos ou ser engolidos acidentalmente;\n`;
+        textoBase += `XII) Raro risco de problemas na ATM (dores articulares).\n\n`;
+        textoBase += `INFORMATIVO E CONSENTIMENTO: Li as informações que descrevem o tratamento com alinhadores. Compreendo que a ortodontia não é ciência exata e não há garantias de resultados específicos. Autorizo o uso de minha documentação médica (scans, fotos) para fins de investigação pelo laboratório, pesquisa e fins educacionais sem ônus.\n\n`;
+        textoBase += `Palhoça/SC, ${new Date().toLocaleDateString('pt-BR')}`;
+    }
+    else if (tipo === 'TCLE_ENXERTO') {
+        textoBase += `TERMO DE CONSENTIMENTO PARA CIRURGIA DE ENXERTO\n\n`;
+        textoBase += `Eu, ${p.nome.toUpperCase()}, doravante denominado simplesmente de paciente, recebi todas as informações a respeito dessa modalidade de cirurgia, que visa recuperar uma parte do osso que suporta os dentes e adjacente a eles, que foi perdida previamente à minha consulta atual.\n\n`;
+        textoBase += `Entendi que uma boa parte desses procedimentos dão bons resultados, no entanto pode ocorrer em alguns casos complicações, inclusive com a perda do enxerto; sendo assim podem ser necessárias cirurgias complementares que prolongarão o tratamento.\n\n`;
+        textoBase += `Estou de acordo com as particularidades que envolvem esse tipo de tratamento e deixo a escolha da técnica a critério do cirurgião, com a minha anuência.\n\n`;
+        textoBase += `Reconheço também que a não observância dos cuidados recomendados pode implicar em risco para o meu tratamento. Fui esclarecido de que o tabagismo (fumo) e o briquismo (hábito de ranger os dentes) podem piorar o prognóstico.\n\n`;
+        textoBase += `O(A) ${nomeDoutora}, inscrito(a) no ${croDoutora}, com consultório à ${endClinica}, profissional da minha escolha me esclareceu todas as dúvidas, inclusive me expôs outras modalidades de tratamento para o meu caso, e eu optei pelo enxerto.\n\n`;
+        textoBase += `Ciente e de acordo.`;
+    }
+    else if (tipo === 'TCLE_PROTESE') {
+        textoBase += `TERMO DE CONSENTIMENTO LIVRE E ESCLARECIDO - PRÓTESE E LENTES\n\n`;
+        textoBase += `Pelo presente termo, eu, ${p.nome.toUpperCase()}, declaro que o(a) cirurgião(ã)-dentista ${nomeDoutora} (${croDoutora}), me esclareceu e declaro que:\n\n`;
+        textoBase += `- A ficha de anamnese foi por mim preenchida com a verdade dos fatos, não tendo omitido doenças ou medicamentos.\n`;
+        textoBase += `- Fui esclarecido a respeito dos cuidados pós-tratamento reabilitador protético que devo manter para preservar a durabilidade do serviço.\n`;
+        textoBase += `- Tenho ciência que a durabilidade do trabalho protético não depende exclusivamente do material utilizado. O hábito de fumar, bruxismo e apertamento dentário podem causar prejuízos, perda óssea e fraturas.\n`;
+        textoBase += `- Estou ciente do prazo de 90 dias, a partir da finalização (Art. 26, CDC), para comunicação de eventual alteração do trabalho entregue.\n`;
+        textoBase += `- Autorizo a utilização do meu prontuário para uso acadêmico.`;
+    }
+    else if (tipo === 'TCLE_CLAREAMENTO') {
+        textoBase += `TERMO DE CONSENTIMENTO LIVRE E ESCLARECIDO - CLAREAMENTO DENTAL\n\n`;
+        textoBase += `Pelo presente termo, eu ${p.nome.toUpperCase()}, declaro estar informado(a) e autorizo a realização do procedimento de CLAREAMENTO DENTAL a ser realizado pelo(a) cirurgião-dentista ${nomeDoutora} (${croDoutora}). Os seguintes pontos me foram esclarecidos:\n\n`;
+        textoBase += `- Não existe a possibilidade de predizer o grau de mudança de cor que será atingido.\n`;
+        textoBase += `- Restaurações, próteses antigas e dentes com canal NÃO irão clarear. A troca será cobrada à parte.\n`;
+        textoBase += `- Durante o tratamento é comum ter sensibilidade, podendo ser necessário uso de produtos especiais.\n`;
+        textoBase += `- Pessoas fumantes e/ou que consomem café ou corantes não terão a mesma excelência de resultados.\n`;
+        textoBase += `- O resultado obtido não é permanente e pode haver necessidade de manutenções anuais.\n\n`;
+        textoBase += `NÃO ASSINE CASO NÃO COMPREENDA OU NÃO CONCORDE COM ESTE DOCUMENTO.`;
+    }
+    else if (tipo === 'TCLE_IMPLANTE') {
+        textoBase += `TERMO DE CONSENTIMENTO INFORMADO - IMPLANTES DENTÁRIOS\n\n`;
+        textoBase += `Por este instrumento, eu ${p.nome.toUpperCase()}, CPF: ${docPaciente}, autorizo o(a) dentista ${nomeDoutora} (${croDoutora}) a realizar a instalação cirúrgica de implantes dentários, na área correspondente aos dentes: ${infoExtra}.\n\n`;
+        textoBase += `Valor Total: R$ ${valor}\n\n`;
+        textoBase += `- Fui informado dos riscos: dor, edema, infecção, parestesias (dormências do lábio/língua) cuja duração pode não ser determinável.\n`;
+        textoBase += `- Fui informado sobre a possibilidade de implantes não osseointegrarem (5% a 10%), exigindo remoção cirúrgica.\n`;
+        textoBase += `- Estou ciente dos cuidados: evitar fumo, álcool, açúcar, ter higiene detalhada e observar pós-operatório.\n`;
+        textoBase += `- Declaro que as informações de saúde que prestei são verdadeiras e autorizo a realização do meu tratamento.`;
+    }
+    else if (tipo === 'TCLE_ENDO') {
+        textoBase += `TERMO DE CONSENTIMENTO INFORMADO - ENDODONTIA (TRATAMENTO DE CANAL)\n\n`;
+        textoBase += `Por este instrumento, eu ${p.nome.toUpperCase()}, autorizo ser submetido(a) a tratamento endodôntico do(s) elemento(s) dentário(s) ${infoExtra}, sob a responsabilidade de ${nomeDoutora} (${croDoutora}). Estou ciente que:\n\n`;
+        textoBase += `- Dente com tratamento endodôntico tem mais suscetibilidade a fraturas da coroa e raiz.\n`;
+        textoBase += `- O dente pode apresentar canais secundários ou raízes curvadas que dificultam o sucesso.\n`;
+        textoBase += `- Enquanto estiver com curativos, NÃO poderei mastigar sobre o dente para evitar fraturas.\n`;
+        textoBase += `- Após o término do canal, é ESSENCIAL o retorno imediato para restauração ou colocação de núcleo/prótese para evitar recontaminação.\n`;
+        textoBase += `- Não poderei ficar com curativo provisório após a obturação por mais de 30 dias. O não cumprimento invalidará a garantia do tratamento.`;
+    }
+    else if (tipo === 'TCLE_CIRURGIA') {
+        textoBase += `CONSENTIMENTO INFORMADO PARA CIRURGIA ODONTOLÓGICA\n\n`;
+        textoBase += `Por este instrumento declaro, para os efeitos éticos e legais, que eu ${p.nome.toUpperCase()} recebi todas as informações e esclarecimentos pelo(a) cirurgião-dentista ${nomeDoutora} (${croDoutora}) a respeito dos procedimentos cirúrgicos a que vou me submeter e estou de acordo com os seguintes termos:\n\n`;
+        textoBase += `- Fui amplamente informado sobre a finalidade, riscos e complicações relacionados aos procedimentos.\n`;
+        textoBase += `- Fui orientado sobre a medicação pré e pós-operatória, cuidados durante a recuperação e retorno periódico.\n`;
+        textoBase += `- O cirurgião me explicou os riscos operatórios potenciais, que incluem: desconforto, edema, sangramento prolongado, infecção, restrição de abertura de boca e parestesia (dormência ou formigamento), além de possível comunicação com o seio maxilar.\n`;
+        textoBase += `- Certifico que li, entendi e me foram dadas todas as explicações necessárias.`;
+    }
+
+    // ----------------------------------------------------
+    // GRUPO: HARMONIZAÇÃO OROFACIAL (HOF)
+    // ----------------------------------------------------
+    else if (tipo === 'TCLE_BOTOX') {
+        textoBase += `TERMO DE CONSENTIMENTO PARA USO DA TOXINA BOTULÍNICA (BOTOX)\n\n`;
+        textoBase += `Eu, ${p.nome.toUpperCase()}, CPF nº ${docPaciente}, por este Termo de Consentimento Esclarecido, autorizo o(a) ${nomeDoutora}, CRO ${croDoutora}, com consultório à ${endClinica}, a proceder em mim o uso de Toxina Botulínica A.\n\n`;
+        textoBase += `INDICAÇÕES: Usada para amenizar linhas dinâmicas ou de expressão na região frontal, glabela e periorbital. Na Odontologia é usada para finalidade terapêutica (bruxismo, cefaleia tensional, disfunção ATM, sorriso gengival).\n\n`;
+        textoBase += `MODO DE AÇÃO E RESULTADOS: Paralisa o músculo tratado. Os resultados começam a ser observados entre 48h e 15 dias após a injeção. A resposta é orgânica e individual, podendo ser necessário retoque ou, excepcionalmente, o produto não surtir efeito devido à presença de anticorpos. Nestes casos, não haverá devolução de pagamento.\n\n`;
+        textoBase += `EFEITOS COLATERAIS E RISCOS: Pode ocorrer discreto edema, equimose, dor, hematoma, vermelhidão, assimetria. Riscos raros: perda de expressão, ptose (queda) da boca/pálpebra, reações alérgicas, infecções. O paciente deve procurar ajuda se houver disfagia (dificuldade de engolir) ou disfonia.\n\n`;
+        textoBase += `DURAÇÃO DO EFEITO: Tratamento não é definitivo, o produto perde o efeito após 3 a 6 meses. Nova aplicação exigirá novo contrato.\n\n`;
+        textoBase += `CUIDADOS PÓS-APLICAÇÃO:\n- Evitar abaixar a cabeça por 4 horas e evitar manipular o local.\n- Qualquer sintoma adverso, entrar em contato com a clínica.\n\n`;
+        textoBase += `DECLARO que li e entendi as informações acima e tive oportunidade de questionar o procedimento.`;
+    }
+    else if (tipo === 'TCLE_BICHECTOMIA') {
+        textoBase += `TERMO DE CONSENTIMENTO LIVRE E ESCLARECIDO - BICHECTOMIA\n\n`;
+        textoBase += `Pelo presente termo, eu ${p.nome.toUpperCase()}, portador(a) do RG nº ${rgPaciente} e CPF nº ${docPaciente}, declaro estar informado(a) e autorizo a realização do procedimento de BICHECTOMIA com finalidade estético-funcional a ser realizado pelo CIRURGIÃO DENTISTA, ${nomeDoutora} (${croDoutora}).\n\n`;
+        textoBase += `- Declaro que fui esclarecido(a) que a cirurgia consiste na remoção de uma bolsa de gordura na bochecha (acesso por dentro da boca), sendo um procedimento irreversível. A redução de volume varia de pessoa para pessoa.\n`;
+        textoBase += `- Estou ciente dos transtornos previsíveis e possíveis: reação alérgica, edema (inchaço), hematomas, hemorragias, lesões em nervos da face (paralisia facial), lesões em ducto salivar e resultados limitados. Lesões nervosas são raras na técnica intraoral.\n`;
+        textoBase += `- É de meu conhecimento que a não realização em nada afeta minha saúde.\n`;
+        textoBase += `- Estou ciente de que para obter o melhor resultado, deverei tomar a medicação prescrita e cumprir as recomendações pós-operatórias.\n`;
+        textoBase += `- Dou o meu CONSENTIMENTO para ser fotografado(a) antes, durante e depois, autorizando o profissional a UTILIZAR MINHA IMAGEM para fins científicos ou publicitários.\n\n`;
+        textoBase += `Li detalhadamente este termo e o entendi totalmente, autorizando a realização do procedimento.`;
+    }
+    else if (tipo === 'TCLE_PREENCHIMENTO') {
+        textoBase += `TERMO DE CONSENTIMENTO LIVRE E ESCLARECIDO - PREENCHIMENTO OROFACIAL\n\n`;
+        textoBase += `Pelo presente termo, eu ${p.nome.toUpperCase()}, portador(a) do RG nº ${rgPaciente} e CPF nº ${docPaciente}, declaro estar informado(a) e autorizo a realização do procedimento de PREENCHIMENTO OROFACIAL a ser realizado por ${nomeDoutora} (${croDoutora}).\n\n`;
+        textoBase += `- Os Preenchedores Orofaciais Absorvíveis são substâncias temporárias aplicadas para reestruturação anatômica estético/funcional, tratando a senilidade do tecido.\n`;
+        textoBase += `- Os resultados são imediatos e TEMPORÁRIOS, mantendo-se entre 6 e 12 meses, dependendo da dinâmica do local e metabolismo do paciente.\n`;
+        textoBase += `- Logo após a aplicação, a área tratada apresentará inflamação (edema/inchaço) e equimoses (roxos) que se intensificam por 3 dias e melhoram de 7 a 15 dias. Devo seguir as recomendações e tomar a medicação prescrita.\n`;
+        textoBase += `- Os riscos incluem temporariamente perda de expressão facial, assimetrias, reações alérgicas, infecções, herpes, dormência e formigamento.\n`;
+        textoBase += `- Dou o meu CONSENTIMENTO para ser fotografado(a) autorizando o profissional a UTILIZAR MINHA IMAGEM.\n\n`;
+        textoBase += `CUIDADOS PÓS APLICAÇÃO:\n- Evitar atividades físicas por 24 a 48h.\n- Fazer compressa de gelo e usar pomada para hematoma se houver.\n- Voltar após 15 dias para retoques e fotos finais.\n- Em caso de dor intensa ou mudança de cor na pele/lábio, contatar a clínica imediatamente.`;
+    }
+    else if (tipo === 'TCLE_PAPADA') {
+        textoBase += `TERMO DE ESCLARECIMENTO - TRATAMENTO DA GORDURA SUBMANDIBULAR (LIPO DE PAPADA)\n\n`;
+        textoBase += `Eu, ${p.nome.toUpperCase()}, CPF ${docPaciente}, declaro ter sido informado(a) sobre os benefícios, riscos e efeitos adversos do tratamento de injeções de ácido deoxicólico para redução da gordura submandibular (papada).\n\n`;
+        textoBase += `Os termos foram explicados e todas as dúvidas foram resolvidas pelo(a) dentista ${nomeDoutora} - CRO ${croDoutora}, com consultório à ${endClinica}.\n\n`;
+        textoBase += `Fui claramente informado(a) a respeito dos potenciais efeitos adversos e riscos:\n- Dor de cabeça, inchaço intenso no local, aumento de volume, alergia, vermelhidão, coceira, pontos roxos, dor, perda de sensibilidade temporária e presença de pequenos nódulos.\n\n`;
+        textoBase += `Estou ciente de que a resposta ao tratamento é individual, não havendo previsão exata de resultado e número final de sessões necessárias. O protocolo proposto (ex: injeções com intervalo) pode variar.\n\n`;
+        textoBase += `Estou ciente que devo terminar todo o tratamento para avaliar o resultado final.\nQualquer reação diferente da esperada, devo entrar em contato com o profissional.\n\n`;
+        textoBase += `Palhoça/SC, ${new Date().toLocaleDateString('pt-BR')}`;
+    }
+
+    // ----------------------------------------------------
+    // GRUPO: TERMOS DE ENTREGA
+    // ----------------------------------------------------
+    else if (tipo === 'TERMO_ENTREGA') {
+        textoBase += `TERMO DE ENTREGA DE PRÓTESE\n\n\n`;
+        textoBase += `Eu, ${p.nome.toUpperCase()}, portador(a) do CPF ${docPaciente}, declaro que retirei a(s) prótese(s) na data de hoje, e que conferi exatamente com o modelo que foi projetado e testado por mim, e que estou plenamente satisfeito(a) com a cor, formato e adaptação estética.\n\n`;
+        textoBase += `Estou ciente de que é normal um período de adaptação e que, se necessário, deverei retornar na clínica para realizar pequenos ajustes oclusais ou de base na prótese.\n\n\n`;
+        textoBase += `Palhoça/SC, ${new Date().toLocaleDateString('pt-BR')}`;
+    }
+
+    editor.value = textoBase;
+};
+
+// ==========================================
+// GERAÇÃO DO PDF (COM AUTENTICIDADE E COMPARTILHAMENTO)
+// ==========================================
+function gerarPDFFinal(tipo) {
+  const btn = event.target;
+  const pac = pacienteAtualProntuario;
+  if (!pac) return;
+
+  btn.disabled = true;
+  btn.innerHTML = `<span class="spinner-border spinner-border-sm"></span> CRIANDO PDF...`;
+
+  let dadosDoc = {};
+  let htmlVias = "";
+  const dataHoje = new Date().toLocaleDateString('pt-BR');
+  const docId = pac.cpf ? "CPF: " + pac.cpf : (pac.rg ? "RG: " + pac.rg : "Doc: --");
+
+  let nomeDoutor = "Dra. Giovanna Ramos";
+  let croDoutor = "CRO/SC 19773";
+  const selDoc = document.getElementById("recDoutorSelecionado");
+  if (selDoc && window.cacheConfig && window.cacheConfig.profissionais) {
+      const profInfo = window.cacheConfig.profissionais[selDoc.value];
+      if (profInfo) { nomeDoutor = profInfo.nome; croDoutor = profInfo.registro_cro; }
+  }
+
+  // Gera um Hash de Autenticidade único (Ex: AUTH-8F2A-9B1C)
+  const hashAutenticidade = "AUTH-" + Math.random().toString(36).substr(2, 4).toUpperCase() + "-" + Date.now().toString(36).substr(4, 4).toUpperCase();
+
+  // Layout Base (Com proteção contra quebra de página na assinatura)
+  const layoutBase = (titulo, label, conteudo, assinaturaCustomizada = null) => {
+    const signHtml = assinaturaCustomizada || `
+      <div class="signature" style="page-break-inside: avoid;">
+        <div class="line"></div>
+        <strong>${nomeDoutor}</strong><br><small>${croDoutor}</small>
+      </div>`;
+      
+    return `
+    <div class="page ${tipo === 'RECEITA' && label.includes('1ª') ? 'page-break' : ''}">
+      <div class="header">
+        <p class="logo">${nomeDoutor.toUpperCase()}</p>
+        <small>${croDoutor} | ODONTOLOGIA ESPECIALIZADA</small>
+      </div>
+      <div class="title">${titulo} ${label ? '<br><small style="color:#A3AED0; font-size:12px;">'+label+'</small>' : ''}</div>
+      <div class="caixa-paciente">
+        <strong>Paciente:</strong> ${pac.nome} <br>
+        <strong>Documento:</strong> ${docId} <br>
+        <strong>Data:</strong> ${dataHoje}
+      </div>
+      <div class="content">${conteudo}</div>
+      ${signHtml}
+      <div style="page-break-inside: avoid; margin-top: 40px; font-size: 10px; color: #94a3b8; text-align: center; border-top: 1px dashed #cbd5e1; padding-top: 10px;">
+         Documento emitido e assinado eletronicamente via Sistema de Gestão. <br>
+         <strong>Chave de Autenticidade: ${hashAutenticidade}</strong>
+      </div>
+    </div>`;
+  };
+
+  // --- ROTAS DOS DOCUMENTOS ---
+  if (tipo === 'RECEITA') {
+    let textoHtmlReceita = ""; let textoResumo = ""; let temMedicamento = false;
+    for (let i = 1; i <= window.contadorMedicamentos; i++) {
+        const elMed = document.getElementById(`recMed_${i}`);
+        if (elMed && elMed.value.trim() !== "") {
+            temMedicamento = true;
+            const med = elMed.value; const qtd = document.getElementById(`recQtd_${i}`).value || ''; const uso = document.getElementById(`recUso_${i}`).value || ''; const pos = document.getElementById(`recPoso_${i}`).value || '';
+            textoHtmlReceita += `<div style="margin-bottom: 25px; page-break-inside: avoid;">${uso ? `<p style="margin:0; font-size:12px; font-weight:bold; color:#A3AED0;">USO ${uso.toUpperCase()}</p>` : ''}<p style="margin: 4px 0; font-size:18px;"><strong>${med}</strong> <span style="float:right;">${qtd}</span></p><p style="margin:0; font-size: 14px; color:#4a5568;">${pos}</p></div>`;
+            textoResumo += med + ", ";
+        }
+    }
+    if (!temMedicamento) { btn.disabled = false; btn.innerText = "GERAR PDF DA RECEITA"; return mostrarNotificacao("Adicione medicamentos!", "erro"); }
+    htmlVias = layoutBase("RECEITUÁRIO", "1ª VIA - FARMÁCIA", textoHtmlReceita) + layoutBase("RECEITUÁRIO", "2ª VIA - PACIENTE", textoHtmlReceita);
+    dadosDoc.resumo = textoResumo.substring(0, 50);
+  } 
+  
+  else if (tipo === 'ATESTADO' || tipo === 'DECLARACAO') {
+    const horaIni = document.getElementById('docAtIni').value; const horaFim = document.getElementById('docAtFim').value;
+    if (!horaIni || !horaFim) { btn.disabled = false; btn.innerText = `GERAR ${tipo}`; return mostrarNotificacao("Preencha os horários!", "erro"); }
+    const textoDoc = tipo === 'ATESTADO' 
+      ? `Atesto que o(a) paciente esteve em atendimento das ${horaIni}h às ${horaFim}h, necessitando de ${document.getElementById('docAtDias').value} dia(s) de repouso.`
+      : `Declaro que o(a) paciente compareceu para atendimento no período das ${horaIni}h às ${horaFim}h.`;
+    htmlVias = layoutBase(tipo, "", textoDoc);
+    dadosDoc.resumo = `${horaIni}h - ${horaFim}h`;
+  }
+  
+  else if (tipo === 'ORCAMENTO') {
+      let linhasTabela = ''; let total = 0;
+      if (itensOrcamentoAtuais.length === 0) { btn.disabled = false; btn.innerText = "GERAR PDF DO ORÇAMENTO"; return mostrarNotificacao("Adicione procedimentos no orçamento!", "erro"); }
+      itensOrcamentoAtuais.forEach(item => {
+        linhasTabela += `<tr><td style="padding: 8px; border-bottom: 1px solid #eee;">${item.proc}</td><td style="text-align: right; padding: 8px; border-bottom: 1px solid #eee;">R$ ${item.valor}</td></tr>`;
+        total += parseFloat(item.valor.replace(/\./g, '').replace(',', '.'));
+      });
+      const htmlOrc = `
+        <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
+          <thead><tr><th style="background: #F4F7FE; padding: 10px; text-align: left;">Procedimento</th><th style="background: #F4F7FE; padding: 10px; text-align: right;">Valor</th></tr></thead>
+          <tbody>${linhasTabela}<tr><td style="font-weight: bold; padding: 15px 8px;">TOTAL ESTIMADO</td><td style="text-align: right; font-weight: bold; color: #4318FF; padding: 15px 8px;">R$ ${total.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td></tr></tbody>
+        </table>
+        <p style="font-size: 12px; color: #666; margin-top: 20px;">* Orçamento válido por 15 dias.</p>
+      `;
+      htmlVias = layoutBase("ORÇAMENTO ODONTOLÓGICO", "", htmlOrc);
+      dadosDoc.resumo = "Orçamento: R$ " + total.toLocaleString('pt-BR', {minimumFractionDigits: 2});
+  }
+
+  else if (tipo === 'CONTRATO') {
+      const textoEditado = document.getElementById('textoContratoInp').value;
+      if (!textoEditado.trim()) { btn.disabled = false; btn.innerText = "GERAR CONTRATO"; return mostrarNotificacao("O texto não pode ficar vazio!", "erro"); }
+      const conteudoHtml = `<div style="text-align: justify; line-height: 1.8;">${textoEditado.replace(/\n/g, '<br>')}</div>`;
+      
+      // O SEGREDO DO LAYOUT: page-break-inside: avoid; impede de cortar a assinatura no meio
+      const assinaturaContrato = `
+        <div style="page-break-inside: avoid; display: flex; justify-content: space-between; margin-top: 80px; text-align: center; font-size: 14px;">
+          <div style="width: 45%;">
+            <div style="border-top: 1px solid #2B3674; margin-bottom: 5px;"></div>
+            <strong>${nomeDoutor}</strong><br><small>CONTRATADO(A)</small>
+          </div>
+          <div style="width: 45%;">
+            <div style="border-top: 1px solid #2B3674; margin-bottom: 5px;"></div>
+            <strong>${pac.nome}</strong><br><small>CONTRATANTE</small>
+          </div>
+        </div>
+      `;
+      
+      htmlVias = layoutBase("CONTRATO DE PRESTAÇÃO DE SERVIÇOS", "", conteudoHtml, assinaturaContrato);
+      dadosDoc.resumo = "Contrato - Chave: " + hashAutenticidade;
+  }
+
+  // ENVIO PARA O SERVIDOR E ABERTURA DO PAINEL DE AÇÕES
+google.script.run
+    .withSuccessHandler(function(res) {
+      btn.disabled = false; btn.innerText = "GERAR PDF DA " + tipo;
+      bootstrap.Modal.getInstance(document.getElementById('modalGeradorDoc')).hide();
+      if (typeof carregarHistoricoDocumentos === "function") carregarHistoricoDocumentos(pac.nome);
+      
+      // Passa a chave exata para a tela de envio!
+      abrirPainelCompartilhamento(res.url, tipo, pac, hashAutenticidade); 
+    })
+    .withFailureHandler(function(err) { /*...*/ })
+    .registrarEGerarPDF({ paciente: pac.nome, tipo: tipo, resumo: dadosDoc.resumo, htmlCompleto: htmlVias, hash: hashAutenticidade });
+}
+
+// ==========================================
+// PAINEL DE COMPARTILHAMENTO (WPP E E-MAIL)
+// ==========================================
+// 1. O PAINEL QUE ABRE LOGO APÓS GERAR O PDF
+function abrirPainelCompartilhamento(urlPdf, tipoDoc, paciente, hashExato) {
+  const html = `
+    <div class="modal fade" id="modalCompartilharDoc" tabindex="-1" style="z-index: 1070; background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(5px);">
+      <div class="modal-dialog modal-dialog-centered" style="max-width: 400px;">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 28px; text-align: center; padding: 20px;">
+          <div class="modal-body">
+            <div class="mb-3"><span class="material-icons text-success bg-success bg-opacity-10 rounded-circle" style="font-size: 40px; padding: 15px;">check_circle</span></div>
+            <h5 class="fw-bold text-dark mb-1">Documento Gerado!</h5>
+            <p class="text-muted small mb-4">Como deseja enviar o documento de <b>${paciente.nome}</b>?</p>
+
+            <div class="d-flex flex-column gap-3">
+              <a href="${urlPdf}" target="_blank" class="btn btn-outline-primary fw-bold py-3" style="border-radius: 16px;">
+                 <span class="material-icons align-middle me-1">visibility</span> Visualizar PDF
+              </a>
+
+              <button class="btn fw-bold py-3 text-white" style="border-radius: 16px; background: #25D366;" 
+                onclick="enviarWppDocumento('${urlPdf}', '${tipoDoc}', '${paciente.celular}', '${hashExato}')">
+                 <i class="fab fa-whatsapp me-1"></i> Enviar p/ Assinar
+              </button>
+
+              <button class="btn fw-bold py-3 text-white" style="border-radius: 16px; background: #ea4335;" 
+                onclick="enviarEmailDocumento('${urlPdf}', '${paciente.email}', '${paciente.nome}', '${tipoDoc}')">
+                 <span class="material-icons align-middle me-1">email</span> Enviar por E-mail
+              </button>
+            </div>
+            <button class="btn btn-link text-muted mt-3 fw-bold text-decoration-none" data-bs-dismiss="modal">Fechar</button>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  
+  $('#modalCompartilharDoc').remove();
+  document.body.insertAdjacentHTML('beforeend', html);
+  new bootstrap.Modal(document.getElementById('modalCompartilharDoc')).show();
+}
+
+// 3. O ENVIADOR DE WHATSAPP (BLINDADO CONTRA O ERRO DO GOOGLE)
+function enviarWppDocumento(urlOriginal, tipo, celular, hashReal) {
+  if (!celular) return mostrarNotificacao("Paciente sem celular!", "erro");
+  
+  // Blindagem das barras // para o Google não apagar o código
+  const p1 = "https:" + "/" + "/";
+  const p2 = "script.google.com/macros/s/";
+  const p3 = "AKfycbycdRrGsy4cxVmbsk7jTJ1scDfJjHdwTyAXIdFz5rMx2xqz5OapEdwEvpmEu_qwKAXM/exec";
+  const portalURL = p1 + p2 + p3 + "?p=aceite&h=" + hashReal;
+  
+  let num = celular.replace(/\D/g, '');
+  if (num.length === 10) num = "55" + num.substring(0,2) + "9" + num.substring(2);
+  else if (num.length === 11) num = "55" + num;
+  
+  const msg = encodeURIComponent("Olá! A Clínica Ramos enviou o seu *" + tipo + "*.\n\nPara assinar digitalmente, acesse o link:\n✅ " + portalURL);
+  window.open("https:" + "/" + "/api.whatsapp.com/send?phone=" + num + "&text=" + msg, "_blank");
+}
+
+
+function enviarEmailDocumento(url, email, nome, tipo) {
+  if (!email || email.trim() === "") return mostrarNotificacao("O paciente não tem e-mail cadastrado na ficha!", "erro");
+  
+  const btn = document.getElementById('btnEmailDoc');
+  btn.disabled = true;
+  btn.innerHTML = `<span class="spinner-border spinner-border-sm"></span> Enviando...`;
+  
+  google.script.run
+    .withSuccessHandler(function(res) {
+      mostrarNotificacao(res, "sucesso");
+      btn.disabled = false;
+      btn.innerHTML = `<span class="material-icons align-middle me-1">email</span> Enviado com sucesso!`;
+    })
+    .withFailureHandler(function(err) {
+      mostrarNotificacao("Erro: " + err, "erro");
+      btn.disabled = false;
+      btn.innerHTML = `<span class="material-icons align-middle me-1">email</span> Tentar Novamente`;
+    })
+    .apiEnviarEmailDocumento(url, email, nome, tipo);
+}
+
+// ==========================================
+// 1. DESENHA A TABELA COM O BOTÃO NOVO
+// ==========================================
+function carregarHistoricoDocumentos(nomePaciente) {
+  const tbody = document.getElementById("tabelaDocsProntuario");
+  if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4">⏳ Sincronizando arquivos...</td></tr>';
+
+  google.script.run.withSuccessHandler(function(docs) {
+    if (!docs || docs.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-muted">Nenhum documento encontrado.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = docs.map(d => {
+      const isAssinado = (d.status || "").includes('ASSINADO');
+      const corStatus = isAssinado ? 'success' : 'warning';
+      
+      // NOVO BOTÃO: Cor sólida e ícone de "compartilhar" (Material Icons)
+      let btnReenviar = '';
+      if (!isAssinado && d.hash) {
+          btnReenviar = `
+            <button class="btn btn-primary btn-sm shadow-sm d-inline-flex align-items-center justify-content-center me-2" 
+              style="width: 32px; height: 32px; border-radius: 8px; border: none;" 
+              onclick="enviarWppDocumento('${d.url}', '${d.tipo}', '${pacienteAtualProntuario.celular}', '${d.hash}')"
+              title="Enviar link de assinatura">
+              <span class="material-icons" style="font-size: 18px;">ios_share</span>
+            </button>`;
+      }
+
+      return `
+        <tr class="border-bottom align-middle">
+          <td class="ps-3 fw-bold small">${d.data}</td>
+          <td><span class="badge bg-light text-dark border px-2 py-1">${d.tipo}</span></td>
+          <td>
+            <span class="badge bg-${corStatus} bg-opacity-10 text-${corStatus} border border-${corStatus}" style="font-size: 10px; padding: 5px 8px;">
+              ${d.status || '⏳ PENDENTE'}
+            </span>
+          </td>
+          <td class="text-end pe-3">
+            ${btnReenviar}
+            <a href="${d.url}" target="_blank" class="btn btn-sm btn-light border text-primary rounded-pill px-3 fw-bold shadow-sm" style="font-size: 12px;">
+              ABRIR PDF
+            </a>
+          </td>
+        </tr>`;
+    }).join('');
+  }).apiGetDocumentosPaciente(nomePaciente);
+}
+
+// ==========================================
+// 2. A MÁGICA DA PESQUISA EM TEMPO REAL
+// ==========================================
+function filtrarDocsProntuario(termo) {
+  const busca = termo.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const linhas = document.querySelectorAll("#tabelaDocsProntuario .linha-documento");
+  
+  linhas.forEach(linha => {
+    const textoLinha = linha.innerText.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    if (textoLinha.includes(busca)) {
+      linha.style.display = ""; // Mostra
+    } else {
+      linha.style.display = "none"; // Esconde
+    }
+  });
+}
+
+// ==========================================
+// 2. FUNÇÃO DE EXCLUIR DOCUMENTO (RESTAURADA)
+// ==========================================
+function excluirDocProntuario(url) {
+  if (!confirm("Tem certeza que deseja EXCLUIR este documento?\nEle será apagado do sistema e enviado para a lixeira do Google Drive.")) {
+    return;
+  }
+  mostrarNotificacao("⏳ Excluindo arquivo...", "info");
+  google.script.run
+    .withSuccessHandler(function(res) {
+      mostrarNotificacao("✅ " + res, "sucesso");
+      if (pacienteAtualProntuario) carregarHistoricoDocumentos(pacienteAtualProntuario.nome);
+    })
+    .withFailureHandler(function(err) {
+      mostrarNotificacao("❌ Erro ao excluir: " + err, "erro");
+    })
+    .apiExcluirDocumentoPDF(url);
+}
+
+// ==========================================
+// 3. CARREGAR DOCUMENTOS (COM TODOS OS BOTÕES)
+// ==========================================
+function carregarHistoricoDocumentos(nomePaciente) {
+  const tbody = document.getElementById("tabelaDocsProntuario");
+  if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4">⏳ Sincronizando...</td></tr>';
+
+  google.script.run.withSuccessHandler(function(docs) {
+    if (!docs || docs.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-muted">Nenhum documento.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = docs.map(d => {
+      const isAssinado = (d.status || "").includes('ASSINADO');
+      const corStatus = isAssinado ? 'success' : 'warning';
+      
+      // Botão Azul de Enviar (Só aparece se não estiver assinado)
+      let btnReenviar = (!isAssinado && d.hash) ? `
+        <button class="btn btn-primary btn-sm shadow-sm d-inline-flex align-items-center justify-content-center me-2" 
+          style="width: 32px; height: 32px; border-radius: 8px; border: none;" 
+          onclick="enviarWppDocumento('${d.url}', '${d.tipo}', '${pacienteAtualProntuario.celular}', '${d.hash}')">
+          <span class="material-icons" style="font-size: 18px;">ios_share</span>
+        </button>` : '';
+
+      return `
+        <tr class="border-bottom align-middle">
+          <td class="ps-3 fw-bold small">${d.data}</td>
+          <td><span class="badge bg-light text-dark border px-2 py-1">${d.tipo}</span></td>
+          <td><span class="badge bg-${corStatus} bg-opacity-10 text-${corStatus} border border-${corStatus}" style="font-size: 10px;">${d.status || '⏳ PENDENTE'}</span></td>
+          <td class="text-end pe-3">
+            ${btnReenviar}
+            <a href="${d.url}" target="_blank" class="btn btn-sm btn-light border text-primary rounded-pill px-3 fw-bold shadow-sm me-1" style="font-size: 12px;">ABRIR</a>
+            <button class="btn btn-sm btn-light text-danger rounded-circle p-2 border-0 shadow-sm" onclick="excluirDocProntuario('${d.url}')">
+              <span class="material-icons" style="font-size: 18px;">delete_outline</span>
+            </button>
+          </td>
+        </tr>`;
+    }).join('');
+  }).apiGetDocumentosPaciente(nomePaciente);
+}
+
+// --- FUNÇÕES AUXILIARES INTELIGENTES ---
+
+function atualizarEstatisticasLateral(ultima, atendimentos, valorGasto) {
+  const valorFormatado = valorGasto.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
+  
+  const preencher = (ids, valor) => {
+      for (let id of ids) {
+          const el = document.getElementById(id);
+          if (el) { 
+             if(el.tagName === 'INPUT') el.value = valor;
+             else el.innerText = valor; 
+             return true; 
+          }
+      }
+      return false;
+  };
+
+  preencher(["prontuarioUltimaConsulta", "ficha_ultima_consulta", "txtUltimaConsulta"], ultima);
+  preencher(["prontuarioTotalAtendimentos", "ficha_total_atendimentos", "txtTotalAtendimentos"], atendimentos);
+  
+  const achouValor = preencher(["prontuarioValorGasto", "ficha_valor_gasto", "txtValorGasto"], valorFormatado);
+
+  // 🎯 CAÇADOR DE TEXTO (Caso os IDs acima falhem, ele acha o "R$ 0,00" visualmente e troca)
+  if (!achouValor) {
+     const elementos = document.querySelectorAll('span, b, strong, p');
+     for (let el of elementos) {
+         if (el.innerText && el.innerText.trim() === 'R$ 0,00') {
+             // Garante que só vai trocar o R$ 0,00 verde da lateral
+             if (el.classList.contains('text-success') || el.closest('div').innerText.includes('Valor total gasto')) {
+                 el.innerText = valorFormatado;
+                 break;
+             }
+         }
+     }
+  }
+}
+
+function injetarLinhasHistorico(html) {
+  let tbody = document.getElementById("tabelaHistoricoProcedimentos") || 
+              document.getElementById("tabelaFinanceiroFicha") || 
+              document.getElementById("corpoHistoricoProcedimentos");
+  
+  // Caçador de tabela pelo texto "Carregando..."
+  if (!tbody) {
+      const tds = document.querySelectorAll('td');
+      for (let td of tds) {
+          if (td.innerText.includes('Carregando...')) {
+              tbody = td.closest('tbody'); 
+              break;
+          }
+      }
+  }
+
+  if (tbody) {
+      tbody.innerHTML = html;
+  }
+}
+
+// ==========================================
+// MOTOR DE RECEITAS DINÂMICO (BLINDAGEM GLOBAL E GESTOR)
+// ==========================================
+
+window.cacheConfig = { profissionais: [], protocolos: [] };
+window.contadorMedicamentos = 0;
+
+// 1. Inicia o sistema baixando os dados da planilha (Via Gestor)
+window.carregarConfiguracoesReceita = function() {
+    google.script.run.withSuccessHandler(function(res) {
+        window.cacheConfig = res; // Recebe os dados do Gestor Integrado
+        
+        // Monta o select de Doutores com a nomenclatura nova do Gestor
+        const selProf = document.getElementById("recDoutorSelecionado");
+        if (selProf) {
+            selProf.innerHTML = window.cacheConfig.profissionais.map((p, index) => 
+                `<option value="${index}">${p.nome} (${p.registro_cro})</option>`
+            ).join('');
+            window.atualizarEnderecoDoutor();
+        }
+        
+        // Atualiza a tela do Gestor lá em cima
+        if(typeof window.renderizarGestor === 'function') {
+            window.renderizarGestor();
+        }
+
+        // Cria a primeira caixinha de remédio vazia
+        document.getElementById("containerMedicamentosReceita").innerHTML = "";
+        window.adicionarLinhaMedicamento();
+
+    }).getDadosConfiguracao(); // <--- Chama a função do Gestor no Servidor
+};
+
+// 2. Atualiza o endereço quando troca de doutor
+window.atualizarEnderecoDoutor = function() {
+    const idx = document.getElementById("recDoutorSelecionado").value;
+    const prof = window.cacheConfig.profissionais[idx];
+    if (prof) {
+        document.getElementById("recEnderecoDoutor").innerHTML = `<span class="material-icons align-middle" style="font-size:14px;">location_on</span> ${prof.endereco_clinica}`;
+    }
+};
+
+// 3. Adiciona Caixinhas de Remédio
+window.adicionarLinhaMedicamento = function() {
+    window.contadorMedicamentos++;
+    const id = window.contadorMedicamentos;
+    const container = document.getElementById("containerMedicamentosReceita");
+
+    // Monta as opções puxando do Array de Protocolos do Gestor
+    let opcoes = `<option value="">Selecione a Finalidade / Protocolo...</option>`;
+    window.cacheConfig.protocolos.forEach(p => {
+        opcoes += `<option value="${p.finalidade}">${p.finalidade}</option>`;
+    });
+    opcoes += `<option value="Livre">Digitação Livre (Criar do zero)</option>`;
+
+    const html = `
+    <div class="p-3 border rounded shadow-sm bg-white" id="blocoMed_${id}" style="position: relative; border-left: 4px solid #4318FF !important;">
+        <button type="button" class="btn btn-sm btn-light text-danger position-absolute top-0 end-0 m-2 rounded-circle shadow-sm" style="width:28px; height:28px; padding:0;" onclick="document.getElementById('blocoMed_${id}').remove()">
+           <span class="material-icons" style="font-size:16px; line-height:28px;">close</span>
+        </button>
+        
+        <div class="row g-2">
+            <div class="col-md-12 mb-1">
+                <select id="recFin_${id}" class="form-select form-select-sm fw-bold text-primary bg-light border-0" onchange="autoPreencherReceita(${id})">
+                    ${opcoes}
+                </select>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label small fw-bold text-muted mb-0">Medicamento</label>
+                <input type="text" id="recMed_${id}" class="form-control form-control-sm">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small fw-bold text-muted mb-0">Qtd</label>
+                <input type="text" id="recQtd_${id}" class="form-control form-control-sm">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label small fw-bold text-muted mb-0">Uso</label>
+                <input type="text" id="recUso_${id}" class="form-control form-control-sm" placeholder="Ex: Interno">
+            </div>
+            <div class="col-12">
+                <label class="form-label small fw-bold text-muted mb-0">Posologia / Instruções</label>
+                <input type="text" id="recPoso_${id}" class="form-control form-control-sm">
+            </div>
+        </div>
+    </div>`;
+
+    container.insertAdjacentHTML('beforeend', html);
+};
+
+// 4. Mágica do Auto-Preencher com Animação
+window.autoPreencherReceita = function(id) {
+    const finalidade = document.getElementById(`recFin_${id}`).value;
+    
+    // Procura o protocolo correto no banco de dados novo
+    const d = window.cacheConfig.protocolos.find(prot => prot.finalidade === finalidade);
+    
+    if (d) {
+        document.getElementById(`recMed_${id}`).value = d.medicamento;
+        document.getElementById(`recQtd_${id}`).value = d.quantidade;
+        document.getElementById(`recUso_${id}`).value = d.uso;
+        document.getElementById(`recPoso_${id}`).value = d.posologia;
+        
+        // Efeito de piscar azul para avisar que preencheu sozinho
+        document.getElementById(`blocoMed_${id}`).style.backgroundColor = "#e8f4ff";
+        setTimeout(() => document.getElementById(`blocoMed_${id}`).style.backgroundColor = "white", 800);
+    } else {
+        document.getElementById(`recMed_${id}`).value = "";
+        document.getElementById(`recQtd_${id}`).value = "";
+        document.getElementById(`recUso_${id}`).value = "";
+        document.getElementById(`recPoso_${id}`).value = "";
+    }
+};
+
+// ==========================================
+// FORÇADOR DE CLIQUE (ANTI-ESCUDO INVISÍVEL)
+// ==========================================
+document.addEventListener('click', function(e) {
+    // Se o usuário clicar no botão ou no ícone dentro dele
+    const botaoAgenda = e.target.closest('[onclick="salvarAgendamento()"]');
+    if (botaoAgenda) {
+        e.preventDefault(); // Impede recarregamento da tela
+        salvarAgendamento(); // Dispara a função à força
+    }
+});
+
+// ==========================================
+// FUNÇÕES DO GESTOR DE RECEITAS (FRONT-END)
+// ==========================================
+
+// 1. Pinta as listas de Doutores e Protocolos na tela de Ajustes
+window.renderizarGestor = function() {
+    // Renderiza Doutores
+    const containerProf = document.getElementById("listaGestorProf");
+    if (containerProf && window.cacheConfig && window.cacheConfig.profissionais) {
+        containerProf.innerHTML = window.cacheConfig.profissionais.map(p => `
+            <div class="d-flex justify-content-between align-items-center border-bottom py-2 small">
+                <span><b class="text-dark">${p.nome}</b> <span class="text-muted">(${p.registro_cro})</span></span>
+                <button class="btn btn-sm btn-light text-danger shadow-sm border-0 rounded-circle p-1 d-flex align-items-center justify-content-center" onclick="window.acaoGestor('PROFISSIONAIS', 'excluir', '${p.nome}')" title="Excluir">
+                    <span class="material-icons" style="font-size:16px;">delete_outline</span>
+                </button>
+            </div>
+        `).join('');
+    }
+
+    // Renderiza Protocolos
+    const containerProt = document.getElementById("listaGestorProt");
+    if (containerProt && window.cacheConfig && window.cacheConfig.protocolos) {
+        containerProt.innerHTML = window.cacheConfig.protocolos.map(p => `
+            <div class="d-flex justify-content-between align-items-center border-bottom py-2 small">
+                <span><b class="text-primary">${p.finalidade}</b>: <span class="text-muted">${p.medicamento}</span></span>
+                <button class="btn btn-sm btn-light text-danger shadow-sm border-0 rounded-circle p-1 d-flex align-items-center justify-content-center" onclick="window.acaoGestor('PROTOCOLOS', 'excluir', '${p.finalidade}')" title="Excluir">
+                    <span class="material-icons" style="font-size:16px;">delete_outline</span>
+                </button>
+            </div>
+        `).join('');
+    }
+};
+
+// 2. Ação de Salvar Novo ou Excluir (Comunica com o Servidor)
+window.acaoGestor = function(aba, acao, id) {
+    let dados = {};
+    
+    // Coleta os dados dependendo de qual sanfona o usuário está usando
+    if (aba === 'PROFISSIONAIS') {
+        dados = { 
+            nome: document.getElementById('gestorProfNome').value, 
+            registro_cro: document.getElementById('gestorProfCro').value, 
+            endereco_clinica: document.getElementById('gestorProfEnd').value 
+        };
+    } else {
+        dados = { 
+            finalidade: document.getElementById('gestorProtFin').value, 
+            medicamento: document.getElementById('gestorProtMed').value, 
+            quantidade: document.getElementById('gestorProtQtd').value, 
+            uso: document.getElementById('gestorProtUso').value, 
+            posologia: document.getElementById('gestorProtPos').value 
+        };
+    }
+
+    const btnClicado = event.target.closest('button');
+    const textoOriginal = btnClicado.innerHTML;
+    
+    if (acao === 'excluir') {
+        if (!confirm("Deseja mesmo excluir este item permanentemente?")) return; 
+        
+        btnClicado.innerHTML = `<span class="spinner-border spinner-border-sm text-danger"></span>`;
+        
+        google.script.run.withSuccessHandler(() => {
+            mostrarNotificacao("Excluído com sucesso!", "sucesso");
+            window.carregarConfiguracoesReceita(); // Atualiza a tela automaticamente
+        }).excluirItemConfig(aba, id);
+        
+    } else {
+        // Trava para não salvar vazio
+        if (aba === 'PROFISSIONAIS' && !dados.nome) return mostrarNotificacao("Preencha o nome do Doutor!", "erro");
+        if (aba === 'PROTOCOLOS' && !dados.finalidade) return mostrarNotificacao("Preencha a finalidade do Protocolo!", "erro");
+
+        btnClicado.innerHTML = "⏳...";
+        btnClicado.disabled = true;
+
+        google.script.run.withSuccessHandler(() => {
+            mostrarNotificacao("Salvo com sucesso!", "sucesso");
+            btnClicado.innerHTML = textoOriginal;
+            btnClicado.disabled = false;
+            
+            // Limpa as caixinhas de texto após salvar
+            if (aba === 'PROFISSIONAIS') {
+                document.getElementById('gestorProfNome').value = "";
+                document.getElementById('gestorProfCro').value = "";
+                document.getElementById('gestorProfEnd').value = "";
+            } else {
+                document.getElementById('gestorProtFin').value = "";
+                document.getElementById('gestorProtMed').value = "";
+                document.getElementById('gestorProtQtd').value = "";
+                document.getElementById('gestorProtUso').value = "";
+                document.getElementById('gestorProtPos').value = "";
+            }
+            
+            // Recarrega os dados e pinta as listas na hora!
+            window.carregarConfiguracoesReceita(); 
+            
+        }).salvarItemConfig(aba, dados);
+    }
+};
+
 
 function abrirDashboard() { google.script.run.withSuccessHandler(url => window.open(url + "?page=Index", "_blank")).getScriptURL(); }
 function gerarRelatorio() { google.script.run.withSuccessHandler(url => window.open(url + "?page=RelatorioGeral", "_blank")).getScriptURL(); }
