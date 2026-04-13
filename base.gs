@@ -1,23 +1,130 @@
 const NOME_ABA_DADOS = "TOTAL"; 
 
 
+
+// ==========================================
+// ROTEADOR PÚBLICO (ERP vs PORTAL DE ACEITE)
+// ==========================================
 function doGet(e) {
-  var pagina = e?.parameter?.page || 'ModuloERP';
+  const pagina = e?.parameter?.p;
+  const hash = e?.parameter?.h;
 
-  // Mapeamento para o portal do fornecedor
-  if (pagina === 'cotacao') { pagina = 'CotacaoFornecedor'; }
-
-  try {
-    var template = HtmlService.createTemplateFromFile(pagina);
+  // ROTA: PORTAL DE ACEITE DO PACIENTE
+  if (pagina === 'aceite' && hash) {
+    const template = HtmlService.createTemplateFromFile('PortalAceite');
+    template.hash = hash;
     return template.evaluate()
-      .setTitle('Clínica Ramos')
-      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
-  } catch (erro) {
-    console.error("Erro ao carregar página: " + pagina, erro);
-    return HtmlService.createTemplateFromFile('ModuloERP').evaluate()
-      .setTitle('Clínica Ramos - Erro de Carregamento')
+      .setTitle('Assinatura Eletrónica - Clínica Ramos')
+      .addMetaTag('viewport', 'width=device-width, initial-scale=1')
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
   }
+
+  // ROTA: ERP PADRÃO (O seu código original continua aqui)
+  const menu = e?.parameter?.page || 'ModuloERP';
+  const template = HtmlService.createTemplateFromFile(menu);
+  return template.evaluate()
+    .setTitle('Clínica Ramos')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
+// ==========================================
+// REGISTRO DE ASSINATURA DIGITAL (PORTAL -> PLANILHA)
+// ==========================================
+// ============================================================
+// REGISTRO DE ASSINATURA DIGITAL - VERSÃO FINAL PARA COLUNA G
+// ============================================================
+function apiRegistarAceiteDigital(hash) {
+  const lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(20000); 
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const abaDocs = ss.getSheetByName("DOCUMENTOS");
+    if (!abaDocs) throw new Error("Aba DOCUMENTOS não encontrada!");
+
+    const dados = abaDocs.getDataRange().getValues();
+    const hashBusca = String(hash).trim();
+    let linhaAlvo = -1;
+    let nomePac = "";
+
+    // Percorre a planilha procurando o hash na coluna F (Índice 5)
+    for (let i = 1; i < dados.length; i++) {
+      // Testamos a coluna F (5) e a coluna D (3) por segurança
+      if (String(dados[i][5]).trim() === hashBusca || String(dados[i][3]).includes(hashBusca)) {
+        linhaAlvo = i + 1;
+        nomePac = dados[i][1];
+        break;
+      }
+    }
+
+    if (linhaAlvo === -1) throw new Error("Chave " + hash + " não encontrada na planilha.");
+
+    // FORÇA A GRAVAÇÃO NA COLUNA G (7)
+    // Usamos o número 7 diretamente para bater com o seu print
+    abaDocs.getRange(linhaAlvo, 7).setValue("✅ ASSINADO");
+
+    // Registra na aba de auditoria para você conferir
+    let abaLog = ss.getSheetByName("ACEITES_DIGITAIS") || ss.insertSheet("ACEITES_DIGITAIS");
+    abaLog.appendRow([new Date(), nomePac, hash, "OK"]);
+
+    SpreadsheetApp.flush(); 
+    return { success: true, paciente: nomePac };
+
+  } catch (e) {
+    throw new Error("Erro no servidor: " + e.message);
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+// ==========================================
+// SALVAR FOTO E LOCALIZAÇÃO DA ASSINATURA
+// ==========================================
+function apiProcessarAssinaturaAvancada(dados) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const abaDocs = ss.getSheetByName("DOCUMENTOS");
+  const dadosDocs = abaDocs.getDataRange().getValues();
+  
+  let linhaAlvo = -1;
+  let nomePac = "";
+
+  // 1. Localiza a linha do documento pelo Hash
+  for (let i = 1; i < dadosDocs.length; i++) {
+    if (String(dadosDocs[i][5]).trim() === String(dados.hash).trim()) {
+      linhaAlvo = i + 1;
+      nomePac = dadosDocs[i][1];
+      break;
+    }
+  }
+
+  if (linhaAlvo === -1) throw new Error("Documento não localizado.");
+
+  // 2. Localização das Pastas no Drive
+  const pastaRaiz = DriveApp.getFoldersByName("Documentos_Clinica_Ramos").next();
+  const pastaPaciente = pastaRaiz.getFoldersByName(nomePac).next();
+  
+  let pastasAssinaturas = pastaPaciente.getFoldersByName("Assinaturas");
+  let pastaAssinaturas = pastasAssinaturas.hasNext() ? pastasAssinaturas.next() : pastaPaciente.createFolder("Assinaturas");
+
+  // 3. Converte a Base64 da foto em arquivo real
+  const imagemBlob = Utilities.newBlob(Utilities.base64Decode(dados.foto.split(",")[1]), "image/png", "FOTO_ASSINATURA_" + dados.hash + ".png");
+  const arquivoFoto = pastaAssinaturas.createFile(imagemBlob);
+  const urlFoto = arquivoFoto.getUrl();
+
+  // 4. Atualiza a Planilha com Status, Localização e Link da Foto
+  abaDocs.getRange(linhaAlvo, 7).setValue("✅ ASSINADO"); // Coluna G: Status
+  
+  // Registra no Log de Auditoria com as Coordenadas (GPS)
+  let abaLog = ss.getSheetByName("ACEITES_DIGITAIS") || ss.insertSheet("ACEITES_DIGITAIS");
+  abaLog.appendRow([
+    Utilities.formatDate(new Date(), "GMT-3", "dd/MM/yyyy HH:mm:ss"),
+    nomePac,
+    dados.hash,
+    "ASSINADO COM FOTO",
+    urlFoto,
+    dados.lat + ", " + dados.lng // Localização exata
+  ]);
+
+  return { success: true, paciente: nomePac };
 }
 
 function getScriptURL() { return ScriptApp.getService().getUrl(); }
@@ -919,66 +1026,46 @@ function getAnaliseMelhorPreco() {
 // ==========================================
 function getPacientesCRM() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  // Coloque aqui o nome exato da sua aba de pacientes (ex: "PACIENTES" ou "CRM")
   const aba = ss.getSheetByName("PACIENTES"); 
   if (!aba) return [];
 
   const dados = aba.getDataRange().getValues();
-  if (dados.length < 2) return []; // Se só tiver o cabeçalho, retorna vazio
+  if (dados.length < 2) return [];
 
-  // Lê o cabeçalho e transforma tudo em minúsculo para não dar erro de digitação
+  // Limpeza profunda do cabeçalho
   const cabecalho = dados[0].map(c => c.toString().toLowerCase().trim());
 
-  // O sistema "caça" a posição exata de cada coluna pelo nome dela!
-  const iNome = cabecalho.indexOf("nome");
-  const iCpf = cabecalho.indexOf("cpf");
-  const iRg = cabecalho.indexOf("rg");
-  const iNascimento = cabecalho.indexOf("nascimento");
-  const iCelular = cabecalho.indexOf("celular");
-  const iTelefone = cabecalho.indexOf("telefone");
-  const iEmail = cabecalho.indexOf("email");
-  const iConvenio = cabecalho.indexOf("convenio");
-  const iEndereco = cabecalho.indexOf("endereco");
-  const iProfissao = cabecalho.indexOf("profissao");
-  const iSexo = cabecalho.indexOf("sexo");
-  const iResponsavel = cabecalho.indexOf("responsavel");
-  
-  // Caça o Estado Civil (seja como 'estado civil' ou 'estadocivil')
-  let iEstadoCivil = cabecalho.indexOf("estado civil");
-  if (iEstadoCivil === -1) iEstadoCivil = cabecalho.indexOf("estadocivil");
+  // Função interna para achar a coluna certa sem erro
+  const achar = (nome) => cabecalho.indexOf(nome.toLowerCase().trim());
 
-  const pacientes = [];
-  
-  for (let i = 1; i < dados.length; i++) {
-    const linha = dados[i];
-    if (!linha[iNome]) continue; // Pula linhas em branco
+  const lista = [];
+  for (let ln = 1; ln < dados.length; ln++) {
+    const r = dados[ln];
+    const nomePaciente = r[achar("nome")];
+    if (!nomePaciente) continue;
 
-    // Tratamento especial para a data de nascimento (evita que a data quebre o sistema)
-    let dtNasc = linha[iNascimento];
+    // Tratamento de Data
+    let dtNasc = r[achar("nascimento")];
     if (dtNasc instanceof Date) {
-       dtNasc = Utilities.formatDate(dtNasc, ss.getSpreadsheetTimeZone(), "dd/MM/yyyy");
+      dtNasc = Utilities.formatDate(dtNasc, ss.getSpreadsheetTimeZone(), "dd/MM/yyyy");
     }
 
-    pacientes.push({
-      nome: linha[iNome] ? linha[iNome].toString() : "",
-      cpf: iCpf >= 0 ? linha[iCpf].toString() : "",
-      rg: iRg >= 0 ? linha[iRg].toString() : "",
-      nascimento: dtNasc ? dtNasc.toString() : "",
-      celular: iCelular >= 0 ? linha[iCelular].toString() : "",
-      telefone: iTelefone >= 0 ? linha[iTelefone].toString() : "",
-      email: iEmail >= 0 ? linha[iEmail].toString() : "",
-      convenio: iConvenio >= 0 ? linha[iConvenio].toString() : "Particular",
-      endereco: iEndereco >= 0 ? linha[iEndereco].toString() : "",
-      profissao: iProfissao >= 0 ? linha[iProfissao].toString() : "",
-      sexo: iSexo >= 0 ? linha[iSexo].toString() : "",
-      responsavel: iResponsavel >= 0 ? linha[iResponsavel].toString() : "",
-      estado_civil: iEstadoCivil >= 0 ? linha[iEstadoCivil].toString() : ""
+    lista.push({
+      nome: String(nomePaciente).trim(),
+      // Se não achar a coluna, ele coloca vazio em vez de dar erro
+      cpf: achar("cpf") >= 0 ? String(r[achar("cpf")] || "") : "",
+      rg: achar("rg") >= 0 ? String(r[achar("rg")] || "") : "", // Verifique se o nome na planilha é "RG"
+      nascimento: dtNasc ? String(dtNasc) : "",
+      celular: achar("celular") >= 0 ? String(r[achar("celular")] || "") : "",
+      telefone: achar("telefone") >= 0 ? String(r[achar("telefone")] || "") : "",
+      email: achar("email") >= 0 ? String(r[achar("email")] || "") : "",
+      convenio: achar("convenio") >= 0 ? String(r[achar("convenio")] || "") : "Particular",
+      endereco: achar("endereco") >= 0 ? String(r[achar("endereco")] || "") : "",
+      responsavel: achar("responsavel") >= 0 ? String(r[achar("responsavel")] || "") : ""
     });
   }
-  
-  return pacientes;
+  return lista;
 }
-
 
 // ==========================================
 // SALVAR/EDITAR PACIENTE COM TRAVA E OTIMIZAÇÃO DE ARRAY
@@ -1384,6 +1471,7 @@ function calcularRetornosPendentes(regrasRecorrencia) {
   }
 
   const ultimaVisita = {}; 
+
   function registrarProcedimento(nomePac, dataVal, nomeProc) {
       if (!nomePac || !dataVal || !nomeProc) return;
       let pacStr = nomePac.toString().toLowerCase().trim();
@@ -1555,4 +1643,928 @@ function apiGetNotificacoes() {
   // Aqui você pode adicionar lógica para outras notificações (estoque baixo, aniversários, etc)
   
   return notificacoes;
+}
+
+// ==========================================
+// MÓDULO DE LABORATÓRIO E NOTIFICAÇÕES
+// ==========================================
+function apiSalvarLaboratorio(dados) {
+  const lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(10000);
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    let aba = ss.getSheetByName("LABORATORIO");
+
+    if (!aba) {
+      aba = ss.insertSheet("LABORATORIO");
+      aba.appendRow(["ID_LAB", "PACIENTE", "PROCEDIMENTO", "NOME_LABORATORIO", "DATA_ENVIO", "PRAZO_DIAS", "PREVISAO_ENTREGA", "STATUS"]);
+    }
+    
+    const hoje = new Date();
+    const previsao = new Date();
+    previsao.setDate(hoje.getDate() + parseInt(dados.prazo));
+    const previsaoFormatada = Utilities.formatDate(previsao, ss.getSpreadsheetTimeZone(), "dd/MM/yyyy");
+
+    // SE FOR EDIÇÃO DE UM TRABALHO EXISTENTE
+    if (dados.idEdicao) {
+        const dataRange = aba.getDataRange().getValues();
+        for(let i=1; i<dataRange.length; i++) {
+            if(dataRange[i][0] === dados.idEdicao) {
+                aba.getRange(i+1, 2).setValue(dados.paciente);
+                aba.getRange(i+1, 3).setValue(dados.proc);
+                aba.getRange(i+1, 4).setValue(dados.nomeLab);
+                aba.getRange(i+1, 6).setValue(dados.prazo);
+                aba.getRange(i+1, 7).setValue(previsaoFormatada); // Recalcula a entrega
+                SpreadsheetApp.flush();
+                return { success: true, msg: "Trabalho atualizado com sucesso!" };
+            }
+        }
+    }
+
+    // SE FOR UM TRABALHO NOVO
+    const idLab = "LAB_" + new Date().getTime();
+    aba.appendRow([idLab, dados.paciente, dados.proc, dados.nomeLab, Utilities.formatDate(hoje, ss.getSpreadsheetTimeZone(), "dd/MM/yyyy"), dados.prazo, previsaoFormatada, "PENDENTE"]);
+
+    SpreadsheetApp.flush();
+    return { success: true, msg: "Trabalho enviado para o laboratório!" };
+  } catch(e) { throw new Error("Erro ao salvar lab: " + e.message); } finally { lock.releaseLock(); }
+}
+
+function apiGetTodosLaboratorios() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const aba = ss.getSheetByName("LABORATORIO");
+  if (!aba) return [];
+  
+  const dados = aba.getDataRange().getValues();
+  const lista = [];
+  
+  for (let i = 1; i < dados.length; i++) {
+    let envioFormatado = dados[i][4];
+    let previsaoFormatada = dados[i][6];
+
+    // MÁGICA: Se a planilha transformou em Data, nós forçamos a voltar pra Texto!
+    if (envioFormatado instanceof Date) {
+        envioFormatado = Utilities.formatDate(envioFormatado, ss.getSpreadsheetTimeZone(), "dd/MM/yyyy");
+    }
+    if (previsaoFormatada instanceof Date) {
+        previsaoFormatada = Utilities.formatDate(previsaoFormatada, ss.getSpreadsheetTimeZone(), "dd/MM/yyyy");
+    }
+
+    lista.push({
+      id: dados[i][0], 
+      paciente: dados[i][1], 
+      proc: dados[i][2],
+      lab: dados[i][3], 
+      envio: envioFormatado, 
+      prazo: dados[i][5],
+      previsao: previsaoFormatada, 
+      status: dados[i][7]
+    });
+  }
+  
+  // Ordena para que os Pendentes fiquem em cima
+  return lista.sort((a, b) => (a.status === "PENDENTE" ? -1 : 1));
+}
+
+function apiExcluirLaboratorio(idLab) {
+   const lock = LockService.getScriptLock();
+   try {
+     lock.waitLock(10000);
+     const aba = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("LABORATORIO");
+     const dados = aba.getDataRange().getValues();
+     for(let i=1; i<dados.length; i++) {
+       if(dados[i][0] === idLab) { aba.deleteRow(i + 1); SpreadsheetApp.flush(); return "Pedido excluído!"; }
+     }
+   } finally { lock.releaseLock(); }
+}
+
+function apiFinalizarLaboratorio(idRef) {
+   const lock = LockService.getScriptLock();
+   try {
+     lock.waitLock(10000);
+     const ss = SpreadsheetApp.getActiveSpreadsheet();
+     const aba = ss.getSheetByName("LABORATORIO");
+     if(!aba) return;
+
+     const dados = aba.getDataRange().getValues();
+     for(let i=1; i<dados.length; i++) {
+       if(dados[i][0] === idRef) {
+         aba.getRange(i + 1, 8).setValue("FINALIZADO"); // Muda o status na coluna 8
+         break;
+       }
+     }
+     SpreadsheetApp.flush();
+   } finally {
+     lock.releaseLock();
+   }
+}
+
+function apiSalvarPaciente(dados) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const aba = ss.getSheetByName("CADASTRO_CRM");
+  if (!aba) throw new Error("Aba CADASTRO_CRM não encontrada!");
+  
+  const valores = aba.getDataRange().getValues();
+  const nomeOriginal = dados.nome_original ? dados.nome_original.toString().trim() : "";
+  let linhaAlvo = -1;
+
+  // 1. TENTA LOCALIZAR O PACIENTE PARA EDIÇÃO
+  if (nomeOriginal !== "") {
+    for (let i = 1; i < valores.length; i++) {
+      if (valores[i][0].toString().trim() === nomeOriginal) {
+        linhaAlvo = i + 1;
+        break;
+      }
+    }
+  }
+
+  // 2. MONTA OS DADOS (Mantenha a ordem exata das suas colunas!)
+  const novaLinha = [
+    dados.Nome, 
+    dados.CPF, 
+    dados.RG, 
+    dados.Nascimento, 
+    dados.Celular, 
+    dados.Telefone, 
+    dados.Email, 
+    dados.sexo, 
+    dados.profissao, 
+    dados.convenio, 
+    dados.Endereco, 
+    dados.Responsavel
+  ];
+
+  // 3. DECIDE: EDITAR OU CRIAR NOVO
+  if (linhaAlvo > -1) {
+    // Grava por cima da linha existente
+    aba.getRange(linhaAlvo, 1, 1, novaLinha.length).setValues([novaLinha]);
+    return "Paciente '" + dados.Nome + "' atualizado com sucesso!";
+  } else {
+    // Verifica se já existe um paciente com esse nome exato para evitar duplicidade acidental
+    for (let i = 1; i < valores.length; i++) {
+       if (valores[i][0].toString().trim() === dados.Nome.toString().trim()) {
+          return "Erro: Já existe um paciente cadastrado com este nome!";
+       }
+    }
+    
+    aba.appendRow(novaLinha);
+    return "Paciente '" + dados.Nome + "' cadastrado com sucesso!";
+  }
+}
+
+function apiGetNotificacoes() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const abaLab = ss.getSheetByName("LABORATORIO");
+  const notificacoes = [];
+
+  if (!abaLab) return notificacoes;
+
+  const hoje = new Date();
+  hoje.setHours(0,0,0,0);
+  const dados = abaLab.getDataRange().getValues();
+
+  for (let i = 1; i < dados.length; i++) {
+    const [id, paciente, proc, lab, envio, prazo, previsaoStr, status] = dados[i];
+
+    if (status === "FINALIZADO") continue;
+
+    let dataPrevisao = null;
+    if (previsaoStr instanceof Date) {
+       dataPrevisao = previsaoStr;
+    } else if (typeof previsaoStr === 'string' && previsaoStr.includes('/')) {
+       const partes = previsaoStr.split('/');
+       dataPrevisao = new Date(partes[2], partes[1] - 1, partes[0]);
+    }
+
+    if (dataPrevisao) {
+        const diffTime = dataPrevisao - hoje;
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+        // Se faltar 2 dias ou menos, o sininho acorda!
+        if (diffDays <= 2) {
+          notificacoes.push({
+            tipo: "LABORATORIO",
+            titulo: diffDays < 0 ? "⚠️ Atraso no Lab!" : (diffDays === 0 ? "🚨 Entrega HOJE!" : "⏳ Chegando em breve"),
+            mensagem: `${paciente} - ${proc}<br><small class="text-muted">Lab: ${lab}</small>`,
+            paciente: paciente,
+            idRef: id,
+            urgencia: diffDays <= 0 ? "alta" : "media"
+          });
+        }
+    }
+  }
+  return notificacoes;
+}
+
+// ==========================================
+// MÓDULO: PROCEDIMENTOS E PREÇOS (ABA CONFIG COL A e B)
+// ==========================================
+function apiGetProcedimentosComPreco() {
+  const aba = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("CONFIG");
+  if (!aba) return [];
+  
+  // Pega os dados apenas das colunas A e B, a partir da linha 2
+  const dados = aba.getRange("A2:B").getValues(); 
+  const lista = [];
+  
+  for (let i = 0; i < dados.length; i++) {
+    if (dados[i][0]) {
+      lista.push({ proc: dados[i][0].toString(), preco: dados[i][1] || 0 });
+    }
+  }
+  return lista;
+}
+
+function apiSalvarProcedimentoComPreco(nome, preco) {
+  const lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(10000);
+    const aba = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("CONFIG");
+    const dados = aba.getRange("A2:A").getValues();
+    let linhaAlvo = -1;
+    
+    // 1. Tenta achar se o procedimento já existe para ATUALIZAR o preço
+    for (let i = 0; i < dados.length; i++) {
+      if (dados[i][0] && dados[i][0].toString().toUpperCase() === nome.toUpperCase()) {
+        linhaAlvo = i + 2;
+        break;
+      }
+    }
+    
+    // 2. Se não existe, acha a primeira linha vazia na Coluna A
+    if (linhaAlvo === -1) {
+      for (let i = 0; i < dados.length; i++) {
+        if (!dados[i][0]) { linhaAlvo = i + 2; break; }
+      }
+      if (linhaAlvo === -1) linhaAlvo = dados.length + 2; // Vai pro fim
+    }
+    
+    // Converte para formato numérico puro
+    let valorNum = parseFloat(preco.toString().replace(/\./g, '').replace(',', '.'));
+    if (isNaN(valorNum)) valorNum = 0;
+    
+    // Salva exatamente na Col A e Col B
+    aba.getRange(linhaAlvo, 1).setValue(nome.toUpperCase());
+    aba.getRange(linhaAlvo, 2).setValue(valorNum);
+    
+    SpreadsheetApp.flush();
+    return "Salvo com sucesso!";
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function apiExcluirProcedimentoComPreco(nome) {
+  const lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(10000);
+    const aba = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("CONFIG");
+    const dados = aba.getRange("A2:B").getValues();
+    const novosDados = [];
+    
+    // Pega todos, MENOS o que queremos excluir
+    for (let i = 0; i < dados.length; i++) {
+      if (dados[i][0] && dados[i][0].toString().toUpperCase() !== nome.toUpperCase()) {
+        novosDados.push([dados[i][0], dados[i][1]]);
+      }
+    }
+    
+    // Preenche com linhas vazias até o tamanho original para limpar o final
+    while(novosDados.length < dados.length) { novosDados.push(["", ""]); }
+    
+    // Sobrescreve apenas as colunas A e B, puxando tudo pra cima!
+    aba.getRange(2, 1, novosDados.length, 2).setValues(novosDados);
+    
+    SpreadsheetApp.flush();
+    return "Procedimento excluído!";
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function apiEditarProcedimentoComPreco(nomeOriginal, nomeNovo, precoNovo) {
+  const lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(10000);
+    const aba = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("CONFIG");
+    const dados = aba.getRange("A2:A").getValues();
+    let linhaAlvo = -1;
+
+    // Acha a linha exata onde está o procedimento antigo
+    for (let i = 0; i < dados.length; i++) {
+      if (dados[i][0] && dados[i][0].toString().toUpperCase() === nomeOriginal.toUpperCase()) {
+        linhaAlvo = i + 2;
+        break;
+      }
+    }
+
+    if (linhaAlvo !== -1) {
+      let valorNum = parseFloat(precoNovo.toString().replace(/\./g, '').replace(',', '.'));
+      if (isNaN(valorNum)) valorNum = 0;
+
+      // Sobrescreve as Colunas A e B com os novos dados
+      aba.getRange(linhaAlvo, 1).setValue(nomeNovo.toUpperCase());
+      aba.getRange(linhaAlvo, 2).setValue(valorNum);
+      
+      SpreadsheetApp.flush();
+      return "Procedimento atualizado!";
+    } else {
+      throw new Error("Procedimento original não encontrado.");
+    }
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+// ==========================================
+// MÓDULO GERADOR DE DOCUMENTOS EM PDF
+// ==========================================
+
+// ⚠️ ATENÇÃO: Cole aqui o ID da pasta que você criou no Google Drive!
+const PASTA_DOCUMENTOS_ID = "1jA5yXoaiTJ4ZgfibZFYLVjLpbpZQtq2k"; 
+
+
+
+// ==========================================
+// GERADOR DE PDF COM ORGANIZAÇÃO EM PASTAS
+// ==========================================
+
+function apiGerarDocumentoPDF(tipo, paciente, dadosDocumento) {
+  const lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(10000);
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const fusoHorario = ss.getSpreadsheetTimeZone();
+    const dataAtual = Utilities.formatDate(new Date(), fusoHorario, "dd/MM/yyyy");
+    
+    // 1. Cria um HTML temporário lindíssimo para o documento
+    let html = `
+      <html>
+        <head>
+          <style>
+            body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #333; margin: 40px; }
+            .header { text-align: center; border-bottom: 2px solid #4318FF; padding-bottom: 20px; margin-bottom: 30px; }
+            .logo { font-size: 28px; font-weight: bold; color: #2B3674; margin-bottom: 5px; }
+            .sub-logo { font-size: 14px; color: #A3AED0; }
+            .title { font-size: 22px; font-weight: bold; color: #4318FF; margin-bottom: 20px; text-transform: uppercase; }
+            .info-box { background: #F4F7FE; padding: 15px; border-radius: 8px; margin-bottom: 30px; }
+            .info-text { font-size: 14px; margin: 5px 0; }
+            .content { font-size: 15px; line-height: 1.6; margin-bottom: 50px; min-height: 300px; }
+            .signature { text-align: center; margin-top: 60px; }
+            .line { border-top: 1px solid #333; width: 250px; margin: 0 auto 10px auto; }
+            .footer { text-align: center; font-size: 12px; color: #A3AED0; margin-top: 40px; border-top: 1px solid #eee; padding-top: 20px; }
+            
+            /* Tabela de Orçamento */
+            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+            th { background-color: #4318FF; color: white; padding: 12px; text-align: left; }
+            td { padding: 12px; border-bottom: 1px solid #eee; }
+            .total-row { font-weight: bold; background-color: #F4F7FE; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div class="logo">Clínica Odontológica Ramos</div>
+            <div class="sub-logo">Rua Exemplo, 123 - Centro | (11) 99999-9999</div>
+          </div>
+          
+          <div class="info-box">
+            <div class="info-text"><strong>Paciente:</strong> ${paciente}</div>
+            <div class="info-text"><strong>Data:</strong> ${dataAtual}</div>
+          </div>
+    `;
+
+    // 2. Preenche o miolo do documento dependendo do Tipo (Receita, Atestado ou Orçamento)
+    if (tipo === "RECEITA") {
+      html += `
+        <div class="title">Receituário</div>
+        <div class="content">${dadosDocumento.texto.replace(/\n/g, '<br>')}</div>
+      `;
+    } 
+    else if (tipo === "ATESTADO") {
+      html += `
+        <div class="title">Atestado Odontológico</div>
+        <div class="content">
+          Atesto para os devidos fins que o(a) paciente <strong>${paciente}</strong>, 
+          esteve em atendimento odontológico neste consultório no dia ${dataAtual}, 
+          das ${dadosDocumento.horaInicio} às ${dadosDocumento.horaFim}.<br><br>
+          Necessita de <strong>${dadosDocumento.diasRepouso} dia(s)</strong> de repouso por motivo de saúde.
+          ${dadosDocumento.cid ? `<br><br>CID: ${dadosDocumento.cid}` : ''}
+        </div>
+      `;
+    }
+    else if (tipo === "ORCAMENTO") {
+      let linhasTabela = '';
+      let total = 0;
+      dadosDocumento.itens.forEach(item => {
+        linhasTabela += `<tr><td>${item.proc}</td><td style="text-align: right;">R$ ${item.valor}</td></tr>`;
+        total += parseFloat(item.valor.replace(/\./g, '').replace(',', '.'));
+      });
+      
+      html += `
+        <div class="title">Orçamento de Tratamento</div>
+        <div class="content">
+          <table>
+            <thead><tr><th>Procedimento</th><th style="text-align: right;">Valor</th></tr></thead>
+            <tbody>
+              ${linhasTabela}
+              <tr class="total-row"><td>TOTAL ESTIMADO</td><td style="text-align: right; color: #4318FF;">R$ ${total.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td></tr>
+            </tbody>
+          </table>
+          <br>
+          <div style="font-size: 13px; color: #666;">* Este orçamento tem validade de 15 dias a partir da data de emissão.</div>
+        </div>
+      `;
+    }
+
+    // 3. Fecha o HTML com as assinaturas
+    html += `
+          <div class="signature">
+            <div class="line"></div>
+            <div><strong>Dr(a). Responsável</strong></div>
+            <div style="font-size: 13px; color: #666;">CRO: XXXXXX</div>
+          </div>
+          <div class="footer">Documento gerado eletronicamente pelo Sistema de Gestão Clínica Ramos</div>
+        </body>
+      </html>
+    `;
+
+    // =========================================================
+    // LÓGICA DE PASTAS INTELIGENTES (DRIVE) E GERAÇÃO DO PDF
+    // =========================================================
+    const PASTA_RAIZ_ID = "1jA5yXoaiTJ4ZgfibZFYLVjLpbpZQtq2k"; // <--- ATENÇÃO: COLOQUE SEU ID AQUI!
+    const pastaPrincipal = DriveApp.getFolderById(PASTA_RAIZ_ID);
+    
+    // Acha ou Cria a pasta do Paciente
+    let pastaPaciente;
+    const buscaPastaPac = pastaPrincipal.getFoldersByName(paciente);
+    if (buscaPastaPac.hasNext()) {
+      pastaPaciente = buscaPastaPac.next();
+    } else {
+      pastaPaciente = pastaPrincipal.createFolder(paciente);
+    }
+
+    // Acha ou Cria a subpasta por Tipo (Receitas, Atestados, etc)
+    const nomesPastas = { "RECEITA": "Receitas", "ATESTADO": "Atestados", "ORCAMENTO": "Orcamentos" };
+    const nomeSubpasta = nomesPastas[tipo] || "Outros";
+    
+    let pastaTipo;
+    const buscaPastaTipo = pastaPaciente.getFoldersByName(nomeSubpasta);
+    if (buscaPastaTipo.hasNext()) {
+      pastaTipo = buscaPastaTipo.next();
+    } else {
+      pastaTipo = pastaPaciente.createFolder(nomeSubpasta);
+    }
+
+    // Converte a obra de arte em PDF e salva na pasta correta
+    const blob = Utilities.newBlob(html, MimeType.HTML).getAs(MimeType.PDF);
+    const nomeArquivo = `${tipo}_${paciente}_${dataAtual.replace(/\//g, '-')}`;
+    blob.setName(nomeArquivo + ".pdf");
+    
+    const arquivo = pastaTipo.createFile(blob);
+    const urlPdf = arquivo.getUrl();
+
+    // =========================================================
+    // REGISTRA NO BANCO DE DADOS (Aba DOCUMENTOS)
+    // =========================================================
+    let abaDocs = ss.getSheetByName("DOCUMENTOS");
+    if (!abaDocs) {
+      abaDocs = ss.insertSheet("DOCUMENTOS");
+      abaDocs.appendRow(["DATA", "PACIENTE", "TIPO", "NOME_ARQUIVO", "URL"]);
+    }
+    abaDocs.appendRow([dataAtual, paciente, tipo, nomeArquivo, urlPdf]);
+
+    return { success: true, url: urlPdf, msg: "Documento salvo na pasta do paciente!" };
+
+  } catch(e) {
+    throw new Error("Erro ao gerar PDF: " + e.message);
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+// ==========================================
+// BUSCA DOCUMENTOS (VERSÃO DEFINITIVA)
+// ==========================================
+function apiGetDocumentosPaciente(nomePaciente) {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const aba = ss.getSheetByName("DOCUMENTOS");
+    if (!aba) return [];
+    
+    const dados = aba.getDataRange().getValues();
+    const docs = [];
+    const busca = String(nomePaciente || "").toLowerCase().trim();
+
+    for (let i = 1; i < dados.length; i++) {
+      if (!dados[i][1]) continue; 
+      const pacienteNaPlanilha = String(dados[i][1]).toLowerCase().trim();
+      
+      if (pacienteNaPlanilha === busca || pacienteNaPlanilha.includes(busca)) {
+        let dataStr = dados[i][0];
+        if (dataStr instanceof Date) dataStr = Utilities.formatDate(dataStr, ss.getSpreadsheetTimeZone(), "dd/MM/yyyy");
+
+        // MONTANDO O OBJETO QUE VAI PARA A TELA
+        docs.push({
+          data: dataStr,
+          tipo: dados[i][2],
+          nome: dados[i][3],
+          url: dados[i][4],
+          hash: dados[i][5] || "",        // Coluna F (Índice 5)
+          status: dados[i][6] || "⏳ PENDENTE" // Coluna G (Índice 6)
+        });
+      }
+    }
+    return docs.reverse(); // Mais novos no topo
+  } catch (e) {
+    console.error("Erro ao buscar docs: " + e.message);
+    return []; 
+  }
+}
+
+// ==========================================
+// EXCLUIR DOCUMENTO (PLANILHA + DRIVE)
+// ==========================================
+function apiExcluirDocumentoPDF(urlDocumento) {
+  const lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(10000);
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const aba = ss.getSheetByName("DOCUMENTOS");
+    if (!aba) throw new Error("Aba de documentos não encontrada.");
+
+    const dados = aba.getDataRange().getValues();
+    let linhaParaApagar = -1;
+
+    // 1. Procura qual linha tem essa exata URL
+    for (let i = 1; i < dados.length; i++) {
+      if (dados[i][4] === urlDocumento) {
+        linhaParaApagar = i + 1;
+        break;
+      }
+    }
+
+    if (linhaParaApagar > -1) {
+      aba.deleteRow(linhaParaApagar); // Apaga da Planilha
+      
+      // 2. Tenta caçar o arquivo no Drive para jogar na lixeira
+      try {
+        // Extrai o ID do arquivo de dentro do link gigante do Google
+        const matchId = urlDocumento.match(/[-\w]{25,}/); 
+        if (matchId && matchId[0]) {
+          DriveApp.getFileById(matchId[0]).setTrashed(true);
+        }
+      } catch (e) {
+        // Se der erro no Drive (ex: arquivo já foi apagado à mão), ignora e segue a vida
+      }
+      
+      SpreadsheetApp.flush();
+      return "Documento excluído com sucesso!";
+    } else {
+      throw new Error("Documento não encontrado no banco de dados.");
+    }
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+// ==========================================
+// MOTOR DE GERAÇÃO E ORGANIZAÇÃO - CLINICA RAMOS (VERSÃO ULTRA-BLINDADA)
+// ==========================================
+function registrarEGerarPDF(dados) {
+  // 1. TRAVA DE SEGURANÇA (Evita que o Sheets ignore a gravação)
+  const lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(15000); // Espera até 15 segundos se a planilha estiver ocupada
+
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    
+    // 2. NAVEGAÇÃO NA ESTRUTURA DO DRIVE
+    const nomePastaRaiz = "Documentos_Clinica_Ramos";
+    let pastasRaiz = DriveApp.getFoldersByName(nomePastaRaiz);
+    let pastaRaiz = pastasRaiz.hasNext() ? pastasRaiz.next() : DriveApp.createFolder(nomePastaRaiz);
+
+    const nomePac = dados.paciente ? dados.paciente.trim() : "Paciente_Sem_Nome";
+    let pastasPac = pastaRaiz.getFoldersByName(nomePac);
+    let pastaPaciente = pastasPac.hasNext() ? pastasPac.next() : pastaRaiz.createFolder(nomePac);
+
+    const tipoDoc = dados.tipo ? dados.tipo.trim() : "Outros";
+    let pastasTipo = pastaPaciente.getFoldersByName(tipoDoc);
+    let pastaDestino = pastasTipo.hasNext() ? pastasTipo.next() : pastaPaciente.createFolder(tipoDoc);
+
+    // 3. GERAÇÃO DO PDF
+    const htmlParaPDF = `
+      <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;700&display=swap');
+        body { font-family: 'Plus Jakarta Sans', sans-serif; color: #2B3674; margin: 0; padding: 0; }
+        .page { width: 100%; padding: 40px; box-sizing: border-box; }
+        .header { text-align: center; border-bottom: 2px solid #4318FF; padding-bottom: 20px; margin-bottom: 30px; }
+        .logo { font-size: 26px; font-weight: bold; color: #4318FF; margin: 0; }
+        .title { text-align: center; font-size: 20px; font-weight: bold; margin: 30px 0; text-transform: uppercase; }
+        .caixa-paciente { background: #F4F7FE; padding: 20px; border-radius: 12px; margin-bottom: 30px; font-size: 14px; }
+        .content { font-size: 16px; line-height: 2; text-align: justify; white-space: pre-wrap; min-height: 400px; }
+        .signature { margin-top: 50px; text-align: center; }
+        .line { width: 250px; border-top: 1px solid #2B3674; margin: 0 auto 10px; }
+        .page-break { page-break-after: always; }
+      </style>
+      ${dados.htmlCompleto}
+    `;
+
+    const blob = HtmlService.createHtmlOutput(htmlParaPDF).getAs('application/pdf');
+    const nomeArquivo = `${dados.tipo}_${nomePac}_${Utilities.formatDate(new Date(), "GMT-3", "dd-MM-yyyy_HH-mm")}.pdf`;
+    
+    const arquivo = pastaDestino.createFile(blob).setName(nomeArquivo);
+    
+    // Tenta compartilhar, mas não trava se a conta for corporativa restrita
+    try {
+      arquivo.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    } catch (e) { console.log("Acesso público restrito pela organização."); }
+    
+    const urlArquivo = arquivo.getUrl();
+
+    // 4. REGISTRO NA PLANILHA (COM FORÇAMENTO DE GRAVAÇÃO E STATUS)
+    let aba = ss.getSheetByName("DOCUMENTOS") || ss.insertSheet("DOCUMENTOS");
+    
+    if (aba.getLastRow() === 0) {
+      aba.appendRow(["DATA", "PACIENTE", "TIPO", "DETALHES", "LINK DRIVE", "CHAVE_HASH", "STATUS"]);
+    }
+
+    const dataHoje = Utilities.formatDate(new Date(), "GMT-3", "dd/MM/yyyy HH:mm");
+    
+    // Adiciona a linha salvando o Hash e o Status Pendente!
+    aba.appendRow([
+      dataHoje, 
+      nomePac, 
+      dados.tipo, 
+      dados.resumo || "Documento gerado", 
+      urlArquivo,
+      dados.hash || "",   // <--- A Chave Exata!
+      "⏳ PENDENTE"       // <--- O Status inicial
+    ]);
+
+    SpreadsheetApp.flush(); 
+    return { url: urlArquivo, success: true }
+
+  } catch (e) {
+    throw new Error("Falha Crítica no Registro: " + e.message);
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+// ==========================================
+// MÓDULO CONSTRUTOR DE RECEITAS INTELIGENTE
+// ==========================================
+
+// 1. Banco de Protocolos (Você pode adicionar quantos quiser aqui)
+const protocolosReceita = {
+    "Articulação (Dor Neuropática)": { 
+        med: "Pregabalina 75 mg", 
+        qtd: "30 cp", 
+        uso: "Uso Interno", 
+        poso: "Tomar 1 cápsula, 1x por dia, durante 30 dias." 
+    },
+    "Pós-Operatório Padrão": { 
+        med: "Ibuprofeno 600mg", 
+        qtd: "10 cp", 
+        uso: "Uso Interno", 
+        poso: "Tomar 1 comprimido a cada 8 horas, em caso de dor." 
+    },
+    "Infecção Moderada": { 
+        med: "Amoxicilina 500mg", 
+        qtd: "21 cp", 
+        uso: "Uso Interno", 
+        poso: "Tomar 1 comprimido a cada 8 horas, durante 7 dias." 
+    },
+    "Bochecho / Assepsia": { 
+        med: "Digluconato de Clorexidina 0,12%", 
+        qtd: "1 Frasco (250ml)", 
+        uso: "Uso Externo", 
+        poso: "Bochechar 15ml por 1 minuto, 2x ao dia, após a escovação." 
+    }
+};
+
+let contadorMedicamentos = 0;
+
+// 2. Adiciona uma nova linha na tela
+function adicionarLinhaMedicamento() {
+    contadorMedicamentos++;
+    const id = contadorMedicamentos;
+    const container = document.getElementById("containerMedicamentosReceita");
+
+    // Monta as opções do Select baseado no banco de protocolos
+    let opcoesFinalidade = `<option value="">Selecione a Finalidade...</option>`;
+    for (let finalidade in protocolosReceita) {
+        opcoesFinalidade += `<option value="${finalidade}">${finalidade}</option>`;
+    }
+    opcoesFinalidade += `<option value="Livre">Digitação Livre (Outro)</option>`;
+
+    const htmlLinha = `
+    <div class="p-3 border rounded shadow-sm bg-white" id="blocoMed_${id}" style="position: relative;">
+        <button type="button" class="btn btn-sm btn-danger position-absolute top-0 end-0 m-2 rounded-circle" style="width:28px; height:28px; padding:0;" onclick="removerLinhaMedicamento(${id})">
+           <span class="material-icons" style="font-size:16px; line-height:28px;">close</span>
+        </button>
+        
+        <div class="row g-2">
+            <div class="col-md-6">
+                <label class="form-label small fw-bold text-muted mb-0">Finalidade / Protocolo</label>
+                <select id="recFin_${id}" class="form-select form-select-sm" onchange="autoPreencherReceita(${id})">
+                    ${opcoesFinalidade}
+                </select>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label small fw-bold text-muted mb-0">Medicamento</label>
+                <input type="text" id="recMed_${id}" class="form-control form-control-sm">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label small fw-bold text-muted mb-0">Qtd</label>
+                <input type="text" id="recQtd_${id}" class="form-control form-control-sm" placeholder="Ex: 30 cp">
+            </div>
+            <div class="col-md-8">
+                <label class="form-label small fw-bold text-muted mb-0">Uso</label>
+                <input type="text" id="recUso_${id}" class="form-control form-control-sm" placeholder="Ex: Interno, Externo, Local">
+            </div>
+            <div class="col-12">
+                <label class="form-label small fw-bold text-muted mb-0">Posologia / Instruções</label>
+                <input type="text" id="recPoso_${id}" class="form-control form-control-sm">
+            </div>
+        </div>
+    </div>`;
+
+    container.insertAdjacentHTML('beforeend', htmlLinha);
+}
+
+// 3. Remove a linha se o usuário desistir
+function removerLinhaMedicamento(id) {
+    const bloco = document.getElementById(`blocoMed_${id}`);
+    if (bloco) bloco.remove();
+}
+
+// 4. Auto-Preenche os campos quando seleciona a finalidade
+function autoPreencherReceita(id) {
+    const finalidade = document.getElementById(`recFin_${id}`).value;
+    if (protocolosReceita[finalidade]) {
+        const dados = protocolosReceita[finalidade];
+        document.getElementById(`recMed_${id}`).value = dados.med;
+        document.getElementById(`recQtd_${id}`).value = dados.qtd;
+        document.getElementById(`recUso_${id}`).value = dados.uso;
+        document.getElementById(`recPoso_${id}`).value = dados.poso;
+    } else {
+        // Se for digitação livre, limpa para o doutor digitar
+        document.getElementById(`recMed_${id}`).value = "";
+        document.getElementById(`recQtd_${id}`).value = "";
+        document.getElementById(`recUso_${id}`).value = "";
+        document.getElementById(`recPoso_${id}`).value = "";
+    }
+}
+
+// ==========================================
+// BANCO DE DADOS DE RECEITAS E PROFISSIONAIS
+// ==========================================
+function getDadosReceitaERP() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  
+  // 1. Cria ou Lê a aba de Profissionais
+  let abaProf = ss.getSheetByName("PROFISSIONAIS");
+  if (!abaProf) {
+    abaProf = ss.insertSheet("PROFISSIONAIS");
+    abaProf.appendRow(["NOME", "REGISTRO_CRO", "ENDERECO_CLINICA"]);
+    // Cadastra o primeiro doutor automaticamente
+    abaProf.appendRow(["Dra. Giovanna Ramos", "CRO/SC 19773", "Clínica Odontologia Ramos • Palhoça / SC"]);
+  }
+  
+  // 2. Cria ou Lê a aba de Protocolos
+  let abaProt = ss.getSheetByName("PROTOCOLOS");
+  if (!abaProt) {
+    abaProt = ss.insertSheet("PROTOCOLOS");
+    abaProt.appendRow(["FINALIDADE", "MEDICAMENTO", "QUANTIDADE", "USO", "POSOLOGIA"]);
+    // Cadastra os exemplos base
+    abaProt.appendRow(["Articulação (Dor Neuropática)", "Pregabalina 75 mg", "30 cp", "Uso Interno", "Tomar 1 cápsula, 1x por dia, durante 30 dias."]);
+    abaProt.appendRow(["Pós-Operatório Padrão", "Ibuprofeno 600mg", "10 cp", "Uso Interno", "Tomar 1 comprimido a cada 8 horas, em caso de dor."]);
+    abaProt.appendRow(["Infecção Moderada", "Amoxicilina 500mg", "21 cp", "Uso Interno", "Tomar 1 comprimido a cada 8 horas, durante 7 dias."]);
+    abaProt.appendRow(["Bochecho / Assepsia", "Digluconato de Clorexidina 0,12%", "1 Frasco (250ml)", "Uso Externo", "Bochechar 15ml por 1 minuto, 2x ao dia, após a escovação."]);
+  }
+
+  // 3. Extrai os dados das abas para enviar ao sistema
+  const profs = abaProf.getDataRange().getValues();
+  const listaProf = [];
+  for (let i = 1; i < profs.length; i++) {
+    if (profs[i][0]) listaProf.push({ nome: profs[i][0], cro: profs[i][1], endereco: profs[i][2] });
+  }
+
+  const prots = abaProt.getDataRange().getValues();
+  const listaProt = {};
+  for (let i = 1; i < prots.length; i++) {
+    if (prots[i][0]) {
+      listaProt[prots[i][0]] = { med: prots[i][1], qtd: prots[i][2], uso: prots[i][3], poso: prots[i][4] };
+    }
+  }
+  
+  return { profissionais: listaProf, protocolos: listaProt };
+}
+// ==========================================
+// GESTOR DE DADOS (CRUD) - PROFISSIONAIS E PROTOCOLOS
+// ==========================================
+
+function getDadosConfiguracao() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  return {
+    profissionais: buscarDadosAba(ss, "PROFISSIONAIS"),
+    protocolos: buscarDadosAba(ss, "PROTOCOLOS")
+  };
+}
+
+function buscarDadosAba(ss, nomeAba) {
+  let aba = ss.getSheetByName(nomeAba);
+  if (!aba) return [];
+  const dados = aba.getDataRange().getValues();
+  const cabecalho = dados.shift();
+  return dados.map(linha => {
+    let obj = {};
+    cabecalho.forEach((col, i) => obj[col.toLowerCase()] = linha[i]);
+    return obj;
+  });
+}
+
+function salvarItemConfig(abaNome, dados) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let aba = ss.getSheetByName(abaNome) || ss.insertSheet(abaNome);
+  const valores = aba.getDataRange().getValues();
+  const cabecalho = valores[0];
+  
+  // Se for a primeira vez, cria o cabeçalho
+  if (valores.length === 1 && valores[0][0] === "") {
+    const novoCabecalho = Object.keys(dados).map(k => k.toUpperCase());
+    aba.appendRow(novoCabecalho);
+  }
+
+  const novaLinha = cabecalho.map(col => dados[col.toLowerCase()] || "");
+  
+  // Verifica se é edição (pelo primeiro campo, ex: Nome ou Finalidade)
+  let linhaExistente = -1;
+  for (let i = 1; i < valores.length; i++) {
+    if (valores[i][0] === novaLinha[0]) { linhaExistente = i + 1; break; }
+  }
+
+  if (linhaExistente !== -1) {
+    aba.getRange(linhaExistente, 1, 1, novaLinha.length).setValues([novaLinha]);
+  } else {
+    aba.appendRow(novaLinha);
+  }
+  return "Salvo com sucesso!";
+}
+
+function excluirItemConfig(abaNome, identificador) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const aba = ss.getSheetByName(abaNome);
+  const dados = aba.getDataRange().getValues();
+  for (let i = 1; i < dados.length; i++) {
+    if (dados[i][0] === identificador) {
+      aba.deleteRow(i + 1);
+      return "Excluído!";
+    }
+  }
+}
+
+// ==========================================
+// MÓDULO DE ENVIO DE DOCUMENTOS (E-MAIL)
+// ==========================================
+function apiEnviarEmailDocumento(urlDocumento, emailPaciente, nomePaciente, tipoDoc) {
+  try {
+    if (!emailPaciente || emailPaciente.trim() === "") {
+      throw new Error("O paciente não possui e-mail cadastrado na ficha.");
+    }
+
+    const assunto = `Seu Documento Odontológico (${tipoDoc}) - Clínica Ramos`;
+    const mensagemHtml = `
+      <div style="font-family: Arial, sans-serif; color: #2B3674; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #E9EDF7; border-radius: 12px;">
+        <h2 style="color: #4318FF;">Olá, ${nomePaciente}!</h2>
+        <p>A Clínica Odontológica Ramos está enviando o seu documento (<strong>${tipoDoc}</strong>) gerado em nosso sistema.</p>
+        <p>Para visualizar, baixar ou imprimir, basta clicar no botão seguro abaixo:</p>
+        <br>
+        <div style="text-align: center;">
+          <a href="${urlDocumento}" style="background-color: #4318FF; color: white; padding: 12px 25px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">📄 ACESSAR MEU DOCUMENTO</a>
+        </div>
+        <br><br>
+        <hr style="border: 0; border-top: 1px solid #E9EDF7;">
+        <p style="font-size: 12px; color: #A3AED0;">Este é um e-mail automático. Em caso de dúvidas, entre em contato com a nossa recepção.</p>
+      </div>
+    `;
+
+    MailApp.sendEmail({
+      to: emailPaciente,
+      subject: assunto,
+      htmlBody: mensagemHtml
+    });
+
+    return "E-mail enviado com sucesso para " + emailPaciente;
+  } catch (e) {
+    throw new Error(e.message);
+  }
+}
+
+function getDocumentUrl(hash) {
+  // Procura o link do PDF na folha DOCUMENTOS usando o hash
+  const dados = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("DOCUMENTOS").getDataRange().getValues();
+  for(let i=1; i<dados.length; i++) { if(dados[i][3].includes(hash)) return dados[i][4]; }
+  return "#";
 }
