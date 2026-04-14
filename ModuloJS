@@ -746,10 +746,16 @@ function verObs(elementoClicado) {
 // 5. MÓDULO DE LANÇAMENTO E EDIÇÃO
 // ==========================================
 function abrirFormulario() {
+  const modalEl = document.getElementById('modalCadastro');
+  const modal = bootstrap.Modal.getOrCreateInstance(modalEl); 
+  
   document.getElementById("formCadastro").reset();
   document.getElementById("idLinha").value = ""; 
   document.getElementById("btnExcluir").style.display = "none";
   document.getElementById("autocomplete-list").style.display = "none";
+  
+  document.getElementById("detalhesCartao").style.display = "none";
+  document.getElementById('taxaCartaoInp').value = "0,00";
   
   const hoje = new Date();
   const dia = String(hoje.getDate()).padStart(2, '0');
@@ -757,30 +763,86 @@ function abrirFormulario() {
   const ano = hoje.getFullYear();
   document.getElementById("dataInput").value = `${dia}/${mes}/${ano}`;
   
-  document.getElementById('formCadastro').particular.value = "0,00";
-  document.getElementById('formCadastro').vplano.value = "0,00";
-  document.getElementById('formCadastro').vlab.value = "0,00";
-  new bootstrap.Modal(document.getElementById('modalCadastro')).show();
+  document.getElementById('vParticularInp').value = "0,00"; 
+  document.getElementsByName('vplano')[0].value = "0,00";
+  document.getElementsByName('vlab')[0].value = "0,00";
+  
+  modal.show();
 }
+
+// =====================================
+// LÓGICA DE CÁLCULO DE TAXAS DE CARTÃO
+// =====================================
+
+function verificarTipoPagamento(valor) {
+    const painel = document.getElementById('detalhesCartao');
+    const valorLimpo = valor.toString().toUpperCase();
+    
+    // Mostra o painel se a palavra "CARTAO" ou "CARTÃO" for detectada
+    if (valorLimpo.includes("CARTÃO") || valorLimpo.includes("CARTAO")) {
+        painel.style.display = "block";
+        calcularTaxaAutomatica();
+    } else {
+        painel.style.display = "none";
+        document.getElementById('taxaCartaoInp').value = "0,00";
+    }
+}
+
+function calcularTaxaAutomatica() {
+    const painel = document.getElementById('detalhesCartao');
+    if (painel.style.display === "none") return; 
+
+    const valorTotalStr = document.getElementById('vParticularInp').value;
+    const valorTotal = formatarParaCalculo(valorTotalStr);
+    
+    if (valorTotal <= 0) {
+        document.getElementById('taxaCartaoInp').value = "0,00";
+        return;
+    }
+
+    const ehDebito = document.getElementById('cartaoDebito').checked;
+    const selectParcelas = document.getElementById('numParcelas');
+    
+    let taxaFinal = 0;
+    const taxaDebito = 0.015;      // 1.5%
+    const taxaCreditoBase = 0.03;  // 3%
+    const taxaPorParcela = 0.01;   // +1% por parcela
+
+    if (ehDebito) {
+        selectParcelas.value = "1";
+        selectParcelas.disabled = true;
+        document.getElementById('divParcelas').style.opacity = '0.4';
+        taxaFinal = valorTotal * taxaDebito;
+    } else {
+        selectParcelas.disabled = false;
+        document.getElementById('divParcelas').style.opacity = '1';
+        
+        const parcelas = parseInt(selectParcelas.value);
+        let percentual = taxaCreditoBase;
+        if (parcelas > 1) {
+            percentual += (parcelas - 1) * taxaPorParcela;
+        }
+        taxaFinal = valorTotal * percentual;
+    }
+
+    document.getElementById('taxaCartaoInp').value = taxaFinal.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+}
+
+
 
 // ==========================================
 // FUNÇÃO PARA SALVAR O LANÇAMENTO FINANCEIRO
 // ==========================================
 function salvarLancamento() {
   const form = document.getElementById("formCadastro");
-  
-  // Verifica se os campos obrigatórios foram preenchidos
-  if (!form.checkValidity()) { 
-    form.reportValidity(); 
-    return; 
-  }
+  if (!form.checkValidity()) { form.reportValidity(); return; }
 
   const btn = document.getElementById("btnSalvar");
   const textoOriginal = btn.innerHTML;
   btn.disabled = true; 
   btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> SALVANDO...';
 
-  // Coleta todos os dados digitados no modal
+  // Coleta os dados simples
   const dados = {
     idLinha: document.getElementById("idLinha").value,
     data: form.data.value,
@@ -788,19 +850,18 @@ function salvarLancamento() {
     doutor: form.doutor.value,
     procedimento: form.procedimento.value,
     plano: form.plano.value,
-    pagamento: form.pagamento.value,
+    pagamento: form.pagamento.value, // <--- ÚNICO DE NOVO
     particular: form.particular.value,
     vplano: form.vplano.value,
     vlab: form.vlab.value,
+    taxaCartao: document.getElementById("taxaCartaoInp").value,
     obs: form.obs.value
   };
 
   mostrarNotificacao("⏳ Registrando no financeiro...", "info");
 
-  // Envia o pacote de dados para o Servidor (Google Apps Script)
   google.script.run
     .withSuccessHandler(function(res) {
-      // Se deu certo: avisa, fecha a tela e recarrega a tabela de finanças
       mostrarNotificacao("✅ " + res, "sucesso");
       bootstrap.Modal.getInstance(document.getElementById('modalCadastro')).hide();
       btn.disabled = false; 
@@ -808,13 +869,13 @@ function salvarLancamento() {
       atualizarTabelaGlobal(); 
     })
     .withFailureHandler(function(err) {
-      // Se deu erro: avisa e destrava o botão
       mostrarNotificacao("❌ Erro: " + err, "erro");
       btn.disabled = false; 
       btn.innerHTML = textoOriginal;
     })
-    .salvarLancamento(dados); // <--- Essa é a chamada que aciona o Servidor!
+    .salvarLancamento(dados); // <--- Mantive o nome do back-end que estava funcionando antes
 }
+
 
 function editarRegistro(idLinha) {
   const r = dadosLocais.find(item => item.id == idLinha);
@@ -2133,8 +2194,12 @@ function abrirEdicaoAgendamento(id, ev) {
   new bootstrap.Modal(document.getElementById('modalAgendamento')).show();
 }
 
-// SALVAR AGENDAMENTO CONTINUA O MESMO (Com o refetch sem piscar)
+// SALVAR AGENDAMENTO COM BLOQUEIO DE BOTÃO (Anti-Duplicidade)
 function salvarAgendamento() {
+  const form = document.getElementById("formAgendamento");
+  const btn = event.target.closest('button'); // Pega o botão que disparou o clique
+  const textoOriginal = btn.innerHTML;
+
   const dados = {
     id: document.getElementById("agenda_id").value,
     paciente: document.getElementById("ag_paciente").value,
@@ -2147,18 +2212,35 @@ function salvarAgendamento() {
   };
 
   if (!dados.paciente || !dados.hora) return mostrarNotificacao("Preencha Paciente e Hora!", "erro");
-  mostrarNotificacao("⏳ Gravando...", "info");
-  
-  google.script.run.withSuccessHandler(function(res) {
-    mostrarNotificacao("✅ Agendamento salvo!", "sucesso");
-    bootstrap.Modal.getInstance(document.getElementById('modalAgendamento')).hide();
-    
-    if (dados.status === "FINALIZADO") abrirFinanceiroPeloAgendamento(dados);
-    
-    if (calendarioObj) {
-        calendarioObj.refetchEvents(); // Atualização suave
-    }
-  }).salvarAgendamentoNaPlanilha(dados);
+
+  // --- TRAVA O BOTÃO ---
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Gravando...';
+  mostrarNotificacao("⏳ Gravando agendamento...", "info");
+
+  google.script.run
+    .withSuccessHandler(function(res) {
+      // --- DESTRAVA O BOTÃO ---
+      btn.disabled = false;
+      btn.innerHTML = textoOriginal;
+
+      if (res.startsWith("ERRO")) {
+          return mostrarNotificacao(res, "erro");
+      }
+
+      mostrarNotificacao("✅ Agendamento salvo!", "sucesso");
+      bootstrap.Modal.getInstance(document.getElementById('modalAgendamento')).hide();
+      
+      if (dados.status === "FINALIZADO") abrirFinanceiroPeloAgendamento(dados);
+      if (calendarioObj) calendarioObj.refetchEvents(); 
+    })
+    .withFailureHandler(function(err) {
+      // --- DESTRAVA O BOTÃO EM CASO DE FALHA ---
+      btn.disabled = false;
+      btn.innerHTML = textoOriginal;
+      mostrarNotificacao("❌ Erro fatal: " + err, "erro");
+    })
+    .salvarAgendamentoNaPlanilha(dados);
 }
 
 function abrirFinanceiroPeloAgendamento(ag) {
@@ -3354,7 +3436,7 @@ $(document).ready(function() {
     $('#sel_proc, #sel_plano').on('change', sugerirPrecoAutomatico);
 });
 
-// 4. O Cérebro do Assistente
+// RESTAURAÇÃO DA FUNÇÃO DO PREÇO (Sem tentar copiar pra outro canto)
 function sugerirPrecoAutomatico() {
     const form = document.getElementById("formCadastro");
     if (!form) return;
@@ -3362,27 +3444,20 @@ function sugerirPrecoAutomatico() {
     const procSelecionado = form.procedimento.value;
     const planoSelecionado = form.plano.value;
 
-    // Se o campo procedimento foi limpo, sai de fininho
     if (!procSelecionado) return;
-
-    // Procura o procedimento na nossa memória global
     const item = tabelaPrecosGlobal.find(p => p.proc.toUpperCase() === procSelecionado.toUpperCase());
-    
-    // Se não achar o procedimento cadastrado ou se o preço for zero, sai em silêncio (deixa o usuário digitar)
     if (!item || !item.preco) return; 
 
-    // Formata o número para o padrão do Brasil (Ex: 1200 vira 1.200,00)
     const precoFormatado = Number(item.preco).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
 
-    // A LÓGICA DE DESTINO:
-    // Se o plano não foi preenchido OU se a palavra "Particular" estiver escrita nele
     if (!planoSelecionado || planoSelecionado.toUpperCase().includes("PARTICULAR")) {
-        form.particular.value = precoFormatado; // Preenche o Verde
-        form.vplano.value = "0,00";             // Zera o Azul
+        form.particular.value = precoFormatado;
+        form.vplano.value = "0,00"; 
+        document.getElementById('taxaCartaoInp').value = "0,00";
     } else {
-        // Se escolheu Unimed, Bradesco, etc...
-        form.vplano.value = precoFormatado;     // Preenche o Azul
-        form.particular.value = "0,00";         // Zera o Verde
+        form.vplano.value = precoFormatado;
+        form.particular.value = "0,00";
+        document.getElementById('taxaCartaoInp').value = "0,00";
     }
 }
 
@@ -4505,6 +4580,46 @@ window.acaoGestor = function(aba, acao, id) {
     }
 };
 
+// ==========================================
+// UPLOAD DE DOCUMENTOS EXTERNOS (RAIO-X, FOTOS, ETC)
+// ==========================================
+function processarUploadDocumento(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  if (!pacienteAtualProntuario) return mostrarNotificacao("Abra a ficha de um paciente primeiro!", "erro");
+
+  // Trava de segurança: máximo de 5MB para o Apps Script não engasgar
+  if (file.size > 5 * 1024 * 1024) {
+    return mostrarNotificacao("O arquivo é muito grande! Máximo permitido: 5MB", "erro");
+  }
+
+  mostrarNotificacao("⏳ Enviando arquivo para o Drive...", "info");
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const base64Data = e.target.result.split(',')[1]; // Pega a base64 crua
+    
+    const payload = {
+      paciente: pacienteAtualProntuario.nome,
+      nomeArquivo: file.name,
+      mimeType: file.type,
+      base64: base64Data
+    };
+
+    google.script.run
+      .withSuccessHandler(function(res) {
+        mostrarNotificacao("✅ Arquivo anexado com sucesso!", "sucesso");
+        carregarHistoricoDocumentos(pacienteAtualProntuario.nome); // Atualiza a tabela na hora
+      })
+      .withFailureHandler(function(err) {
+        mostrarNotificacao("❌ Erro no upload: " + err, "erro");
+      })
+      .apiUploadArquivoPaciente(payload);
+  };
+  reader.readAsDataURL(file);
+}
+
 
 function abrirDashboard() { google.script.run.withSuccessHandler(url => window.open(url + "?page=Index", "_blank")).getScriptURL(); }
 function gerarRelatorio() { google.script.run.withSuccessHandler(url => window.open(url + "?page=RelatorioGeral", "_blank")).getScriptURL(); }
@@ -4513,65 +4628,3 @@ function gerarResultado() { google.script.run.withSuccessHandler(url => window.o
 
 </script>
 
-<div class="modal fade" id="modalCadastro" tabindex="-1">
-  <div class="modal-dialog modal-lg">
-    <div class="modal-content border-0 shadow-lg" style="border-radius:24px;">
-      <div class="modal-header border-0 pb-0">
-        <h5 class="fw-bold mb-0">Novo Lançamento</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body p-4">
-        <form id="formCadastro">
-          <input type="hidden" id="idLinha">
-          <div class="row g-3">
-            <div class="col-md-4">
-               <label class="form-label small fw-bold text-muted">Data</label>
-               <input type="text" name="data" class="form-control" id="dataInput" placeholder="DD/MM/AAAA" required>
-            </div>
-            <div class="col-md-8 position-relative">
-               <label class="form-label small fw-bold text-muted">Paciente</label>
-               <input type="text" name="paciente" class="form-control fw-bold" id="f_paciente" onkeyup="autocompletePaciente(this.value)" autocomplete="off" required>
-               <div id="autocomplete-list" class="autocomplete-items shadow-sm border rounded"></div>
-            </div>
-            <div class="col-md-6">
-               <label class="form-label small fw-bold text-muted">Doutor</label>
-               <select name="doutor" class="form-select" id="sel_doutor" required></select>
-            </div>
-            <div class="col-md-6">
-               <label class="form-label small fw-bold text-muted">Procedimento</label>
-               <select name="procedimento" class="form-select" id="sel_proc" required></select>
-            </div>
-            <div class="col-md-6">
-               <label class="form-label small fw-bold text-muted">Plano</label>
-               <select name="plano" class="form-select" id="sel_plano" required></select>
-            </div>
-            <div class="col-md-6">
-               <label class="form-label small fw-bold text-muted">Pagamento</label>
-               <select name="pagamento" class="form-select" id="sel_pag" required></select>
-            </div>
-            <div class="col-md-4">
-               <label class="form-label small fw-bold text-success">Valor Particular</label>
-               <input type="text" name="particular" class="form-control text-success fw-bold" value="0,00">
-            </div>
-            <div class="col-md-4">
-               <label class="form-label small fw-bold text-primary">Valor Plano</label>
-               <input type="text" name="vplano" class="form-control text-primary fw-bold" value="0,00">
-            </div>
-            <div class="col-md-4">
-               <label class="form-label small fw-bold text-danger">Valor Lab (Custo)</label>
-               <input type="text" name="vlab" class="form-control text-danger fw-bold" value="0,00">
-            </div>
-            <div class="col-12">
-               <label class="form-label small fw-bold text-muted">Observações</label>
-               <textarea name="obs" class="form-control" rows="2" placeholder="Opcional"></textarea>
-            </div>
-          </div>
-          <div class="d-flex justify-content-between mt-4 gap-2">
-             <button type="button" id="btnExcluir" class="btn btn-danger px-4" onclick="pedirExclusao()" style="display:none;">🗑️ EXCLUIR</button>
-             <button type="button" class="btn btn-primary w-100 py-3 fw-bold shadow-sm" onclick="salvarLancamento()" id="btnSalvar">💾 SALVAR LANÇAMENTO</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
-</div>
