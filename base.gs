@@ -264,8 +264,9 @@ function salvarLancamentoUnificado(dados) {
     lock.waitLock(10000);
     
     const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const sheet = ss.getSheetByName(NOME_ABA_DADOS);
-    if (!sheet) return "ERRO: Aba '" + NOME_ABA_DADOS + "' não encontrada";
+    // Usa a variável global NOME_ABA_DADOS (ou "DADOS" como segurança)
+    const sheet = ss.getSheetByName(typeof NOME_ABA_DADOS !== 'undefined' ? NOME_ABA_DADOS : "DADOS");
+    if (!sheet) return "ERRO: Aba não encontrada";
     
     let dataObj = new Date();
     if (dados.data && dados.data.includes('/')) {
@@ -273,11 +274,19 @@ function salvarLancamentoUnificado(dados) {
       dataObj = new Date(partes[2], partes[1] - 1, partes[0], 12, 0, 0);
     }
 
-    const valorParticular = Number(dados.particular) || 0;
-    const valorPlano = Number(dados.vplano) || 0;
-    const valorLab = Number(dados.vlab) || 0;
+    // LIMPADOR INTELIGENTE: Transforma "1.500,00" em 1500.00 perfeito pro Google Sheets
+    const limparValor = (v) => Number((v || "0").toString().replace(/\./g, '').replace(',', '.')) || 0;
+
+    const valorParticular = limparValor(dados.particular);
+    const valorPlano = limparValor(dados.vplano);
+    const valorLab = limparValor(dados.vlab);
     
-    // EDIÇÃO
+    // CAPTURA A TAXA DE CARTÃO DO PACOTE DE DADOS
+    const valorTaxaCartao = limparValor(dados.taxaCartao);
+    
+    // ==========================================
+    // EDIÇÃO DE REGISTRO EXISTENTE
+    // ==========================================
     if (dados.idLinha && dados.idLinha !== "") {
       const busca = sheet.getRange("N:N").createTextFinder(dados.idLinha).matchEntireCell(true).findNext();
       
@@ -290,18 +299,24 @@ function salvarLancamentoUnificado(dados) {
         ]];
         
         sheet.getRange(linha, 1, 1, 10).setValues(valoresAtualizados);
+        
+        // GRAVA A TAXA NA COLUNA "O" (15) DURANTE A EDIÇÃO
+        sheet.getRange(linha, 15).setValue(valorTaxaCartao);
+        
         return "Registro atualizado com sucesso!";
       }
       return "Registro não encontrado para edição";
     }
     
-    // NOVO REGISTRO
+    // ==========================================
+    // CRIANDO UM NOVO REGISTRO
+    // ==========================================
     const ultimaLinha = sheet.getLastRow();
     let linhaDestino = ultimaLinha + 1;
     const inicioBusca = Math.max(3, ultimaLinha - 100);
     
+    // Acha a primeira linha vazia
     const valoresColunaB = sheet.getRange(inicioBusca, 2, ultimaLinha - inicioBusca + 1, 1).getValues();
-    
     for (let i = 0; i < valoresColunaB.length; i++) {
       if (!valoresColunaB[i][0] || valoresColunaB[i][0].toString().trim() === "") {
         linhaDestino = inicioBusca + i;
@@ -317,6 +332,7 @@ function salvarLancamentoUnificado(dados) {
       valorPlano, valorLab
     ]];
     
+    // Copia as Fórmulas das Colunas K(11), L(12) e M(13)
     if (sheet.getLastRow() >= 3) {
       const linhaTemplate = 3;
       
@@ -333,8 +349,14 @@ function salvarLancamentoUnificado(dados) {
       else sheet.getRange(linhaDestino, 13).setValue(sheet.getRange(linhaTemplate, 13).getValue());
     }
     
+    // Grava as 10 primeiras colunas (A até J)
     sheet.getRange(linhaDestino, 1, 1, 10).setValues(novaLinhaDados);
+    
+    // Grava o ID único na Coluna N (14)
     sheet.getRange(linhaDestino, 14).setValue(novoId);
+    
+    // GRAVA A TAXA DO CARTÃO NA COLUNA "O" (15) DO NOVO REGISTRO
+    sheet.getRange(linhaDestino, 15).setValue(valorTaxaCartao);
     
     return "Registro salvo com sucesso!";
     
@@ -349,26 +371,48 @@ function salvarLancamento(dados) {
   return salvarLancamentoUnificado(dados);
 }
 
-// ===== EXCLUIR REGISTRO =====
+// ===== EXCLUIR REGISTRO (VERSÃO OTIMIZADA) =====
 function excluirLancamento(idLinha) {
   const lock = LockService.getScriptLock();
+  
   try {
     lock.waitLock(10000);
     const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const sheet = ss.getSheetByName(NOME_ABA_DADOS);
-    const sheetLog = ss.getSheetByName("LOG_EXCLUSOES") || ss.insertSheet("LOG_EXCLUSOES");
-    const data = sheet.getDataRange().getValues();
     
-    for (let i = 2; i < data.length; i++) {
-      if (data[i][13] == idLinha) {
-        const linha = i + 1;
-        sheetLog.appendRow(data[i]);
-        sheet.getRange(linha, 1, 1, 10).clearContent();
-        sheet.getRange(linha, 14).clearContent();
-        return "Registro excluído!";
-      }
+    // Procura a aba principal
+    const sheet = ss.getSheetByName(typeof NOME_ABA_DADOS !== 'undefined' ? NOME_ABA_DADOS : "DADOS");
+    
+    // Prepara a aba de LOG
+    let sheetLog = ss.getSheetByName("LOG_EXCLUSOES");
+    if (!sheetLog) {
+      sheetLog = ss.insertSheet("LOG_EXCLUSOES");
     }
-    return "Registro não encontrado.";
+
+    // BUSCA RÁPIDA: Encontra o ID diretamente na Coluna N (14) sem ler a tabela toda
+    const busca = sheet.getRange("N:N").createTextFinder(idLinha).matchEntireCell(true).findNext();
+    
+    if (busca) {
+      const linha = busca.getRow();
+      
+      // 1. FAZ O BACKUP DE SEGURANÇA (Copia da Coluna A até à Coluna O)
+      const dadosLinha = sheet.getRange(linha, 1, 1, 15).getValues()[0];
+      sheetLog.appendRow(dadosLinha);
+      
+      // 2. LIMPEZA CIRÚRGICA (Preserva as Fórmulas K, L, M)
+      // Limpa os dados principais (Colunas A até J)
+      sheet.getRange(linha, 1, 1, 10).clearContent();
+      
+      // Limpa o ID da linha (Coluna N / 14)
+      sheet.getRange(linha, 14).clearContent();
+      
+      // Limpa a Taxa do Cartão (Coluna O / 15)
+      sheet.getRange(linha, 15).clearContent();
+      
+      return "Registo excluído com segurança e guardado no LOG!";
+    }
+    
+    return "Registo não encontrado.";
+    
   } catch (erro) {
     return "Erro ao excluir: " + erro.toString();
   } finally {
@@ -376,27 +420,6 @@ function excluirLancamento(idLinha) {
   }
 }
 
-function desfazerUltimaExclusao() {
-  try {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const sheetLog = ss.getSheetByName("LOG_EXCLUSOES");
-    const sheetDestino = ss.getSheetByName(NOME_ABA_DADOS);
-    if (!sheetLog || sheetLog.getLastRow() < 1) return "Nada para desfazer.";
-    const lastRow = sheetLog.getLastRow();
-    const dados = sheetLog.getRange(lastRow, 1, 1, 14).getValues()[0];
-    const linhaDestino = encontrarPrimeiraLinhaVazia(sheetDestino);
-    for (let j = 0; j < 14; j++) {
-      sheetDestino.getRange(linhaDestino, j + 1).setValue(dados[j]);
-    }
-    if (linhaDestino > 3) {
-      copiarFormatacaoEFormulas(sheetDestino, linhaDestino - 1, linhaDestino);
-    }
-    sheetLog.deleteRow(lastRow);
-    return "Última exclusão recuperada!";
-  } catch (erro) {
-    return "Erro ao desfazer: " + erro.toString();
-  }
-}
 
 function getListaPacientes() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -1142,48 +1165,63 @@ function cadastrarPacienteNoCRM(dados) {
     lock.releaseLock();
   }
 }
-
 // ==========================================
-// SALVAR AGENDAMENTO COM TRAVA
+// SALVAR AGENDAMENTO COM TRAVA E DEDUPLICAÇÃO
 // ==========================================
 function salvarAgendamentoNaPlanilha(d) {
   const lock = LockService.getScriptLock();
   try {
-    lock.waitLock(10000);
+    lock.waitLock(15000); // Aumentei para 15 segundos para dar folga
     
-    // === A MÁGICA DA DATA BRASILEIRA AQUI ===
+    // Tratamento de data brasileira
     if (d.data && d.data.includes('-')) {
         const [ano, mes, dia] = d.data.split('-');
         d.data = `${dia}/${mes}/${ano}`;
     }
-    // ========================================
 
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const aba = ss.getSheetByName("AGENDA");
-    
-    // Se não tem ID, é novo. Se tem, é edição.
-    if (!d.id) {
-      aba.appendRow([Date.now(), d.data, d.hora, d.paciente, "", d.doutor, d.procedimento, d.status, d.obs]);
-    } else {
-      // Lógica de edição
-      const dados = aba.getDataRange().getValues();
-      for (let i = 1; i < dados.length; i++) {
-        if (dados[i][0] == d.id) {
-          aba.getRange(i + 1, 1, 1, 9).setValues([[d.id, d.data, d.hora, d.paciente, "", d.doutor, d.procedimento, d.status, d.obs]]);
-          break;
-        }
+    if (!aba) return "ERRO: Aba AGENDA não encontrada";
+
+    // --- LÓGICA DE EDIÇÃO (BUSCA RÁPIDA) ---
+    if (d.id && d.id !== "") {
+      const busca = aba.getRange("A:A").createTextFinder(d.id).matchEntireCell(true).findNext();
+      if (busca) {
+        const linha = busca.getRow();
+        aba.getRange(linha, 1, 1, 9).setValues([[d.id, d.data, d.hora, d.paciente, "", d.doutor, d.procedimento, d.status, d.obs]]);
+        SpreadsheetApp.flush();
+        return "OK";
       }
     }
+
+    // --- LÓGICA DE NOVO REGISTRO (COM CHECAGEM DE DUPLICIDADE) ---
+    const registros = aba.getDataRange().getValues();
     
-    SpreadsheetApp.flush(); // Garante o salvamento físico
+    // Verifica se já existe um agendamento IGUAL (Paciente + Data + Hora)
+    // Isso evita que cliques duplos que passaram pela trava do botão gerem linhas extras
+    const duplicado = registros.some(r => 
+      r[1] == d.data && 
+      r[2] == d.hora && 
+      r[3].toString().toLowerCase() == d.paciente.toString().toLowerCase()
+    );
+
+    if (duplicado) {
+      return "ERRO: Este agendamento já foi registrado por outro usuário simultaneamente.";
+    }
+
+    // Se passou na checagem, grava o novo
+    aba.appendRow([Date.now(), d.data, d.hora, d.paciente, "", d.doutor, d.procedimento, d.status, d.obs]);
+    
+    SpreadsheetApp.flush(); 
     return "OK";
     
   } catch (e) {
-    throw new Error("A agenda está sendo atualizada por outra pessoa. Tente novamente em alguns segundos.");
+    return "ERRO: O servidor está ocupado. Tente salvar novamente em 5 segundos.";
   } finally {
     lock.releaseLock();
   }
 }
+
 
 
 function getAgendamentosCalendario(filtroDoutor) {
@@ -2567,4 +2605,51 @@ function getDocumentUrl(hash) {
   const dados = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("DOCUMENTOS").getDataRange().getValues();
   for(let i=1; i<dados.length; i++) { if(dados[i][3].includes(hash)) return dados[i][4]; }
   return "#";
+}
+
+// ==========================================
+// SALVAR ARQUIVO ANEXADO EXTERNAMENTE
+// ==========================================
+function apiUploadArquivoPaciente(payload) {
+  const lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(15000);
+    
+    const pastaRaiz = DriveApp.getFoldersByName("Documentos_Clinica_Ramos").next();
+    let pastaPaciente;
+    
+    // Procura ou cria a pasta do paciente
+    const pastas = pastaRaiz.getFoldersByName(payload.paciente);
+    if (pastas.hasNext()) {
+      pastaPaciente = pastas.next();
+    } else {
+      pastaPaciente = pastaRaiz.createFolder(payload.paciente);
+    }
+    
+    // Converte o arquivo e salva no Drive
+    const blob = Utilities.newBlob(Utilities.base64Decode(payload.base64), payload.mimeType, payload.nomeArquivo);
+    const arquivoCriado = pastaPaciente.createFile(blob);
+    
+    // Registra na aba DOCUMENTOS para aparecer na tabela do prontuário
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const aba = ss.getSheetByName("DOCUMENTOS");
+    const dataStr = Utilities.formatDate(new Date(), "GMT-3", "dd/MM/yyyy");
+    
+    // Colunas: Data, Paciente, Tipo, Nome do Arquivo, Link, Hash, Status
+    aba.appendRow([
+      dataStr, 
+      payload.paciente, 
+      "ANEXO EXTERNO", 
+      payload.nomeArquivo, 
+      arquivoCriado.getUrl(), 
+      "", 
+      "✅ ARQUIVADO"
+    ]);
+    
+    return "Sucesso";
+  } catch (e) {
+    throw new Error("Falha no upload: " + e.message);
+  } finally {
+    lock.releaseLock();
+  }
 }
