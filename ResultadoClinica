@@ -1,299 +1,199 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <base target="_top">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
-
-    :root {
-      --primary: #4318FF;
-      --secondary: #F4F7FE;
-      --text-main: #2B3674;
-      --text-muted: #A3AED0;
-      --success: #05CD99;
-      --warning: #FFCE20;
-      --danger: #EE5D50;
-      --info: #00B5E2;
-      --bg-card: #FFFFFF;
-      --card-shadow: 0px 18px 40px rgba(112, 144, 176, 0.08);
-    }
-
-    body { 
-      background-color: var(--secondary); 
-      font-family: 'Plus Jakarta Sans', sans-serif;
-      color: var(--text-main);
-      padding: 15px 25px;
-      font-size: 13px;
-    }
-
-    ::-webkit-scrollbar { width: 6px; }
-    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-
-    /* CABEÇALHO PREMIUM */
-    .header-slim {
-      display: flex; justify-content: space-between; align-items: center;
-      background: white; padding: 12px 25px; border-radius: 16px;
-      box-shadow: var(--card-shadow); margin-bottom: 15px;
-    }
-    .header-slim h2 { font-weight: 800; font-size: 18px; margin: 0; letter-spacing: -0.5px; }
+    /* Estilo Idêntico ao Holerite - Clínica Ramos */
+    @page { size: A4; margin: 10mm 15mm 15mm 15mm; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f2f5; margin: 0; padding: 20px; }
+    .no-print { background: white; padding: 20px; border-radius: 8px; margin: 0 auto 30px auto; width: 850px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); text-align: center; }
+    .recibo-pagina { background: white; width: 100%; max-width: 210mm; margin: auto; padding: 10mm; box-sizing: border-box; border: 4px double #2c3e50; }
+    .header { text-align: center; border-bottom: 3px solid #2c3e50; padding-bottom: 10px; margin-bottom: 20px; }
+    .header h1 { margin: 0; color: #2c3e50; letter-spacing: 2px; font-size: 24px; }
+    .header p { margin: 5px 0; font-weight: bold; color: #7f8c8d; font-size: 14px; text-transform: uppercase; }
+    .row-info { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 12px; border-bottom: 1px solid #eee; padding-bottom: 3px; }
+    .label-info { font-weight: bold; color: #34495e; }
     
-    .mes-input {
-      border: 2px solid #E9EDF7; border-radius: 10px; padding: 6px 12px;
-      font-size: 13px; font-weight: 700; color: var(--primary);
-      width: 120px; text-align: center; outline: none;
-    }
-    .mes-input:focus { border-color: var(--primary); }
-
-    .btn-analisar {
-      background: linear-gradient(135deg, var(--primary) 0%, #868CFF 100%);
-      color: white; border: none; padding: 8px 18px; border-radius: 10px;
-      font-weight: 700; transition: 0.3s; box-shadow: 0 4px 12px rgba(67, 24, 255, 0.2);
-    }
-    .btn-analisar:hover { transform: translateY(-2px); box-shadow: 0 6px 15px rgba(67, 24, 255, 0.3); }
-
-    .card-mini {
-      background: var(--bg-card); border-radius: 16px; padding: 15px;
-      box-shadow: var(--card-shadow); height: 100%;
-    }
-    .card-mini h6 { color: var(--text-muted); font-size: 11px; font-weight: 700; text-transform: uppercase; margin-bottom: 5px; }
-    .card-mini h3 { color: var(--text-main); font-size: 20px; font-weight: 800; margin: 0; }
+    table { width: 100%; border-collapse: collapse; margin-top: 5px; font-size: 10px; }
+    th { background: #f8f9fa !important; border: 1px solid #2c3e50; padding: 6px; text-align: left; -webkit-print-color-adjust: exact; }
+    td { border: 1px solid #dcdde1; padding: 5px; }
     
-    /* BARRA DE DISTRIBUIÇÃO */
-    .finance-split { display: flex; height: 12px; border-radius: 6px; overflow: hidden; margin: 10px 0; }
-    .split-lucro { background: var(--success); transition: width 1s; }
-    .split-repasse { background: var(--info); transition: width 1s; }
-    .split-lab { background: var(--danger); transition: width 1s; }
+    .secao-titulo { background: #34495e !important; color: white !important; padding: 5px 10px; margin-top: 20px; font-size: 11px; font-weight: bold; -webkit-print-color-adjust: exact; }
+    .total-final { font-size: 18px; text-align: right; margin-top: 15px; font-weight: 800; color: #2c3e50; border-top: 2px solid #2c3e50; padding-top: 10px; }
 
-    /* MATRIZ SLIM */
-    .table-matrix-wrapper { max-height: 280px; overflow-y: auto; }
-    .table-matrix { width: 100%; font-size: 12px; }
-    .table-matrix th { color: var(--text-muted); font-size: 10px; font-weight: 700; text-transform: uppercase; padding: 10px; border-bottom: 2px solid #F4F7FE; text-align: right; position: sticky; top: 0; background: white;}
-    .table-matrix th:first-child { text-align: left; }
-    .table-matrix td { padding: 8px 10px; border-bottom: 1px solid #F4F7FE; font-weight: 600; text-align: right; }
-    .table-matrix td:first-child { text-align: left; }
-    
-    .badge-status { padding: 3px 6px; border-radius: 5px; font-size: 10px; font-weight: 800; }
-    
-    /* BARRINHAS LÚDICAS */
-    .bar-item { margin-bottom: 10px; }
-    .bar-info { display: flex; justify-content: space-between; font-size: 11px; font-weight: 700; margin-bottom: 2px; }
-    .bar-track { width: 100%; height: 5px; background: #E9EDF7; border-radius: 10px; overflow: hidden; }
-    .bar-fill { height: 100%; border-radius: 10px; transition: 1s ease-out; }
-
-    .chart-container { position: relative; height: 210px; width: 100%; }
-    #loader { display: none; text-align: center; padding: 30px; font-weight: 700; color: var(--primary); }
+    @media print { 
+      body { background: white; padding: 0; }
+      .no-print { display: none; }
+      .recibo-pagina { border: none; padding: 0; width: 100%; }
+    }
   </style>
 </head>
 <body>
 
-  <div class="header-slim">
-    <h2>🎯 Gestão de Resultados Clínica</h2>
-    <div class="d-flex gap-2 align-items-center">
-      <input type="text" id="mesInput" class="mes-input" placeholder="MM/AAAA" maxlength="7" oninput="mascaraMes(this)">
-      <button class="btn-analisar" onclick="carregarResultados()">PROCESSAR</button>
+  <div class="no-print">
+    <h3>📊 Relatório Geral e Produtividade</h3>
+    <div style="display: flex; gap: 10px; justify-content: center; align-items: center; flex-wrap: wrap;">
+      <select id="dentista" style="padding: 8px; border-radius: 4px; border: 1px solid #ccc;">
+        <option value="TODOS">Todos os Profissionais</option>
+      </select>
+      
+      <!-- ===== CORREÇÃO: Campo de data com máscara automática ===== -->
+      <div style="position: relative;">
+        <input type="text" id="dataFiltro" placeholder="DD/MM/AAAA" 
+               style="width: 120px; padding: 8px; border-radius: 4px; border: 1px solid #ccc;"
+               maxlength="10" oninput="mascaraData(this)">
+      </div>
+      
+      <!-- ===== CORREÇÃO: Campo de mês com máscara automática ===== -->
+      <div style="position: relative;">
+        <input type="text" id="mesFiltro" placeholder="MM/AAAA" 
+               style="width: 100px; padding: 8px; border-radius: 4px; border: 1px solid #ccc;"
+               maxlength="7" oninput="mascaraMes(this)">
+      </div>
+      
+      <button onclick="gerar()" style="background: #27ae60; color: white; border:none; padding:10px 15px; cursor:pointer; border-radius: 4px; font-weight: bold;">Gerar</button>
+      <button onclick="window.print()" style="background: #2c3e50; color: white; border:none; padding:10px 15px; cursor:pointer; border-radius: 4px; font-weight: bold;">🖨️ Imprimir</button>
     </div>
   </div>
 
-  <div id="loader">Processando números...</div>
-
-  <div id="conteudoDash" style="display: none;">
-    
-    <div class="row g-3 mb-3">
-      <div class="col-md-3"><div class="card-mini"><h6>Faturamento Bruto</h6><h3 id="kpiBruto">R$ 0</h3></div></div>
-      <div class="col-md-3"><div class="card-mini" style="border-bottom: 3px solid var(--success);"><h6>Lucro Real Clínica</h6><h3 id="kpiLiquido" style="color: var(--success);">R$ 0</h3></div></div>
-      <div class="col-md-3"><div class="card-mini"><h6>Margem Líquida</h6><h3 id="kpiMargem">0%</h3></div></div>
-      <div class="col-md-3"><div class="card-mini"><h6>Ticket por Paciente</h6><h3 id="kpiTicket">R$ 0</h3></div></div>
+  <div id="documento" style="display:none;" class="recibo-pagina">
+    <div class="header">
+      <h1>ODONTOLOGIA RAMOS</h1>
+      <p>RELATÓRIO DE MOVIMENTAÇÃO E PRODUTIVIDADE</p>
     </div>
 
-    <div class="row g-3 mb-3">
-      <div class="col-12">
-        <div class="card-mini">
-          <h6>🍕 Distribuição da Receita (%)</h6>
-          <div class="finance-split">
-            <div id="barLucro" class="split-lucro" style="width: 0%;"></div>
-            <div id="barRepasse" class="split-repasse" style="width: 0%;"></div>
-            <div id="barLab" class="split-lab" style="width: 0%;"></div>
-          </div>
-          <div class="d-flex justify-content-between font-monospace" style="font-size: 10px; color: var(--text-muted); font-weight: 700;">
-            <div id="lblLucro">LUCRO: 0%</div><div id="lblRepasse">REPASSE: 0%</div><div id="lblLab">LAB: 0%</div>
-          </div>
-        </div>
-      </div>
+    <div class="row-info">
+      <span><span class="label-info">Filtro:</span> <span id="resFiltro"></span></span>
+      <span><span class="label-info">Emissão:</span> <span id="resEmissao"></span></span>
     </div>
 
-    <div class="row g-3">
-      <div class="col-md-8">
-        <div class="card-mini mb-3">
-          <h6>📊 Matriz de Eficiência (Top 6 Doutores)</h6>
-          <div class="table-matrix-wrapper">
-            <table class="table-matrix">
-              <thead>
-                <tr><th>Doutor</th><th>Bruto</th><th>Repasse</th><th>Lab</th><th>Lucro</th><th>Margem</th></tr>
-              </thead>
-              <tbody id="tbodyMatriz"></tbody>
-            </table>
-          </div>
-        </div>
-        
-        <div class="card-mini">
-          <h6>📈 Análise de Equilíbrio: Repasse vs Lucro</h6>
-          <div class="chart-container">
-            <canvas id="chartGestao"></canvas>
-          </div>
-        </div>
-      </div>
+    <table>
+      <thead>
+        <tr>
+          <th>DATA</th><th>PACIENTE</th><th>PROCEDIMENTO</th><th>PAGAMENTO</th><th>DOUTOR</th><th style="text-align:right;">PART.</th><th style="text-align:right;">PLANO</th>
+        </tr>
+      </thead>
+      <tbody id="corpoTabela"></tbody>
+    </table>
 
-      <div class="col-md-4">
-        <div class="card-mini mb-3">
-          <h6>💳 Mix de Recebimentos</h6>
-          <div id="areaPagamentos"></div>
-        </div>
+    <div class="secao-titulo">RESUMO DE PRODUTIVIDADE POR PROFISSIONAL</div>
+    <table style="width: 50%; margin-top: 10px;">
+      <thead>
+        <tr><th>DOUTOR(A)</th><th style="text-align:center;">QTD PACIENTES</th><th style="text-align:right;">TOTAL PRODUZIDO</th></tr>
+      </thead>
+      <tbody id="corpoResumo"></tbody>
+    </table>
 
-        <div class="card-mini">
-          <h6>🦷 Top 15 Procedimentos Lucrativos</h6>
-          <div id="areaProcedimentos" style="max-height: 460px; overflow-y: auto; padding-right: 5px;"></div>
-        </div>
-      </div>
-    </div>
+    <div class="total-final">TOTAL GERAL: R$ <span id="resTotal"></span></div>
   </div>
 
   <script>
-    let chartGestao = null;
-    const formataMoeda = (v) => Number(v).toLocaleString('pt-BR', {style: 'currency', currency: 'BRL', minimumFractionDigits: 0});
-    const formataPct = (v) => (Number(v)).toFixed(1) + '%';
+    let dadosBrutos = [];
 
-    // MÁSCARA AUTOMÁTICA DE DATA (MM/AAAA)
+    // ===== FUNÇÕES DE MÁSCARA =====
+    function mascaraData(input) {
+      let v = input.value.replace(/\D/g, '').slice(0, 8);
+      if (v.length >= 5) {
+        input.value = v.replace(/^(\d{2})(\d{2})(\d{0,4}).*/, "$1/$2/$3");
+      } else if (v.length >= 3) {
+        input.value = v.replace(/^(\d{2})(\d{0,2}).*/, "$1/$2");
+      } else {
+        input.value = v;
+      }
+    }
+
     function mascaraMes(input) {
       let v = input.value.replace(/\D/g, '').slice(0, 6);
-      if (v.length >= 5) input.value = v.replace(/^(\d{2})(\d{0,4}).*/, "$1/$2");
-      else if (v.length >= 3) input.value = v.replace(/^(\d{2})(\d{0,2}).*/, "$1/$2");
-      else input.value = v;
+      if (v.length >= 5) {
+        input.value = v.replace(/^(\d{2})(\d{0,4}).*/, "$1/$2");
+      } else if (v.length >= 3) {
+        input.value = v.replace(/^(\d{2})(\d{0,2}).*/, "$1/$2");
+      } else {
+        input.value = v;
+      }
     }
 
-    // AUTO-PREENCHIMENTO DO MÊS ATUAL AO CARREGAR
     window.onload = function() {
+      google.script.run.withSuccessHandler(listas => {
+        const sel = document.getElementById('dentista');
+        listas.doutores.forEach(n => { 
+          let o = document.createElement('option'); 
+          o.value = n; 
+          o.text = n; 
+          sel.add(o); 
+        });
+      }).getListasParaForm();
+      
+      google.script.run.withSuccessHandler(res => { 
+        dadosBrutos = res; 
+      }).getDadosTabelaERP();
+      
+      // ===== CORREÇÃO: Pré-preencher com o mês atual =====
       const hoje = new Date();
-      const m = String(hoje.getMonth() + 1).padStart(2, '0');
-      const a = hoje.getFullYear();
-      document.getElementById('mesInput').value = `${m}/${a}`;
+      const mes = String(hoje.getMonth() + 1).padStart(2, '0');
+      const ano = hoje.getFullYear();
+      document.getElementById('mesFiltro').value = `${mes}/${ano}`;
     };
 
-    function carregarResultados() {
-      const mes = document.getElementById('mesInput').value;
-      if(mes.length < 7) return alert("Digite o mês corretamente (Ex: 03/2026)");
-      document.getElementById('conteudoDash').style.display = 'none';
-      document.getElementById('loader').style.display = 'block';
-      google.script.run.withSuccessHandler(montarTela).getDadosTabelaERP();
-    }
-
-    function montarTela(dadosBrutos) {
-      document.getElementById('loader').style.display = 'none';
-      document.getElementById('conteudoDash').style.display = 'block';
-      const mesAlvo = document.getElementById('mesInput').value;
+    function gerar() {
+      const dentista = document.getElementById('dentista').value;
+      const dataDia = document.getElementById('dataFiltro').value;
+      const mesAno = document.getElementById('mesFiltro').value;
       
-      const dadosFiltrados = dadosBrutos.filter(d => d.data && (d.data.split('/')[1] + '/' + d.data.split('/')[2]) === mesAlvo);
+      let filtrados = dadosBrutos;
+      if(dentista !== "TODOS") filtrados = filtrados.filter(d => d.doutor === dentista);
 
-      if(dadosFiltrados.length === 0) {
-        alert("Sem dados para este período.");
-        return;
+      if(dataDia) {
+        // Já está no formato dd/mm/aaaa pela máscara
+        filtrados = filtrados.filter(d => d.data === dataDia);
+        document.getElementById('resFiltro').innerText = "DIÁRIO: " + dataDia;
+      } else if(mesAno) {
+        filtrados = filtrados.filter(d => (d.data.split('/')[1] + '/' + d.data.split('/')[2]) === mesAno);
+        document.getElementById('resFiltro').innerText = "MENSAL: " + mesAno;
       }
 
-      let totalBruto = 0, totalLiquido = 0, totalRepasse = 0, totalLab = 0;
-      let pacientesUnicos = new Set(), formPagtoMap = {}, procMap = {}, doutoresMap = {};
+      // Preencher Tabela Principal e Calcular Resumo
+      const tbody = document.getElementById('corpoTabela');
+      const resBody = document.getElementById('corpoResumo');
+      tbody.innerHTML = ""; 
+      resBody.innerHTML = "";
+      
+      let totalGeral = 0;
+      let resumoDoutores = {};
 
-      dadosFiltrados.forEach(d => {
-        let bruto = (d.particular || 0) + (d.vplano || 0);
-        totalBruto += bruto; 
-        totalLiquido += (d.lucroClinica || 0); 
-        totalRepasse += (d.parteDentista || 0); 
-        totalLab += (d.vlab || 0);
-        if (d.paciente) pacientesUnicos.add(d.paciente);
-
-        let pg = d.pagamento || 'Outros';
-        formPagtoMap[pg] = (formPagtoMap[pg] || 0) + bruto;
-
-        let proc = d.procedimento || '-';
-        procMap[proc] = (procMap[proc] || 0) + (d.lucroClinica || 0);
-
-        let dr = d.doutor || 'Sem Nome';
-        if (!doutoresMap[dr]) doutoresMap[dr] = { bruto: 0, repasse: 0, lab: 0, liquido: 0 };
-        doutoresMap[dr].bruto += bruto; 
-        doutoresMap[dr].repasse += (d.parteDentista || 0);
-        doutoresMap[dr].lab += (d.vlab || 0); 
-        doutoresMap[dr].liquido += (d.lucroClinica || 0);
-      });
-
-      // Atualiza KPIs
-      document.getElementById('kpiBruto').innerText = formataMoeda(totalBruto);
-      document.getElementById('kpiLiquido').innerText = formataMoeda(totalLiquido);
-      document.getElementById('kpiMargem').innerText = totalBruto > 0 ? formataPct((totalLiquido/totalBruto)*100) : '0%';
-      document.getElementById('kpiTicket').innerText = formataMoeda(pacientesUnicos.size > 0 ? totalBruto / pacientesUnicos.size : 0);
-
-      // Anima Barra de Distribuição
-      setTimeout(() => {
-        document.getElementById('barLucro').style.width = (totalLiquido/totalBruto*100) + '%';
-        document.getElementById('barRepasse').style.width = (totalRepasse/totalBruto*100) + '%';
-        document.getElementById('barLab').style.width = (totalLab/totalBruto*100) + '%';
-        document.getElementById('lblLucro').innerText = 'LUCRO: ' + formataPct(totalLiquido/totalBruto*100);
-        document.getElementById('lblRepasse').innerText = 'REPASSE: ' + formataPct(totalRepasse/totalBruto*100);
-        document.getElementById('lblLab').innerText = 'LAB: ' + formataPct(totalLab/totalBruto*100);
-      }, 100);
-
-      // Tabela Matriz
-      let htmlMatriz = "";
-      let drArray = Object.entries(doutoresMap).sort((a,b) => b[1].liquido - a[1].liquido).slice(0,6);
-      drArray.forEach(([n, i]) => {
-        let mrg = i.bruto > 0 ? (i.liquido/i.bruto)*100 : 0;
-        htmlMatriz += `<tr><td>${n}</td><td>${formataMoeda(i.bruto)}</td><td>${formataMoeda(i.repasse)}</td><td>${formataMoeda(i.lab)}</td><td style="color:var(--success)">${formataMoeda(i.liquido)}</td><td><span class="badge-status" style="background:${mrg>30?'#E6FBF5':'#FDE8E6'};color:${mrg>30?'#05CD99':'#EE5D50'}">${formataPct(mrg)}</span></td></tr>`;
-      });
-      document.getElementById('tbodyMatriz').innerHTML = htmlMatriz;
-
-      // Mix Pagamentos
-      let htmlPagtos = "";
-      Object.entries(formPagtoMap).sort((a,b) => b[1]-a[1]).forEach(([n, v]) => {
-        let pct = (v/totalBruto)*100;
-        htmlPagtos += `<div class="bar-item"><div class="bar-info"><span>${n}</span><span>${pct.toFixed(0)}%</span></div><div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:var(--info)"></div></div></div>`;
-      });
-      document.getElementById('areaPagamentos').innerHTML = htmlPagtos;
-
-      // Top 15 Procedimentos
-      let htmlProcs = "";
-      let pArray = Object.entries(procMap).sort((a,b) => b[1]-a[1]).slice(0, 15);
-      let maxP = pArray.length > 0 ? pArray[0][1] : 1;
-      pArray.forEach(([n, v]) => {
-        let pct = (v/maxP)*100;
-        htmlProcs += `<div class="bar-item"><div class="bar-info"><span>${n}</span><span>${formataMoeda(v)}</span></div><div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:var(--success)"></div></div></div>`;
-      });
-      document.getElementById('areaProcedimentos').innerHTML = htmlProcs;
-
-      renderChartGestao(drArray);
-    }
-
-    function renderChartGestao(drArray) {
-      if(chartGestao) chartGestao.destroy();
-      const ctx = document.getElementById('chartGestao').getContext('2d');
-      chartGestao = new Chart(ctx, {
-        type: 'bar',
-        data: {
-          labels: drArray.map(d => d[0]),
-          datasets: [
-            { label: 'Lucro Clínica', data: drArray.map(d => d[1].liquido), backgroundColor: '#05CD99', borderRadius: 5 },
-            { label: 'Repasse Doutor', data: drArray.map(d => d[1].repasse), backgroundColor: '#4318FF', borderRadius: 5 }
-          ]
-        },
-        options: {
-          responsive: true, maintainAspectRatio: false,
-          scales: { 
-            x: { grid: { display: false } }, 
-            y: { ticks: { font: { size: 10 } } }
-          },
-          plugins: { 
-            legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 10, family: 'Plus Jakarta Sans' } } } 
-          }
+      filtrados.forEach(item => {
+        let vTotal = (item.particular || 0) + (item.vplano || 0);
+        totalGeral += vTotal;
+        
+        // Logica do Resumo
+        if(!resumoDoutores[item.doutor]) {
+          resumoDoutores[item.doutor] = { qtd: 0, valor: 0 };
         }
+        resumoDoutores[item.doutor].qtd++;
+        resumoDoutores[item.doutor].valor += vTotal;
+
+        tbody.innerHTML += `<tr>
+          <td>${item.data}</td>
+          <td><strong>${item.paciente}</strong></td>
+          <td>${item.procedimento || '-'}</td>
+          <td>${item.pagamento || '-'}</td>
+          <td>${item.doutor}</td>
+          <td style="text-align:right;">R$ ${(item.particular || 0).toFixed(2)}</td>
+          <td style="text-align:right;">R$ ${(item.vplano || 0).toFixed(2)}</td>
+        </tr>`;
       });
+
+      // Preencher Tabela de Resumo
+      for(let dr in resumoDoutores) {
+        resBody.innerHTML += `<tr>
+          <td>${dr}</td>
+          <td style="text-align:center;">${resumoDoutores[dr].qtd}</td>
+          <td style="text-align:right;">R$ ${resumoDoutores[dr].valor.toFixed(2)}</td>
+        </tr>`;
+      }
+
+      document.getElementById('resEmissao').innerText = new Date().toLocaleDateString('pt-BR');
+      document.getElementById('resTotal').innerText = totalGeral.toFixed(2);
+      document.getElementById('documento').style.display = 'block';
     }
   </script>
 </body>
