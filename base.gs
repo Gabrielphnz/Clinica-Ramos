@@ -1171,7 +1171,7 @@ function cadastrarPacienteNoCRM(dados) {
 function salvarAgendamentoNaPlanilha(d) {
   const lock = LockService.getScriptLock();
   try {
-    lock.waitLock(15000); // Aumentei para 15 segundos para dar folga
+    lock.waitLock(15000); // 15 segundos para dar folga na fila
     
     // Tratamento de data brasileira
     if (d.data && d.data.includes('-')) {
@@ -1194,22 +1194,26 @@ function salvarAgendamentoNaPlanilha(d) {
       }
     }
 
-    // --- LÓGICA DE NOVO REGISTRO (COM CHECAGEM DE DUPLICIDADE) ---
+    // --- LÓGICA DE NOVO REGISTRO (COM CHECAGEM BLINDADA) ---
     const registros = aba.getDataRange().getValues();
     
     // Verifica se já existe um agendamento IGUAL (Paciente + Data + Hora)
-    // Isso evita que cliques duplos que passaram pela trava do botão gerem linhas extras
-    const duplicado = registros.some(r => 
-      r[1] == d.data && 
-      r[2] == d.hora && 
-      r[3].toString().toLowerCase() == d.paciente.toString().toLowerCase()
-    );
+    const duplicado = registros.some(r => {
+      // Traduz os Objetos do Sheets para texto antes de comparar
+      let rData = r[1] instanceof Date ? Utilities.formatDate(r[1], ss.getSpreadsheetTimeZone(), "dd/MM/yyyy") : String(r[1]).trim();
+      let rHora = r[2] instanceof Date ? Utilities.formatDate(r[2], ss.getSpreadsheetTimeZone(), "HH:mm") : String(r[2]).trim().substring(0, 5);
+      
+      return rData === d.data && 
+             rHora === d.hora && 
+             String(r[3]).toLowerCase().trim() === d.paciente.toLowerCase().trim();
+    });
 
+    // Se o clone tentar passar, a porta bate na cara dele
     if (duplicado) {
       return "ERRO: Este agendamento já foi registrado por outro usuário simultaneamente.";
     }
 
-    // Se passou na checagem, grava o novo
+    // Se for limpo, grava a linha
     aba.appendRow([Date.now(), d.data, d.hora, d.paciente, "", d.doutor, d.procedimento, d.status, d.obs]);
     
     SpreadsheetApp.flush(); 
@@ -1222,7 +1226,37 @@ function salvarAgendamentoNaPlanilha(d) {
   }
 }
 
+// ==========================================
+// EXCLUIR AGENDAMENTO (BACK-END)
+// ==========================================
+function excluirAgendamentoNaPlanilha(idAgendamento) {
+  const lock = LockService.getScriptLock();
+  
+  try {
+    lock.waitLock(10000);
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const aba = ss.getSheetByName("AGENDA");
+    
+    if (!aba) return "ERRO: Aba AGENDA não encontrada.";
 
+    // Busca ultrarrápida pelo ID na Coluna A (1)
+    const busca = aba.getRange("A:A").createTextFinder(idAgendamento.toString()).matchEntireCell(true).findNext();
+    
+    if (busca) {
+      const linha = busca.getRow();
+      // Apaga a linha inteira para manter o banco de dados limpo
+      aba.deleteRow(linha); 
+      return "OK";
+    }
+    
+    return "ERRO: Agendamento não encontrado no banco de dados.";
+    
+  } catch (e) {
+    return "ERRO: Falha ao excluir - " + e.message;
+  } finally {
+    lock.releaseLock();
+  }
+}
 
 function getAgendamentosCalendario(filtroDoutor) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
