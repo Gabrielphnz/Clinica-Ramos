@@ -12,3 +12,10 @@ OK -  6 - Chegando laboratório atrelado ao paciente, abrir tela de agendamento 
 OK -  7 - criar campo de notificações 
 OK -  8 - Criar gerador de documentos dentro da ficha de pacientes. 
 OK -  9 - Criar campo para taxas de cartão 
+
+--------------------
+
+Novas solicitações: 
+1 - Modulo financeiro, controle de pagamentos, recebíveis, impostos, taxas, antecipação, folha salarial, despesas fixas e acessórias, gastos com materiais. 
+2 - Implementar as taxas de cartão ao calculo. Administradora de cartões forneceu as taxas. preciso regularizar e parametrizar. 
+3 - Realizar uma depuração geral no sistema para avaliar erros.  
