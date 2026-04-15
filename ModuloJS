@@ -792,8 +792,15 @@ function calcularTaxaAutomatica() {
     const painel = document.getElementById('detalhesCartao');
     if (painel.style.display === "none") return; 
 
-    const valorTotalStr = document.getElementById('vParticularInp').value;
-    const valorTotal = formatarParaCalculo(valorTotalStr);
+    // Pega o valor do Particular e do Laboratório
+    const valorPartStr = document.getElementById('vParticularInp').value;
+    const valorLabStr = document.getElementsByName('vlab')[0].value; 
+    
+    const valorPart = formatarParaCalculo(valorPartStr);
+    const valorLab = formatarParaCalculo(valorLabStr);
+    
+    // SOMA os dois para calcular a taxa total da maquininha
+    const valorTotal = valorPart + valorLab;
     
     if (valorTotal <= 0) {
         document.getElementById('taxaCartaoInp').value = "0,00";
@@ -804,24 +811,44 @@ function calcularTaxaAutomatica() {
     const selectParcelas = document.getElementById('numParcelas');
     
     let taxaFinal = 0;
-    const taxaDebito = 0.015;      // 1.5%
-    const taxaCreditoBase = 0.03;  // 3%
-    const taxaPorParcela = 0.01;   // +1% por parcela
 
     if (ehDebito) {
+        // Débito: 0,99%
         selectParcelas.value = "1";
         selectParcelas.disabled = true;
         document.getElementById('divParcelas').style.opacity = '0.4';
-        taxaFinal = valorTotal * taxaDebito;
+        taxaFinal = valorTotal * 0.0099; 
     } else {
+        // Crédito: Libera a caixa
         selectParcelas.disabled = false;
         document.getElementById('divParcelas').style.opacity = '1';
         
         const parcelas = parseInt(selectParcelas.value);
-        let percentual = taxaCreditoBase;
-        if (parcelas > 1) {
-            percentual += (parcelas - 1) * taxaPorParcela;
-        }
+        
+        // Tabela exata da adquirente
+        const taxasCredito = [
+            0,      // 0
+            0.0299, // 1x: 2,99%
+            0.0409, // 2x: 4,09%
+            0.0478, // 3x: 4,78%
+            0.0547, // 4x: 5,47%
+            0.0614, // 5x: 6,14%
+            0.0681, // 6x: 6,81%
+            0.0767, // 7x: 7,67%
+            0.0833, // 8x: 8,33%
+            0.0898, // 9x: 8,98%
+            0.0963, // 10x: 9,63%
+            0.1026, // 11x: 10,26%
+            0.1090, // 12x: 10,90%
+            0.1232, // 13x: 12,32%
+            0.1294, // 14x: 12,94%
+            0.1356, // 15x: 13,56%
+            0.1417, // 16x: 14,17%
+            0.1477, // 17x: 14,77%
+            0.1537  // 18x: 15,37%
+        ];
+
+        let percentual = taxasCredito[parcelas] || 0.0299;
         taxaFinal = valorTotal * percentual;
     }
 
@@ -829,6 +856,213 @@ function calcularTaxaAutomatica() {
 }
 
 
+// ==========================================
+// FUNÇÕES DO GESTOR FINANCEIRO
+// ==========================================
+
+function toggleParcelas() {
+  const tipo = document.getElementById("desp_recorrencia").value;
+  document.getElementById("div_parcelas_config").style.display = (tipo === "PARCELADO") ? "block" : "none";
+}
+
+function salvarDespesa() {
+  const form = document.getElementById("formDespesa");
+  if (!form.checkValidity()) { form.reportValidity(); return; }
+
+  const btn = document.getElementById("btnSalvarDespesa");
+  btn.disabled = true;
+  btn.innerHTML = "SALVANDO...";
+
+  const idExistente = document.getElementById("desp_id").value;
+  const tipoLancamento = document.getElementById("desp_tipo").value; // Usa o tipo oculto
+
+  const dados = {
+    id: idExistente, // Se estiver vazio, o back-end sabe que é um NOVO registro
+    tipo: tipoLancamento, 
+    data: document.getElementById("desp_data").value,
+    categoria: document.getElementById("desp_categoria").value,
+    descricao: document.getElementById("desp_desc").value,
+    valorBruto: document.getElementById("desp_valor").value,
+    descontos: "0,00",
+    status: "PAGO"
+  };
+
+  // Resto da lógica de recorrência...
+  const tipoRecorrencia = document.getElementById("desp_recorrencia").value;
+  if (!idExistente && tipoRecorrencia !== "UNICO") {
+    // Só cria regra se for um lançamento NOVO, não em edição
+    const regraFixa = {
+      categoria: dados.categoria,
+      descricao: dados.descricao,
+      valor: dados.valorBruto,
+      dia: new Date(dados.data).getDate() + 1,
+      parcelas: tipoRecorrencia === "FIXO" ? -1 : parseInt(document.getElementById("desp_qtd_parcelas").value)
+    };
+    google.script.run.salvarRegraFixa(regraFixa);
+  }
+
+  google.script.run
+    .withSuccessHandler(function(res) {
+      mostrarNotificacao("✅ Registro salvo!", "sucesso");
+      bootstrap.Modal.getInstance(document.getElementById('modalDespesa')).hide();
+      btn.disabled = false;
+      btn.innerHTML = "💾 REGISTRAR PAGAMENTO";
+      
+      // Limpa os campos ocultos para o próximo uso
+      document.getElementById("desp_id").value = "";
+      document.getElementById("desp_tipo").value = "SAÍDA";
+      document.getElementById("desp_recorrencia").disabled = false;
+
+      carregarFluxoCaixa(); 
+    })
+    .apiSalvarMovimentoFinanceiro(dados);
+}
+
+function carregarFluxoCaixa() {
+  const corpo = document.getElementById("corpoFluxoCaixa");
+  if (!corpo) return;
+  
+  corpo.innerHTML = '<tr><td colspan="6" class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div> Carregando...</td></tr>';
+
+  google.script.run.withSuccessHandler(function(dados) {
+    if (!dados || dados.length === 0) {
+      corpo.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-muted">Nenhum registro encontrado.</td></tr>';
+      document.getElementById("totalEntradasMes").innerText = "R$ 0,00";
+      document.getElementById("totalSaidasMes").innerText = "R$ 0,00";
+      document.getElementById("saldoLiquidoMes").innerText = "R$ 0,00";
+      return;
+    }
+
+    let totalE = 0; let totalS = 0;
+    let htmlTabela = "";
+
+    dados.forEach(r => {
+      const valorNum = Number(r.liquido);
+      if (r.tipo === "ENTRADA") totalE += valorNum; else totalS += valorNum;
+
+      const corValor = r.tipo === "ENTRADA" ? "text-success" : "text-danger";
+      const sinal = r.tipo === "ENTRADA" ? "+" : "-";
+
+      // Adicionei a coluna extra no final para o botão de Editar
+      htmlTabela += `
+        <tr>
+          <td class="small fw-bold text-muted">${r.data}</td>
+          <td><span class="badge bg-light text-dark border-0 shadow-sm" style="font-size:10px;">${r.categoria}</span></td>
+          <td class="small fw-semibold" style="color: var(--text-main);">${r.descricao}</td>
+          <td class="text-end fw-bold ${corValor}">${sinal} ${valorNum.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}</td>
+          <td>
+            <span class="badge ${r.status === 'PAGO' ? 'bg-success' : 'bg-warning'} px-2" style="font-size:9px;">${r.status}</span>
+          </td>
+          <td class="text-center">
+             <button class="btn btn-sm btn-outline-primary border-0 p-1" onclick="abrirEdicaoFinanceiro('${r.id}')" title="Editar Registro">
+                <span class="material-icons" style="font-size:18px;">edit</span>
+             </button>
+          </td>
+        </tr>`;
+    });
+
+    corpo.innerHTML = htmlTabela;
+
+    // Atualiza os Cards Superiores
+    document.getElementById("totalEntradasMes").innerText = totalE.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
+    document.getElementById("totalSaidasMes").innerText = totalS.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
+    document.getElementById("saldoLiquidoMes").innerText = (totalE - totalS).toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
+
+  }).getDadosFinanceiroMes();
+}
+
+function abrirModalDespesa() {
+  document.getElementById("formDespesa").reset();
+  document.getElementById("desp_id").value = ""; 
+  document.getElementById("desp_tipo").value = "SAÍDA"; 
+  document.getElementById("desp_data").value = new Date().toISOString().split('T')[0];
+  document.getElementById("desp_recorrencia").disabled = false;
+  
+  // Esconde botão excluir ao criar novo
+  document.getElementById("btnExcluirFinanceiro").style.display = "none";
+  
+  new bootstrap.Modal(document.getElementById('modalDespesa')).show();
+}
+
+function abrirEdicaoFinanceiro(id) {
+  mostrarNotificacao("⏳ Buscando dados...", "info");
+  google.script.run.withSuccessHandler(function(registro) {
+    if(!registro) return mostrarNotificacao("❌ Erro ao localizar registro.", "erro");
+
+    document.getElementById("desp_id").value = registro.id;
+    document.getElementById("desp_tipo").value = registro.tipo;
+    document.getElementById("desp_data").value = registro.dataISO; 
+    document.getElementById("desp_categoria").value = registro.categoria;
+    document.getElementById("desp_desc").value = registro.descricao;
+    document.getElementById("desp_valor").value = registro.valorBR;
+    
+    document.getElementById("desp_recorrencia").value = "UNICO";
+    document.getElementById("desp_recorrencia").disabled = true;
+
+    // MOSTRA O BOTÃO EXCLUIR NA EDIÇÃO
+    document.getElementById("btnExcluirFinanceiro").style.display = "block";
+
+    new bootstrap.Modal(document.getElementById('modalDespesa')).show();
+  }).getRegistroFinanceiroPorId(id);
+}
+
+// === EXCLUIR LANÇAMENTO FINANCEIRO ===
+function deletarRegistroFinanceiro() {
+  const id = document.getElementById("desp_id").value;
+  if (!id) return;
+  if (!confirm("Tem certeza que deseja apagar este lançamento do seu fluxo de caixa?")) return;
+
+  const btn = document.getElementById("btnExcluirFinanceiro");
+  
+  // Muda o estado para carregando e desativa o clique
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Apagando...';
+  btn.disabled = true;
+  
+  google.script.run
+    .withSuccessHandler(res => {
+      mostrarNotificacao(res, "sucesso");
+      bootstrap.Modal.getInstance(document.getElementById('modalDespesa')).hide();
+      carregarFluxoCaixa(); // Atualiza a tela
+      
+      // DEVOLVE O BOTÃO AO NORMAL para o próximo uso
+      btn.innerHTML = "🗑️ EXCLUIR";
+      btn.disabled = false;
+    })
+    .withFailureHandler(err => {
+      mostrarNotificacao("Erro ao excluir: " + err, "erro");
+      
+      // DEVOLVE O BOTÃO AO NORMAL caso dê erro
+      btn.innerHTML = "🗑️ EXCLUIR";
+      btn.disabled = false;
+    })
+    .excluirRegistroFinanceiroBD(id);
+}
+// === EDITAR RECORRÊNCIAS ===
+// Atualize o HTML da sua tabela no modalRecorrencias para chamar esta função no botão:
+// onclick="prepararEdicaoRecorrencia('${r.id}', '${r.descricao}', '${r.valor}', '${r.dia}')"
+
+function prepararEdicaoRecorrencia(id, desc, valor, dia) {
+  document.getElementById("edit_rec_id").value = id;
+  document.getElementById("edit_rec_desc").value = desc;
+  document.getElementById("edit_rec_valor").value = Number(valor).toLocaleString('pt-BR', {minimumFractionDigits: 2});
+  document.getElementById("edit_rec_dia").value = dia;
+  new bootstrap.Modal(document.getElementById('modalEditarRecorrencia')).show();
+}
+
+function salvarEdicaoRecorrencia() {
+  const id = document.getElementById("edit_rec_id").value;
+  const desc = document.getElementById("edit_rec_desc").value;
+  const valor = document.getElementById("edit_rec_valor").value;
+  const dia = document.getElementById("edit_rec_dia").value;
+
+  mostrarNotificacao("⏳ Salvando alteração...", "info");
+  
+  google.script.run.withSuccessHandler(res => {
+    mostrarNotificacao(res, "sucesso");
+    bootstrap.Modal.getInstance(document.getElementById('modalEditarRecorrencia')).hide();
+    carregarRecorrenciasModal(); // Atualiza a tabela do modal principal
+  }).editarRegraFixaBD(id, desc, valor, dia);
+}
 
 // ==========================================
 // FUNÇÃO PARA SALVAR O LANÇAMENTO FINANCEIRO
@@ -842,7 +1076,7 @@ function salvarLancamento() {
   btn.disabled = true; 
   btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> SALVANDO...';
 
-  // Coleta os dados simples
+  // Coleta os dados do atendimento
   const dados = {
     idLinha: document.getElementById("idLinha").value,
     data: form.data.value,
@@ -850,7 +1084,7 @@ function salvarLancamento() {
     doutor: form.doutor.value,
     procedimento: form.procedimento.value,
     plano: form.plano.value,
-    pagamento: form.pagamento.value, // <--- ÚNICO DE NOVO
+    pagamento: form.pagamento.value,
     particular: form.particular.value,
     vplano: form.vplano.value,
     vlab: form.vlab.value,
@@ -858,10 +1092,35 @@ function salvarLancamento() {
     obs: form.obs.value
   };
 
-  mostrarNotificacao("⏳ Registrando no financeiro...", "info");
+  mostrarNotificacao("⏳ Registrando no sistema...", "info");
 
   google.script.run
     .withSuccessHandler(function(res) {
+      
+      // ==========================================
+      // INÍCIO DA INTEGRAÇÃO COM O FINANCEIRO
+      // ==========================================
+      // Se o valor particular for maior que zero, registra a entrada no Fluxo de Caixa
+      if (formatarParaCalculo(dados.particular) > 0) {
+          const dadosFin = {
+            // Criamos um ID composto para o financeiro baseado no ID do atendimento
+            // Isso garante que se você editar o atendimento, ele editará SEMPRE a mesma linha no financeiro
+            id: "FIN-ORIGEM-" + dados.idLinha, 
+            tipo: "ENTRADA",
+            data: dados.data,
+            categoria: "PARTICULAR",
+            descricao: "Atendimento: " + dados.paciente,
+            valorBruto: dados.particular,
+            descontos: dados.taxaCartao, 
+            origemId: dados.idLinha
+          };
+        // Dispara o registro no financeiro silenciosamente em segundo plano
+        google.script.run.apiSalvarMovimentoFinanceiro(dadosFin);
+      }
+      // ==========================================
+      // FIM DA INTEGRAÇÃO
+      // ==========================================
+
       mostrarNotificacao("✅ " + res, "sucesso");
       bootstrap.Modal.getInstance(document.getElementById('modalCadastro')).hide();
       btn.disabled = false; 
@@ -873,9 +1132,8 @@ function salvarLancamento() {
       btn.disabled = false; 
       btn.innerHTML = textoOriginal;
     })
-    .salvarLancamento(dados); // <--- Mantive o nome do back-end que estava funcionando antes
+    .salvarLancamento(dados);
 }
-
 
 function editarRegistro(idLinha) {
   const r = dadosLocais.find(item => item.id == idLinha);
@@ -2437,6 +2695,7 @@ function editarDadosPaciente() {
     document.getElementById('tituloModalPaciente').innerHTML = '<span class="material-icons text-warning">edit</span> Editar Cadastro';
     document.getElementById('btnSalvarPaciente').innerText = "💾 ATUALIZAR CADASTRO";
     document.getElementById('btnSalvarPaciente').className = "btn btn-warning fw-bold px-5 rounded-pill shadow-sm";
+    document.getElementById("taxaCartaoInp").value = r.taxaCartao || "0,00";
   }, 350);
 }
 
@@ -4654,7 +4913,106 @@ function processarUploadDocumento(event) {
   };
   reader.readAsDataURL(file);
 }
+/**
+ * Carrega a lista de regras automáticas na tela
+ */
+function carregarGerenciadorFixos() {
+  const corpo = document.getElementById("corpoRegrasFixas");
+  corpo.innerHTML = '<tr><td colspan="6" class="text-center">Carregando regras...</td></tr>';
 
+  google.script.run.withSuccessHandler(function(regras) {
+    if (regras.length === 0) {
+      corpo.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Nenhuma regra automática cadastrada.</td></tr>';
+      return;
+    }
+
+    let html = "";
+    regras.forEach(r => {
+      const labelParcela = r.parcelas === -1 ? '<span class="badge bg-primary">FIXO</span>' : `<span class="badge bg-warning text-dark">${r.parcelas}x</span>`;
+      
+      html += `<tr>
+        <td class="small">${r.categoria}</td>
+        <td class="small">${r.descricao}</td>
+        <td class="small fw-bold">R$ ${Number(r.valor).toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>
+        <td class="small text-center">${r.dia}</td>
+        <td class="small text-center">${labelParcela}</td>
+        <td class="text-center">
+          <button class="btn btn-outline-danger btn-sm" onclick="deletarRegra('${r.id}')">
+            <span class="material-icons" style="font-size: 16px;">delete</span>
+          </button>
+        </td>
+      </tr>`;
+    });
+    corpo.innerHTML = html;
+  }).getRegrasFixas();
+}
+
+/**
+ * Função para deletar uma regra
+ */
+function deletarRegra(id) {
+  if (!confirm("Deseja interromper esta recorrência? O sistema não lançará mais essa despesa nos próximos meses.")) return;
+  
+  google.script.run.withSuccessHandler(function(res) {
+    mostrarNotificacao(res, "sucesso");
+    carregarGerenciadorFixos(); // Recarrega a lista
+  }).excluirRegraFixa(id);
+}
+
+function abrirModalGestaoRecorrencias() {
+    new bootstrap.Modal(document.getElementById('modalGestaoRecorrencias')).show();
+    carregarRecorrenciasModal();
+}
+
+function carregarRecorrenciasModal() {
+    const corpo = document.getElementById("corpoModalRecorrencias");
+    corpo.innerHTML = '<tr><td colspan="6" class="text-center py-4">⏳ Buscando registros...</td></tr>';
+
+    google.script.run
+        .withSuccessHandler(function(regras) {
+            if (!regras || regras.length === 0) {
+                corpo.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-muted">Nenhuma recorrência ativa encontrada.</td></tr>';
+                return;
+            }
+
+            let html = "";
+            regras.forEach(r => {
+                const labelParcela = r.parcelas === -1 
+                    ? '<span class="badge bg-primary">MENSAL FIXO</span>' 
+                    : `<span class="badge bg-warning text-dark">${r.parcelas} parc. restantes</span>`;
+                
+                html += `
+                <tr>
+                    <td><span class="badge bg-light text-dark border">${r.categoria}</span></td>
+                    <td class="small">${r.descricao}</td>
+                    <td class="fw-bold">R$ ${Number(r.valor).toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>
+                    <td class="text-center">${r.dia}</td>
+                    <td class="text-center">${labelParcela}</td>
+                    <td class="text-center">
+                        <button class="btn btn-sm btn-outline-danger border-0" onclick="deletarRegraRecorrente('${r.id}')" title="Excluir Recorrência">
+                            <span class="material-icons">delete_forever</span>
+                        </button>
+                        <button class="btn btn-sm btn-outline-primary border-0" onclick="prepararEdicaoRecorrencia('${r.id}', '${r.descricao}', '${r.valor}', '${r.dia}')" title="Editar"><span class="material-icons">edit</span></button>
+                    </td>
+                </tr>`;
+            });
+            corpo.innerHTML = html;
+        })
+        .withFailureHandler(err => {
+            corpo.innerHTML = `<tr><td colspan="6" class="text-center text-danger">Erro ao carregar: ${err}</td></tr>`;
+        })
+        .getRegrasFixas();
+}
+
+function deletarRegraRecorrente(id) {
+    if (!confirm("Isso interromperá os lançamentos automáticos futuros. Confirmar?")) return;
+    
+    mostrarNotificacao("⏳ Removendo...", "info");
+    google.script.run.withSuccessHandler(function(res) {
+        mostrarNotificacao("✅ Recorrência removida!", "sucesso");
+        carregarRecorrenciasModal(); // Recarrega a lista dentro do modal
+    }).excluirRegraFixa(id);
+}
 
 function abrirDashboard() { google.script.run.withSuccessHandler(url => window.open(url + "?page=Index", "_blank")).getScriptURL(); }
 function gerarRelatorio() { google.script.run.withSuccessHandler(url => window.open(url + "?page=RelatorioGeral", "_blank")).getScriptURL(); }
