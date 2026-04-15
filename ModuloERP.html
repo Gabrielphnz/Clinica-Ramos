@@ -151,6 +151,11 @@
               <span class="material-icons" style="font-size: 18px; vertical-align: text-bottom;">calendar_month</span> AGENDA CLÍNICA
             </button>
           </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link fw-bold" id="tab-fluxo" data-bs-toggle="pill" data-bs-target="#area-fluxo" type="button" role="tab" onclick="carregarFluxoCaixa()">
+              <span class="material-icons" style="font-size: 18px; vertical-align: text-bottom;">account_balance_wallet</span> FLUXO DE CAIXA
+            </button>
+          </li>
         </ul>
       </div>
 
@@ -194,8 +199,117 @@
           </div>
         </div>
 
+        <div class="tab-pane fade" id="area-fluxo" role="tabpanel">
+          <div class="card p-4 shadow-sm border-0" style="border-radius: 24px;">
+            
+            <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+              <h5 class="fw-bold mb-0 text-primary">Controle de Fluxo de Caixa</h5>
+              <div class="d-flex gap-2">
+                <button class="btn btn-outline-secondary btn-sm fw-bold shadow-sm d-flex align-items-center gap-1" onclick="abrirModalGestaoRecorrencias()">
+                  <span class="material-icons" style="font-size: 18px;">settings_repeat</span> RECORRÊNCIAS
+                </button>
+                <button class="btn btn-danger btn-sm fw-bold shadow-sm d-flex align-items-center gap-1" onclick="abrirModalDespesa()">
+                  <span class="material-icons" style="font-size: 18px;">remove_circle</span> LANÇAR DESPESA
+                </button>
+              </div>
+            </div>
+            
+            <div class="row g-3 mb-4">
+               <div class="col-md-4">
+                 <div class="p-3 bg-light rounded-4 border-start border-4 border-success">
+                   <small class="text-muted fw-bold">ENTRADAS (MÊS)</small>
+                   <h4 class="mb-0 text-success fw-bold" id="totalEntradasMes">R$ 0,00</h4>
+                 </div>
+               </div>
+               <div class="col-md-4">
+                 <div class="p-3 bg-light rounded-4 border-start border-4 border-danger">
+                   <small class="text-muted fw-bold">SAÍDAS (MÊS)</small>
+                   <h4 class="mb-0 text-danger fw-bold" id="totalSaidasMes">R$ 0,00</h4>
+                 </div>
+               </div>
+               <div class="col-md-4">
+                 <div class="p-3 bg-primary bg-opacity-10 rounded-4 border-start border-4 border-primary">
+                   <small class="text-muted fw-bold">SALDO LÍQUIDO</small>
+                   <h4 class="mb-0 text-primary fw-bold" id="saldoLiquidoMes">R$ 0,00</h4>
+                 </div>
+               </div>
+            </div>
+
+            <div class="table-responsive">
+              <table class="table table-hover align-middle" id="tabelaFluxoCaixa">
+                <thead class="table-light">
+                  <tr class="small text-muted">
+                    <th>DATA</th><th>CATEGORIA</th><th>DESCRIÇÃO</th><th class="text-end">VALOR</th><th>STATUS</th>
+                  </tr>
+                </thead>
+                <tbody id="corpoFluxoCaixa"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+
       </div>
     </div>
+
+<div class="modal fade" id="modalGestaoRecorrencias" tabindex="-1">
+  <div class="modal-dialog modal-lg border-0">
+    <div class="modal-content shadow-lg border-0" style="border-radius: 20px;">
+      <div class="modal-header border-0 p-4">
+        <h5 class="modal-title fw-bold text-secondary">
+            <span class="material-icons align-middle">history</span> Pagamentos Recorrentes
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-4 pt-0">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle">
+            <thead class="table-light">
+              <tr class="small text-muted">
+                <th>CATEGORIA</th>
+                <th>DESCRIÇÃO</th>
+                <th>VALOR</th>
+                <th class="text-center">DIA</th>
+                <th class="text-center">STATUS/RESTANTE</th>
+                <th class="text-center">AÇÕES</th>
+              </tr>
+            </thead>
+            <tbody id="corpoModalRecorrencias">
+              </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="modalEditarRecorrencia" tabindex="-1" style="z-index: 1060; background: rgba(0,0,0,0.5);">
+  <div class="modal-dialog modal-sm border-0 modal-dialog-centered">
+    <div class="modal-content shadow-lg border-0" style="border-radius: 20px;">
+      <div class="modal-header border-0 p-4 bg-light" style="border-top-left-radius: 20px; border-top-right-radius: 20px;">
+        <h6 class="modal-title fw-bold text-primary">Editar Recorrência</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-4">
+        <input type="hidden" id="edit_rec_id">
+        <div class="mb-3">
+          <label class="form-label small fw-bold text-muted">Descrição</label>
+          <input type="text" class="form-control fw-bold" id="edit_rec_desc">
+        </div>
+        <div class="mb-3">
+          <label class="form-label small fw-bold text-muted">Valor (R$)</label>
+          <input type="text" class="form-control text-danger fw-bold" id="edit_rec_valor" onkeyup="mascaraMoeda(this)">
+        </div>
+        <div class="mb-4">
+          <label class="form-label small fw-bold text-muted">Dia do Mês (Vencimento)</label>
+          <input type="number" class="form-control text-center fw-bold" id="edit_rec_dia" min="1" max="31">
+        </div>
+        <button class="btn btn-primary w-100 fw-bold shadow-sm" onclick="salvarEdicaoRecorrencia()">SALVAR ALTERAÇÕES</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 
 <div class="modal fade" id="modalCadastro" data-bs-backdrop="static" tabindex="-1">
   <div class="modal-dialog modal-lg border-0">
@@ -263,7 +377,7 @@
                   </div>
                   <div class="col-md-3">
                     <label class="form-label small fw-bold text-danger mb-1">Custo Lab</label>
-                    <input type="text" name="vlab" class="form-control text-danger fw-bold border-0 shadow-sm" value="0,00">
+                    <input type="text" name="vlab" class="form-control text-danger fw-bold border-0 shadow-sm" value="0,00" onkeyup="calcularTaxaAutomatica()">
                   </div>
                   <div class="col-md-3">
                     <label class="form-label small fw-bold text-warning mb-1">Taxa Cartão</label>
@@ -295,6 +409,7 @@
                       <option value="1">1x (À vista)</option>
                       <option value="2">2x</option><option value="3">3x</option><option value="4">4x</option><option value="5">5x</option><option value="6">6x</option>
                       <option value="7">7x</option><option value="8">8x</option><option value="9">9x</option><option value="10">10x</option><option value="11">11x</option><option value="12">12x</option>
+                      <option value="13">13x</option><option value="14">14x</option><option value="15">15x</option><option value="16">16x</option><option value="17">17x</option><option value="18">18x</option>
                     </select>
                   </div>
                 </div>
@@ -409,6 +524,78 @@
       <div class="modal-footer border-0 p-3">
         <button class="btn btn-light fw-bold" data-bs-dismiss="modal">CANCELAR</button>
         <button class="btn btn-primary fw-bold px-4" onclick="salvarTrabalhoLab()">CADASTRAR TRABALHO</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="modalDespesa" data-bs-backdrop="static" tabindex="-1">
+  <div class="modal-dialog modal-md border-0">
+    <div class="modal-content shadow-lg border-0" style="border-radius: 24px;">
+      <div class="modal-header border-0 p-4">
+        <h5 class="modal-title fw-bold text-danger">Lançar Nova Despesa</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-4 pt-0">
+        <form id="formDespesa">
+          <input type="hidden" id="desp_id" value="">
+          <input type="hidden" id="desp_tipo" value="SAÍDA">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label fw-bold">DATA</label>
+              <input type="date" class="form-control" name="data" id="desp_data" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-bold">CATEGORIA</label>
+              <select class="form-select" name="categoria" id="desp_categoria" required>
+                <option value="">Selecione...</option>
+                <option value="ALUGUEL / FIXO">Aluguel / Condomínio</option>
+                <option value="LUZ / ÁGUA / TEL">Luz / Água / Tel</option>
+                <option value="MATERIAIS (DENTAL)">Materiais (Dental)</option>
+                <option value="FOLHA SALARIAL">Folha Salarial</option>
+                <option value="PRO-LABORE">Pró-Labore</option>
+                <option value="IMPOSTO (SIMPLES)">Imposto (Simples)</option>
+                <option value="MARKETING">Marketing / Ads</option>
+                <option value="OUTROS">Outros</option>
+              </select>
+            </div>
+            <div class="col-md-12">
+              <label class="form-label fw-bold">DESCRIÇÃO</label>
+              <input type="text" class="form-control" name="descricao" id="desp_desc" placeholder="Ex: Pagamento Dental Speed" required>
+            </div>
+            <hr>
+                <div class="row g-3">
+                  <div class="col-md-6">
+                    <label class="form-label fw-bold small">TIPO DE LANÇAMENTO</label>
+                    <select class="form-select form-select-sm" id="desp_recorrencia" onchange="toggleParcelas()">
+                      <option value="UNICO">Lançamento Único</option>
+                      <option value="FIXO">Mensal (Fixo Eterno)</option>
+                      <option value="PARCELADO">Parcelado (Carnê/Cartão)</option>
+                    </select>
+                  </div>
+                  <div id="div_parcelas_config" class="col-md-6" style="display:none;">
+                    <label class="form-label fw-bold small">Nº DE PARCELAS</label>
+                    <input type="number" class="form-control form-control-sm" id="desp_qtd_parcelas" value="1">
+                  </div>
+                </div>
+            <div class="col-md-12">
+              <label class="form-label fw-bold">VALOR (R$)</label>
+              <input type="text" class="form-control text-danger fw-bold" name="valor" id="desp_valor" onkeyup="mascaraMoeda(this)" placeholder="0,00" required>
+            </div>
+          </div>
+        </form>
+       </div>
+        <div class="modal-footer border-0 p-4 bg-light d-flex justify-content-between align-items-center w-100" style="border-bottom-left-radius: 24px; border-bottom-right-radius: 24px;">
+        
+            <div>
+              <button type="button" class="btn btn-outline-danger fw-bold px-4" id="btnExcluirFinanceiro" style="display:none;" onclick="deletarRegistroFinanceiro()">🗑️ EXCLUIR</button>
+            </div>
+        
+            <div class="d-flex gap-2">
+              <button type="button" class="btn btn-secondary fw-bold px-4" data-bs-dismiss="modal">CANCELAR</button>
+              <button type="button" class="btn btn-primary fw-bold px-4 shadow-sm" id="btnSalvarDespesa" onclick="salvarDespesa()">💾 REGISTRAR</button>
+          </div>
+        
       </div>
     </div>
   </div>
