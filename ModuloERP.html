@@ -197,85 +197,124 @@
       </div>
     </div>
 
-    <div class="modal fade" id="modalCadastro" data-bs-backdrop="static" tabindex="-1">
-      <div class="modal-dialog modal-lg border-0">
-        <div class="modal-content shadow-lg border-0" style="border-radius: 28px;">
-          <div class="modal-header border-0 p-4">
-            <h5 class="modal-title fw-bold" id="tituloModal">Novo Atendimento</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-          </div>
-          <div class="modal-body p-4 pt-0">
-            <form id="formCadastro">
-              <input type="hidden" name="idLinha" id="idLinha">
-              <div class="row g-3">
-                
-                <div class="col-md-3">
-                  <label class="form-label fw-bold">DATA</label>
-                  <input type="text" class="form-control" name="data" id="dataInput" oninput="mascaraData(this)" maxlength="10">
-                </div>
-                
-                <div class="col-md-9 position-relative">
-                  <label class="form-label fw-bold">PACIENTE</label>
-                  <div class="input-group shadow-sm" style="border-radius: 14px;">
-                    <input type="text" class="form-control border-0" name="paciente" id="f_paciente" required autocomplete="off" onkeyup="autocompletePaciente(this.value)" placeholder="Digite o nome para buscar...">
-                    <button class="btn btn-primary d-flex align-items-center justify-content-center px-3" type="button" onclick="abrirNovoPacienteDoLancamento()" title="Cadastrar Novo Paciente" style="border-top-right-radius: 14px; border-bottom-right-radius: 14px; z-index: 2;">
-                      <span class="material-icons" style="font-size: 20px;">person_add</span>
-                    </button>
-                  </div>
-                  <div id="autocomplete-list" class="autocomplete-suggestions" style="display: none;"></div>
-                </div>
-                
-                <div class="col-md-6">
-                  <label class="form-label fw-bold">DOUTOR</label>
-                  <select class="form-select" name="doutor" id="sel_doutor" required></select>
-                </div>
-                
-                <div class="col-md-6">
-                  <label class="form-label fw-bold">PLANO</label>
-                  <select class="form-select" name="plano" id="sel_plano"></select>
-                </div>
-                
-                <div class="col-md-12">
-                  <label class="form-label fw-bold">PROCEDIMENTO</label>
-                  <select class="form-select" name="procedimento" id="sel_proc" required></select>
-                </div>
-                
-                <div class="col-md-6">
-                  <label class="form-label fw-bold">PAGAMENTO</label>
-                  <select class="form-select" name="pagamento" id="sel_pag"></select>
-                </div>
-                
-                <div class="col-md-6">
-                  <label class="form-label fw-bold">OBSERVAÇÃO</label>
-                  <input type="text" class="form-control" name="obs">
-                </div>
-                
-                <div class="col-md-4">
-                  <label class="form-label fw-bold text-success">PARTICULAR (R$)</label>
-                  <input type="text" class="form-control border-success" name="particular" value="0,00" oninput="mascaraMoeda(this)" onfocus="this.select()">
-                </div>
-                <div class="col-md-4">
-                  <label class="form-label fw-bold text-primary">V. PLANO (R$)</label>
-                  <input type="text" class="form-control border-primary" name="vplano" value="0,00" oninput="mascaraMoeda(this)" onfocus="this.select()">
-                </div>
-                <div class="col-md-4">
-                  <label class="form-label fw-bold text-danger">V. LAB (R$)</label>
-                  <input type="text" class="form-control border-danger" name="vlab" value="0,00" oninput="mascaraMoeda(this)" onfocus="this.select()">
-                </div>
-
-              </div>
-            </form>
-          </div>
-          <div class="modal-footer border-0 p-4 bg-light">
-            <button type="button" class="btn btn-danger btn-sm" id="btnExcluir" style="display:none;" onclick="pedirExclusao()">EXCLUIR</button>
-            <div class="ms-auto">
-              <button type="button" class="btn btn-secondary me-2" data-bs-dismiss="modal">CANCELAR</button>
-              <button type="button" class="btn btn-primary px-4" id="btnSalvar" onclick="salvarLancamento()">SALVAR</button>
+<div class="modal fade" id="modalCadastro" data-bs-backdrop="static" tabindex="-1">
+  <div class="modal-dialog modal-lg border-0">
+    <div class="modal-content shadow-lg border-0" style="border-radius: 28px;">
+      <div class="modal-header border-0 p-4">
+        <h5 class="modal-title fw-bold" id="tituloModal">Novo Atendimento</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-4 pt-0">
+        <form id="formCadastro">
+          <input type="hidden" name="idLinha" id="idLinha">
+          <div class="row g-3">
+            
+            <div class="col-md-3">
+              <label class="form-label fw-bold">DATA</label>
+              <input type="text" class="form-control" name="data" id="dataInput" oninput="mascaraData(this)" maxlength="10" required>
             </div>
+            
+            <div class="col-md-9 position-relative">
+              <label class="form-label fw-bold">PACIENTE</label>
+              <div class="input-group shadow-sm" style="border-radius: 14px;">
+                <input type="text" class="form-control border-0" name="paciente" id="f_paciente" required autocomplete="off" onkeyup="autocompletePaciente(this.value)" placeholder="Digite o nome para buscar...">
+                <button class="btn btn-primary d-flex align-items-center justify-content-center px-3" type="button" onclick="abrirNovoPacienteDoLancamento()" title="Cadastrar Novo Paciente" style="border-top-right-radius: 14px; border-bottom-right-radius: 14px; z-index: 2;">
+                  <span class="material-icons" style="font-size: 20px;">person_add</span>
+                </button>
+              </div>
+              <div id="autocomplete-list" class="autocomplete-suggestions" style="display: none;"></div>
+            </div>
+            
+            <div class="col-md-6">
+              <label class="form-label fw-bold">DOUTOR</label>
+              <select class="form-select" name="doutor" id="sel_doutor" required></select>
+            </div>
+            
+            <div class="col-md-6">
+              <label class="form-label fw-bold">PLANO</label>
+              <select class="form-select" name="plano" id="sel_plano"></select>
+            </div>
+            
+            <div class="col-md-12">
+              <label class="form-label fw-bold">PROCEDIMENTO</label>
+              <select class="form-select" name="procedimento" id="sel_proc" required></select>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label fw-bold">PAGAMENTO</label>
+              <select name="pagamento" class="form-select" id="sel_pag" onchange="verificarTipoPagamento(this.value)" required></select>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label fw-bold">OBSERVAÇÃO</label>
+              <input type="text" class="form-control" name="obs" placeholder="Opcional">
+            </div>
+
+            <div class="col-12 mt-4">
+              <div class="p-3 bg-light rounded-4 border shadow-sm">
+                <div class="row g-2">
+                  <div class="col-md-3">
+                    <label class="form-label small fw-bold text-success mb-1">V. Particular</label>
+                    <input type="text" name="particular" id="vParticularInp" class="form-control text-success fw-bold border-0 shadow-sm" value="0,00" onkeyup="calcularTaxaAutomatica()">
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label small fw-bold text-primary mb-1">V. Plano</label>
+                    <input type="text" name="vplano" class="form-control text-primary fw-bold border-0 shadow-sm" value="0,00">
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label small fw-bold text-danger mb-1">Custo Lab</label>
+                    <input type="text" name="vlab" class="form-control text-danger fw-bold border-0 shadow-sm" value="0,00">
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label small fw-bold text-warning mb-1">Taxa Cartão</label>
+                    <input type="text" name="taxaCartao" id="taxaCartaoInp" class="form-control text-warning fw-bold border-0 shadow-sm bg-white" value="0,00" readonly>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div id="detalhesCartao" class="col-12 mt-2" style="display: none;">
+              <div style="background: #fff8e1; padding: 15px; border-radius: 12px; border: 1px dashed #ffc107;">
+                <div class="row g-2">
+                  <div class="col-md-6">
+                    <label class="form-label small fw-bold text-muted">Tipo de Operação</label>
+                    <div class="d-flex gap-3 mt-1">
+                      <div class="form-check">
+                        <input class="form-check-input" type="radio" name="tipoCartao" id="cartaoDebito" value="DEBITO" onchange="calcularTaxaAutomatica()">
+                        <label class="form-check-label small fw-bold" for="cartaoDebito">Débito</label>
+                      </div>
+                      <div class="form-check">
+                        <input class="form-check-input" type="radio" name="tipoCartao" id="cartaoCredito" value="CREDITO" checked onchange="calcularTaxaAutomatica()">
+                        <label class="form-check-label small fw-bold" for="cartaoCredito">Crédito</label>
+                      </div>
+                    </div>
+                  </div>
+                  <div id="divParcelas" class="col-md-6">
+                    <label class="form-label small fw-bold text-muted">Parcelas</label>
+                    <select id="numParcelas" class="form-select form-select-sm" onchange="calcularTaxaAutomatica()">
+                      <option value="1">1x (À vista)</option>
+                      <option value="2">2x</option><option value="3">3x</option><option value="4">4x</option><option value="5">5x</option><option value="6">6x</option>
+                      <option value="7">7x</option><option value="8">8x</option><option value="9">9x</option><option value="10">10x</option><option value="11">11x</option><option value="12">12x</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+
           </div>
+        </form>
+      </div>
+      
+      <div class="modal-footer border-0 p-4 bg-light" style="border-bottom-left-radius: 28px; border-bottom-right-radius: 28px;">
+        <button type="button" class="btn btn-danger btn-sm fw-bold px-4" id="btnExcluir" style="display:none;" onclick="pedirExclusao()">🗑️ EXCLUIR</button>
+        <div class="ms-auto d-flex gap-2">
+          <button type="button" class="btn btn-secondary fw-bold px-4" data-bs-dismiss="modal">CANCELAR</button>
+          <button type="button" class="btn btn-primary fw-bold px-4 shadow-sm" id="btnSalvar" onclick="salvarLancamento()">💾 SALVAR</button>
         </div>
       </div>
     </div>
+  </div>
+</div>
     
     <div class="modal fade" id="modalRecall" tabindex="-1" style="z-index: 9999; background: rgba(0,0,0,0.6);" data-bs-backdrop="false">
       <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
