@@ -2687,3 +2687,323 @@ function apiUploadArquivoPaciente(payload) {
     lock.releaseLock();
   }
 }
+
+// ==========================================
+// MOTOR DO GESTOR FINANCEIRO (BACK-END)
+// ==========================================
+
+const ABA_FINANCEIRO = "FINANCEIRO"; // Nome da aba na sua planilha
+
+/**
+ * Salva um movimento (Entrada ou Saída) no Fluxo de Caixa
+ */
+function apiSalvarMovimentoFinanceiro(dados) {
+  const lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(10000);
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    let sheet = ss.getSheetByName(ABA_FINANCEIRO);
+    
+    if (!sheet) return "ERRO: Aba FINANCEIRO não encontrada";
+
+    const limparN = (v) => {
+       if (typeof v === 'number') return v;
+       return Number((v || "0").toString().replace(/\./g, '').replace(',', '.')) || 0;
+    };
+    
+    const bruto = limparN(dados.valorBruto);
+    const descontos = limparN(dados.descontos);
+    const liquido = bruto - descontos;
+    
+    // Se não vier ID (novo), gera um. Se vier (edição), usa o que veio.
+    const idSalvar = dados.id || "FIN-" + new Date().getTime();
+
+    const novaLinha = [
+      idSalvar,
+      dados.data, 
+      dados.tipo, 
+      dados.categoria,
+      dados.descricao,
+      bruto,
+      descontos,
+      liquido,
+      dados.status || "PAGO",
+      dados.origemId || ""
+    ];
+
+    // PROCURA SE O ID JÁ EXISTE PARA EVITAR DUPLICIDADE
+    const busca = sheet.getRange("A:A").createTextFinder(idSalvar).matchEntireCell(true).findNext();
+    
+    if (busca) {
+      // EDIÇÃO: Atualiza a linha existente
+      const linha = busca.getRow();
+      sheet.getRange(linha, 1, 1, 10).setValues([novaLinha]);
+      return "OK_EDIT";
+    } else {
+      // NOVO: Adiciona no final
+      sheet.appendRow(novaLinha);
+      return "OK_NOVO";
+    }
+
+  } catch (e) {
+    return "ERRO: " + e.toString();
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/**
+ * Busca os dados do financeiro para exibir no ERP
+ */
+function getDadosFinanceiroMes() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(ABA_FINANCEIRO);
+  if (!sheet) return [];
+
+  const dados = sheet.getDataRange().getValues();
+  if (dados.length < 2) return [];
+
+  const hoje = new Date();
+  const mesAtual = hoje.getMonth();
+  const anoAtual = hoje.getFullYear();
+
+  const resultado = [];
+
+  // Pula o cabeçalho (i=1)
+  for (let i = 1; i < dados.length; i++) {
+    const r = dados[i];
+    const dataRow = r[1]; // Coluna DATA
+    
+    // Tenta converter o valor da coluna B em uma data válida para filtrar o mês
+    let dataFormatada = "";
+    let dataFiltro = null;
+
+    if (dataRow instanceof Date) {
+      dataFiltro = dataRow;
+      dataFormatada = Utilities.formatDate(dataRow, ss.getSpreadsheetTimeZone(), "dd/MM/yyyy");
+    } else if (typeof dataRow === 'string' && dataRow.includes('-')) {
+      const pts = dataRow.split('-');
+      dataFiltro = new Date(pts[0], pts[1]-1, pts[2]);
+      dataFormatada = `${pts[2]}/${pts[1]}/${pts[0]}`;
+    } else {
+      dataFormatada = dataRow.toString();
+    }
+
+    // Filtro Opcional: Se quiser mostrar apenas o mês atual na tabela
+    // if (dataFiltro && (dataFiltro.getMonth() !== mesAtual || dataFiltro.getFullYear() !== anoAtual)) continue;
+
+    resultado.push({
+      id: r[0],
+      data: dataFormatada,
+      tipo: r[2],
+      categoria: r[3],
+      descricao: r[4],
+      bruto: r[5],
+      descontos: r[6],
+      liquido: r[7],
+      status: r[8]
+    });
+  }
+
+  // Retorna os lançamentos mais recentes primeiro
+  return resultado.reverse();
+}
+
+function getResumoDashboard() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const abaFin = ss.getSheetByName("FINANCEIRO");
+  const abaDados = ss.getSheetByName("DADOS");
+  
+  let resumo = { totalLab: 0, totalFixas: 0, totalEntradas: 0 };
+  
+  if (abaFin) {
+    const dadosFin = abaFin.getDataRange().getValues();
+    for(let i=1; i<dadosFin.length; i++) {
+      if(dadosFin[i][2] === "ENTRADA") resumo.totalEntradas += Number(dadosFin[i][7]);
+      if(dadosFin[i][2] === "SAÍDA") resumo.totalFixas += Number(dadosFin[i][7]);
+    }
+  }
+  
+  if (abaDados) {
+    const dadosProd = abaDados.getDataRange().getValues();
+    for(let i=1; i<dadosProd.length; i++) {
+      resumo.totalLab += Number(dadosProd[i][9]); // Coluna J (Valor Lab)
+    }
+  }
+  
+  return resumo;
+}
+
+// ==========================================
+// MOTOR DE RECORRÊNCIA E PARCELAMENTO
+// ==========================================
+
+/**
+ * Função que o Google vai rodar automaticamente todo dia
+ */
+function gatilhoProcessarRecorrencias() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const abaConfig = ss.getSheetByName("CONFIG_FIXOS");
+  const hoje = new Date();
+  const diaHoje = hoje.getDate();
+  const mesAnoAtual = Utilities.formatDate(hoje, ss.getSpreadsheetTimeZone(), "MM/yyyy");
+
+  if (!abaConfig) return;
+  const dados = abaConfig.getDataRange().getValues();
+
+  for (let i = 1; i < dados.length; i++) {
+    let [id, cat, desc, valor, dia, parcelas, ultimo] = dados[i];
+    
+    // Se o dia chegou e ainda não foi lançado este mês
+    if (diaHoje >= dia && ultimo !== mesAnoAtual && (parcelas > 0 || parcelas === -1)) {
+      
+      // 1. Lança no Financeiro
+      const dadosLancamento = {
+        tipo: "SAÍDA",
+        data: Utilities.formatDate(hoje, ss.getSpreadsheetTimeZone(), "yyyy-MM-dd"),
+        categoria: cat,
+        descricao: parcelas > 0 ? `${desc} (Parc. ${parcelas} restantes)` : desc,
+        valorBruto: valor,
+        descontos: 0,
+        status: "PENDENTE",
+        origemId: "FIXO-" + id
+      };
+      
+      apiSalvarMovimentoFinanceiro(dadosLancamento);
+
+      // 2. Atualiza a regra de recorrência
+      if (parcelas > 0) parcelas--; // Se for parcelado, subtrai uma
+      
+      abaConfig.getRange(i + 1, 6).setValue(parcelas); // Atualiza parcelas restantes
+      abaConfig.getRange(i + 1, 7).setValue(mesAnoAtual); // Marca como lançado no mês
+    }
+  }
+}
+
+/**
+ * Cadastra uma nova regra (Fixo ou Parcelado)
+ */
+function salvarRegraFixa(dados) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const aba = ss.getSheetByName("CONFIG_FIXOS");
+  const id = "REG-" + new Date().getTime();
+  
+  // dados.parcelas: -1 para fixo, X para parcelado
+  aba.appendRow([id, dados.categoria, dados.descricao, dados.valor, dados.dia, dados.parcelas, ""]);
+  return "Regra configurada com sucesso!";
+}
+
+/**
+ * Busca todas as regras de custos fixos/parcelados
+ */
+function getRegrasFixas() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let aba = ss.getSheetByName("CONFIG_FIXOS");
+  
+  // Se a aba não existir, cria para não dar erro de "null"
+  if (!aba) {
+    aba = ss.insertSheet("CONFIG_FIXOS");
+    aba.appendRow(["ID", "CATEGORIA", "DESCRICAO", "VALOR", "DIA", "PARCELAS_RESTANTES", "ULTIMO_LANCAMENTO"]);
+    return [];
+  }
+  
+  const dados = aba.getDataRange().getValues();
+  if (dados.length < 2) return [];
+
+  // Mapeamento explícito das colunas para evitar erro de índice
+  return dados.slice(1).map(r => {
+    return {
+      id: r[0] ? r[0].toString() : "",
+      categoria: r[1] ? r[1].toString() : "",
+      descricao: r[2] ? r[2].toString() : "",
+      valor: r[3] ? Number(r[3]) : 0,
+      dia: r[4] ? r[4].toString() : "",
+      parcelas: r[5] !== "" ? Number(r[5]) : -1,
+      ultimo: r[6] ? r[6].toString() : ""
+    };
+  }).filter(item => item.id !== ""); // Remove linhas vazias acidentais
+}
+
+function getRegistroFinanceiroPorId(id) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName("FINANCEIRO");
+  const dados = sheet.getDataRange().getValues();
+  
+  for(let i=1; i<dados.length; i++) {
+    if(dados[i][0] == id) {
+      let dataOriginal = dados[i][1];
+      let dataISO = dataOriginal instanceof Date ? Utilities.formatDate(dataOriginal, "GMT-3", "yyyy-MM-dd") : "";
+      
+      return {
+        id: dados[i][0],
+        dataISO: dataISO,
+        tipo: dados[i][2],
+        categoria: dados[i][3],
+        descricao: dados[i][4],
+        valorBR: dados[i][5].toLocaleString('pt-BR', {minimumFractionDigits: 2})
+      };
+    }
+  }
+  return null;
+}
+
+/**
+ * Remove uma regra de recorrência
+ */
+function excluirRegraFixa(idRegra) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const aba = ss.getSheetByName("CONFIG_FIXOS");
+  const busca = aba.getRange("A:A").createTextFinder(idRegra).matchEntireCell(true).findNext();
+  
+  if (busca) {
+    aba.deleteRow(busca.getRow());
+    return "Regra removida!";
+  }
+  return "Erro: Regra não encontrada.";
+}
+
+/**
+ * Exclui um lançamento do Fluxo de Caixa (Aba FINANCEIRO)
+ */
+function excluirRegistroFinanceiroBD(idRegistro) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName("FINANCEIRO");
+  if (!sheet) return "Erro: Aba Financeiro não encontrada.";
+  
+  const busca = sheet.getRange("A:A").createTextFinder(idRegistro.toString()).matchEntireCell(true).findNext();
+  if (busca) {
+    sheet.deleteRow(busca.getRow());
+    SpreadsheetApp.flush();
+    return "Lançamento excluído com sucesso!";
+  }
+  return "Erro: Registro não encontrado.";
+}
+
+/**
+ * Edita uma regra de recorrência (Aba CONFIG_FIXOS)
+ */
+function editarRegraFixaBD(id, desc, valor, dia) {
+  const lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(5000);
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const aba = ss.getSheetByName("CONFIG_FIXOS");
+    
+    const busca = aba.getRange("A:A").createTextFinder(id.toString()).matchEntireCell(true).findNext();
+    
+    if (busca) {
+      const linha = busca.getRow();
+      const valorNum = Number(valor.toString().replace(/\./g, '').replace(',', '.')) || 0;
+      
+      aba.getRange(linha, 3).setValue(desc);    // Atualiza Descrição
+      aba.getRange(linha, 4).setValue(valorNum); // Atualiza Valor
+      aba.getRange(linha, 5).setValue(dia);     // Atualiza Dia do Vencimento
+      
+      SpreadsheetApp.flush();
+      return "✅ Recorrência atualizada!";
+    }
+    return "❌ Erro: Regra não encontrada.";
+  } finally {
+    lock.releaseLock();
+  }
+}
