@@ -918,58 +918,188 @@ function salvarDespesa() {
     .apiSalvarMovimentoFinanceiro(dados);
 }
 
-function carregarFluxoCaixa() {
-  const corpo = document.getElementById("corpoFluxoCaixa");
-  if (!corpo) return;
-  
-  corpo.innerHTML = '<tr><td colspan="6" class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div> Carregando...</td></tr>';
+// ==========================================
+// CARREGAR E FILTRAR A TABELA DO FINANCEIRO
+// ==========================================
 
-  google.script.run.withSuccessHandler(function(dados) {
-    if (!dados || dados.length === 0) {
-      corpo.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-muted">Nenhum registro encontrado.</td></tr>';
-      document.getElementById("totalEntradasMes").innerText = "R$ 0,00";
-      document.getElementById("totalSaidasMes").innerText = "R$ 0,00";
-      document.getElementById("saldoLiquidoMes").innerText = "R$ 0,00";
-      return;
-    }
+// ==========================================
+// CARREGAR E FILTRAR A TABELA DO FINANCEIRO
+// ==========================================
 
-    let totalE = 0; let totalS = 0;
-    let htmlTabela = "";
-
-    dados.forEach(r => {
-      const valorNum = Number(r.liquido);
-      if (r.tipo === "ENTRADA") totalE += valorNum; else totalS += valorNum;
-
-      const corValor = r.tipo === "ENTRADA" ? "text-success" : "text-danger";
-      const sinal = r.tipo === "ENTRADA" ? "+" : "-";
-
-      // Adicionei a coluna extra no final para o botão de Editar
-      htmlTabela += `
-        <tr>
-          <td class="small fw-bold text-muted">${r.data}</td>
-          <td><span class="badge bg-light text-dark border-0 shadow-sm" style="font-size:10px;">${r.categoria}</span></td>
-          <td class="small fw-semibold" style="color: var(--text-main);">${r.descricao}</td>
-          <td class="text-end fw-bold ${corValor}">${sinal} ${valorNum.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}</td>
-          <td>
-            <span class="badge ${r.status === 'PAGO' ? 'bg-success' : 'bg-warning'} px-2" style="font-size:9px;">${r.status}</span>
-          </td>
-          <td class="text-center">
-             <button class="btn btn-sm btn-outline-primary border-0 p-1" onclick="abrirEdicaoFinanceiro('${r.id}')" title="Editar Registro">
-                <span class="material-icons" style="font-size:18px;">edit</span>
-             </button>
-          </td>
-        </tr>`;
-    });
-
-    corpo.innerHTML = htmlTabela;
-
-    // Atualiza os Cards Superiores
-    document.getElementById("totalEntradasMes").innerText = totalE.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
-    document.getElementById("totalSaidasMes").innerText = totalS.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
-    document.getElementById("saldoLiquidoMes").innerText = (totalE - totalS).toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
-
-  }).getDadosFinanceiroMes();
+function aplicarFiltroFinanceiro() {
+  const dtInicio = document.getElementById("filtroDataInicioFin").value;
+  const dtFim = document.getElementById("filtroDataFimFin").value;
+  carregarFluxoCaixa(dtInicio, dtFim);
 }
+
+function carregarFluxoCaixa(dtInicio = "", dtFim = "") {
+  // AGORA MIRA NA DIV CORRETA E EXCLUSIVA DO FLUXO
+  const container = document.getElementById("conteudo-fluxo"); 
+  const loader = document.getElementById("loader-fluxo");
+  
+  if (!document.getElementById("filtroDataInicioFin")) {
+     const hoje = new Date();
+     const pDia = new Date(hoje.getFullYear(), hoje.getMonth(), 1).toISOString().split('T')[0];
+     const uDia = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0).toISOString().split('T')[0];
+     
+     dtInicio = dtInicio || pDia;
+     dtFim = dtFim || uDia;
+
+     container.innerHTML = `
+      <div class="card p-4 shadow-sm border-0 mb-4" style="border-radius: 24px;">
+        <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+          <div>
+            <h5 class="fw-bold mb-0 text-main">Fluxo de Caixa Central</h5>
+            <small class="text-muted">Gestão de entradas, saídas e comissões.</small>
+          </div>
+          <div class="d-flex gap-2">
+            <button class="btn btn-outline-secondary btn-sm fw-bold d-flex align-items-center gap-1 shadow-sm" onclick="abrirModalGestaoRecorrencias()">
+              <span class="material-icons" style="font-size:18px;">settings_repeat</span> RECORRÊNCIAS
+            </button>
+            <button class="btn btn-danger btn-sm fw-bold d-flex align-items-center gap-1 shadow-sm" onclick="abrirModalDespesa()">
+              <span class="material-icons" style="font-size:18px;">remove_circle</span> LANÇAR DESPESA
+            </button>
+          </div>
+        </div>
+
+        <div class="row g-2 mb-4 bg-light p-3 rounded-4 align-items-end">
+          <div class="col-md-4">
+            <label class="small fw-bold text-muted mb-1">Data Inicial</label>
+            <input type="date" id="filtroDataInicioFin" class="form-control border-0 shadow-sm text-primary fw-bold" value="${dtInicio}">
+          </div>
+          <div class="col-md-4">
+            <label class="small fw-bold text-muted mb-1">Data Final</label>
+            <input type="date" id="filtroDataFimFin" class="form-control border-0 shadow-sm text-primary fw-bold" value="${dtFim}">
+          </div>
+          <div class="col-md-4">
+            <button class="btn btn-primary w-100 fw-bold d-flex justify-content-center align-items-center gap-2 shadow-sm" onclick="aplicarFiltroFinanceiro()">
+               <span class="material-icons" style="font-size: 18px;">filter_alt</span> APLICAR FILTRO
+            </button>
+          </div>
+        </div>
+
+        <div class="row g-3 mb-4">
+           <div class="col-md-4">
+             <div class="p-3 bg-white rounded-4 border-start border-4 border-success shadow-sm">
+               <small class="text-muted fw-bold">ENTRADAS NO PERÍODO</small>
+               <h4 class="mb-0 text-success fw-bold" id="finTotalE">R$ 0,00</h4>
+             </div>
+           </div>
+           <div class="col-md-4">
+             <div class="p-3 bg-white rounded-4 border-start border-4 border-danger shadow-sm">
+               <small class="text-muted fw-bold">SAÍDAS NO PERÍODO</small>
+               <h4 class="mb-0 text-danger fw-bold" id="finTotalS">R$ 0,00</h4>
+             </div>
+           </div>
+           <div class="col-md-4">
+             <div class="p-3 bg-primary bg-opacity-10 rounded-4 border-start border-4 border-primary shadow-sm">
+               <small class="text-muted fw-bold">SALDO LÍQUIDO</small>
+               <h4 class="mb-0 text-primary fw-bold" id="finSaldo">R$ 0,00</h4>
+             </div>
+           </div>
+        </div>
+
+        <div class="row g-3 mb-4">
+           <div class="col-md-6">
+              <div class="p-3 rounded-4 bg-white shadow-sm border border-light h-100">
+                 <h6 class="fw-bold" style="color: var(--text-main);"><span class="material-icons align-middle text-success me-1" style="font-size:18px;">payments</span> Modos de Pagamento</h6>
+                 <hr class="mt-2 mb-3" style="opacity:0.1;">
+                 <div id="finListaPagamentos" class="small">⏳ Carregando...</div>
+              </div>
+           </div>
+           <div class="col-md-6">
+              <div class="p-3 rounded-4 bg-white shadow-sm border border-light h-100">
+                 <h6 class="fw-bold" style="color: var(--text-main);"><span class="material-icons align-middle text-primary me-1" style="font-size:18px;">medical_services</span> Comissões Geradas</h6>
+                 <hr class="mt-2 mb-3" style="opacity:0.1;">
+                 <div id="finListaComissoes" class="small">⏳ Carregando...</div>
+              </div>
+           </div>
+        </div>
+
+        <div class="table-responsive">
+          <table class="table table-hover align-middle border-0">
+            <thead class="table-light">
+              <tr class="small text-muted" style="font-size: 11px; text-transform: uppercase;">
+                <th>Data</th><th>Categoria</th><th>Descrição</th><th class="text-end">Valor</th><th class="text-center">Status</th><th class="text-end">Ações</th>
+              </tr>
+            </thead>
+            <tbody id="corpoFluxoCaixaTabela">
+               <tr><td colspan="6" class="text-center py-4"><div class="spinner-border text-primary"></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+    container.style.display = "block";
+    if(loader) loader.style.display = "none";
+  } else {
+    document.getElementById("corpoFluxoCaixaTabela").innerHTML = '<tr><td colspan="6" class="text-center py-4"><div class="spinner-border text-primary"></div></td></tr>';
+    document.getElementById("finListaPagamentos").innerHTML = "⏳ Recalculando...";
+    document.getElementById("finListaComissoes").innerHTML = "⏳ Recalculando...";
+  }
+
+  google.script.run.withSuccessHandler(function(res) {
+    // Validação de segurança: se o usuário saiu da aba antes de carregar, não tenta atualizar
+    if(!document.getElementById("finTotalE")) return; 
+
+    document.getElementById("finTotalE").innerText = res.totalE.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
+    document.getElementById("finTotalS").innerText = res.totalS.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
+    document.getElementById("finSaldo").innerText = (res.totalE - res.totalS).toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
+
+    let htmlPag = "";
+    if (Object.keys(res.pagamentos).length === 0) {
+       htmlPag = `<span class="text-muted d-block text-center mt-3">Nenhum pagamento registrado no período.</span>`;
+    } else {
+       for(let pag in res.pagamentos) {
+          let rotulo = pag.trim() === "" ? "Não Informado" : pag;
+          htmlPag += `<div class="d-flex justify-content-between mb-2 border-bottom pb-2">
+                        <span class="fw-semibold text-muted">${rotulo}</span>
+                        <span class="fw-bold text-success">${res.pagamentos[pag].toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}</span>
+                      </div>`;
+       }
+    }
+    document.getElementById("finListaPagamentos").innerHTML = htmlPag;
+
+    let htmlCom = "";
+    if (Object.keys(res.comissoes).length === 0) {
+       htmlCom = `<span class="text-muted d-block text-center mt-3">Nenhuma comissão gerada.</span>`;
+    } else {
+       for(let doc in res.comissoes) {
+          htmlCom += `<div class="d-flex justify-content-between mb-2 border-bottom pb-2">
+                        <span class="fw-semibold text-muted">${doc}</span>
+                        <span class="fw-bold" style="color: var(--primary-color);">${res.comissoes[doc].toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}</span>
+                      </div>`;
+       }
+    }
+    document.getElementById("finListaComissoes").innerHTML = htmlCom;
+
+    let htmlTabela = "";
+    if (res.fluxo.length === 0) {
+       htmlTabela = '<tr><td colspan="6" class="text-center py-5 text-muted">Nenhum registro encontrado no período selecionado.</td></tr>';
+    } else {
+       res.fluxo.forEach(r => {
+          const corValor = r.tipo === "ENTRADA" ? "text-success" : "text-danger";
+          const sinal = r.tipo === "ENTRADA" ? "+" : "-";
+          htmlTabela += `
+            <tr>
+              <td class="small fw-bold text-muted">${r.data}</td>
+              <td><span class="badge bg-light text-dark border-0 shadow-sm" style="font-size:10px;">${r.categoria}</span></td>
+              <td class="small fw-semibold" style="color: var(--text-main);">${r.descricao}</td>
+              <td class="text-end fw-bold ${corValor}">${sinal} ${Number(r.liquido).toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}</td>
+              <td class="text-center"><span class="badge ${r.status === 'PAGO' ? 'bg-success' : 'bg-warning'} px-2" style="font-size:9px;">${r.status}</span></td>
+              <td class="text-end">
+                 <button class="btn btn-sm btn-outline-primary border-0 p-1" onclick="abrirEdicaoFinanceiro('${r.id}')" title="Editar">
+                    <span class="material-icons" style="font-size:18px;">edit</span>
+                 </button>
+              </td>
+            </tr>`;
+       });
+    }
+    document.getElementById("corpoFluxoCaixaTabela").innerHTML = htmlTabela;
+
+  }).getDadosFinanceiroFiltrado(dtInicio, dtFim); 
+}
+
 
 function abrirModalDespesa() {
   document.getElementById("formDespesa").reset();
@@ -1100,21 +1230,21 @@ function salvarLancamento() {
       // ==========================================
       // INÍCIO DA INTEGRAÇÃO COM O FINANCEIRO
       // ==========================================
-      // Se o valor particular for maior que zero, registra a entrada no Fluxo de Caixa
       if (formatarParaCalculo(dados.particular) > 0) {
-          const dadosFin = {
-            // Criamos um ID composto para o financeiro baseado no ID do atendimento
-            // Isso garante que se você editar o atendimento, ele editará SEMPRE a mesma linha no financeiro
-            id: "FIN-ORIGEM-" + dados.idLinha, 
-            tipo: "ENTRADA",
-            data: dados.data,
-            categoria: "PARTICULAR",
-            descricao: "Atendimento: " + dados.paciente,
-            valorBruto: dados.particular,
-            descontos: dados.taxaCartao, 
-            origemId: dados.idLinha
-          };
-        // Dispara o registro no financeiro silenciosamente em segundo plano
+        const dadosFin = {
+          id: "FIN-ORIGEM-" + dados.idLinha, // Previne duplicação na edição
+          tipo: "ENTRADA",
+          data: dados.data,
+          categoria: "PARTICULAR",
+          descricao: "Atendimento: " + dados.paciente,
+          valorBruto: dados.particular,
+          descontos: dados.taxaCartao,
+          status: "PAGO",
+          origemId: dados.idLinha,
+          
+          pagamento: dados.pagamento, // <--- ADICIONE ESTA LINHA
+          doutor: dados.doutor        // <--- ADICIONE ESTA LINHA
+        };
         google.script.run.apiSalvarMovimentoFinanceiro(dadosFin);
       }
       // ==========================================
