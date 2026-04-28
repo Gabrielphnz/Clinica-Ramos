@@ -2697,14 +2697,20 @@ const ABA_FINANCEIRO = "FINANCEIRO"; // Nome da aba na sua planilha
 /**
  * Salva um movimento (Entrada ou Saída) no Fluxo de Caixa
  */
+// ==========================================
+// SALVAR MOVIMENTO FINANCEIRO (AGORA COM PAGAMENTO E DOUTOR)
+// ==========================================
 function apiSalvarMovimentoFinanceiro(dados) {
   const lock = LockService.getScriptLock();
   try {
     lock.waitLock(10000);
     const ss = SpreadsheetApp.getActiveSpreadsheet();
-    let sheet = ss.getSheetByName(ABA_FINANCEIRO);
+    let sheet = ss.getSheetByName("FINANCEIRO");
     
-    if (!sheet) return "ERRO: Aba FINANCEIRO não encontrada";
+    if (!sheet) {
+      sheet = ss.insertSheet("FINANCEIRO");
+      sheet.appendRow(["ID", "DATA", "TIPO", "CATEGORIA", "DESCRIÇÃO", "VALOR BRUTO", "DESCONTOS", "VALOR LÍQUIDO", "STATUS", "ORIGEM_ID", "PAGAMENTO", "DOUTOR"]);
+    }
 
     const limparN = (v) => {
        if (typeof v === 'number') return v;
@@ -2714,8 +2720,6 @@ function apiSalvarMovimentoFinanceiro(dados) {
     const bruto = limparN(dados.valorBruto);
     const descontos = limparN(dados.descontos);
     const liquido = bruto - descontos;
-    
-    // Se não vier ID (novo), gera um. Se vier (edição), usa o que veio.
     const idSalvar = dados.id || "FIN-" + new Date().getTime();
 
     const novaLinha = [
@@ -2728,28 +2732,113 @@ function apiSalvarMovimentoFinanceiro(dados) {
       descontos,
       liquido,
       dados.status || "PAGO",
-      dados.origemId || ""
+      dados.origemId || "",
+      dados.pagamento || "Não Informado", // GRAVA A FORMA DE PAGAMENTO
+      dados.doutor || ""                  // GRAVA O DOUTOR
     ];
 
-    // PROCURA SE O ID JÁ EXISTE PARA EVITAR DUPLICIDADE
     const busca = sheet.getRange("A:A").createTextFinder(idSalvar).matchEntireCell(true).findNext();
     
     if (busca) {
-      // EDIÇÃO: Atualiza a linha existente
       const linha = busca.getRow();
-      sheet.getRange(linha, 1, 1, 10).setValues([novaLinha]);
+      sheet.getRange(linha, 1, 1, novaLinha.length).setValues([novaLinha]);
       return "OK_EDIT";
     } else {
-      // NOVO: Adiciona no final
       sheet.appendRow(novaLinha);
       return "OK_NOVO";
     }
-
   } catch (e) {
     return "ERRO: " + e.toString();
   } finally {
     lock.releaseLock();
   }
+}
+
+// ==========================================
+// BUSCADOR AVANÇADO COM FILTRO DE DATAS, PAGAMENTOS E COMISSÕES
+// ==========================================
+function getDadosFinanceiroFiltrado(dtInicioStr, dtFimStr) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const abaFin = ss.getSheetByName("FINANCEIRO");
+  const abaTotal = ss.getSheetByName("TOTAL");
+  
+  let result = { fluxo: [], pagamentos: {}, comissoes: {}, totalE: 0, totalS: 0 };
+
+  // Tratamento Flexível de Datas
+  const hoje = new Date();
+  let inicio = dtInicioStr ? new Date(dtInicioStr + "T00:00:00") : new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+  let fim = dtFimStr ? new Date(dtFimStr + "T23:59:59") : new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0, 23, 59, 59);
+
+  // 1. DADOS DE FLUXO DE CAIXA E PAGAMENTOS
+  if (abaFin) {
+    const dadosFin = abaFin.getDataRange().getValues();
+    for (let i = 1; i < dadosFin.length; i++) {
+      const r = dadosFin[i];
+      let dataFiltro = null;
+      let dataFormatada = "";
+
+      if (r[1] instanceof Date) {
+        dataFiltro = r[1];
+        dataFormatada = Utilities.formatDate(r[1], ss.getSpreadsheetTimeZone(), "dd/MM/yyyy");
+      } else if (typeof r[1] === 'string' && r[1].includes('-')) {
+        const pts = r[1].split('-');
+        dataFiltro = new Date(pts[0], pts[1]-1, pts[2]);
+        dataFormatada = `${pts[2]}/${pts[1]}/${pts[0]}`;
+      } else if (typeof r[1] === 'string' && r[1].includes('/')) {
+        const pts = r[1].split('/');
+        dataFiltro = new Date(pts[2], pts[1]-1, pts[0]);
+        dataFormatada = r[1];
+      }
+
+      // Se estiver dentro do intervalo de tempo selecionado
+      if (dataFiltro && dataFiltro >= inicio && dataFiltro <= fim) {
+        const tipo = r[2];
+        const liquido = Number(r[7]) || 0;
+        const pagamento = r[10] || "Não Informado";
+        
+        result.fluxo.push({
+          id: r[0], data: dataFormatada, tipo: tipo, categoria: r[3],
+          descricao: r[4], bruto: r[5], descontos: r[6], liquido: liquido, status: r[8]
+        });
+
+        if (tipo === "ENTRADA") {
+          result.totalE += liquido;
+          if (r[3] === "PARTICULAR" || r[3] === "PLANO") {
+             result.pagamentos[pagamento] = (result.pagamentos[pagamento] || 0) + liquido;
+          }
+        } else {
+          result.totalS += liquido;
+        }
+      }
+    }
+  }
+
+  // 2. DADOS DE COMISSÃO DE DOUTORES (Vindo direto da Produção)
+  if (abaTotal) {
+    const dadosTotal = abaTotal.getDataRange().getValues();
+    for (let i = 2; i < dadosTotal.length; i++) {
+      const r = dadosTotal[i];
+      let dataFiltro = null;
+
+      if (r[0] instanceof Date) {
+        dataFiltro = r[0];
+      } else if (typeof r[0] === 'string' && r[0].includes('/')) {
+        const pts = r[0].split('/');
+        dataFiltro = new Date(pts[2], pts[1]-1, pts[0]);
+      }
+
+      if (dataFiltro && dataFiltro >= inicio && dataFiltro <= fim) {
+        const doutor = r[1];
+        const comissao = (Number(r[10]) || 0) + (Number(r[11]) || 0); // Soma Parte Clínica/Cirurgia
+        if (doutor && comissao > 0) {
+          result.comissoes[doutor] = (result.comissoes[doutor] || 0) + comissao;
+        }
+      }
+    }
+  }
+
+  result.fluxo.reverse(); // Coloca os mais recentes no topo
+  return result;
 }
 
 /**
