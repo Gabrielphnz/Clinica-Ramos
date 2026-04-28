@@ -200,54 +200,13 @@
         </div>
 
         <div class="tab-pane fade" id="area-fluxo" role="tabpanel">
-          <div class="card p-4 shadow-sm border-0" style="border-radius: 24px;">
-            
-            <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
-              <h5 class="fw-bold mb-0 text-primary">Controle de Fluxo de Caixa</h5>
-              <div class="d-flex gap-2">
-                <button class="btn btn-outline-secondary btn-sm fw-bold shadow-sm d-flex align-items-center gap-1" onclick="abrirModalGestaoRecorrencias()">
-                  <span class="material-icons" style="font-size: 18px;">settings_repeat</span> RECORRÊNCIAS
-                </button>
-                <button class="btn btn-danger btn-sm fw-bold shadow-sm d-flex align-items-center gap-1" onclick="abrirModalDespesa()">
-                  <span class="material-icons" style="font-size: 18px;">remove_circle</span> LANÇAR DESPESA
-                </button>
-              </div>
-            </div>
-            
-            <div class="row g-3 mb-4">
-               <div class="col-md-4">
-                 <div class="p-3 bg-light rounded-4 border-start border-4 border-success">
-                   <small class="text-muted fw-bold">ENTRADAS (MÊS)</small>
-                   <h4 class="mb-0 text-success fw-bold" id="totalEntradasMes">R$ 0,00</h4>
-                 </div>
-               </div>
-               <div class="col-md-4">
-                 <div class="p-3 bg-light rounded-4 border-start border-4 border-danger">
-                   <small class="text-muted fw-bold">SAÍDAS (MÊS)</small>
-                   <h4 class="mb-0 text-danger fw-bold" id="totalSaidasMes">R$ 0,00</h4>
-                 </div>
-               </div>
-               <div class="col-md-4">
-                 <div class="p-3 bg-primary bg-opacity-10 rounded-4 border-start border-4 border-primary">
-                   <small class="text-muted fw-bold">SALDO LÍQUIDO</small>
-                   <h4 class="mb-0 text-primary fw-bold" id="saldoLiquidoMes">R$ 0,00</h4>
-                 </div>
-               </div>
-            </div>
-
-            <div class="table-responsive">
-              <table class="table table-hover align-middle" id="tabelaFluxoCaixa">
-                <thead class="table-light">
-                  <tr class="small text-muted">
-                    <th>DATA</th><th>CATEGORIA</th><th>DESCRIÇÃO</th><th class="text-end">VALOR</th><th>STATUS</th>
-                  </tr>
-                </thead>
-                <tbody id="corpoFluxoCaixa"></tbody>
-              </table>
-            </div>
+          <div id="loader-fluxo" class="text-center py-5" style="display:none;">
+            <div class="spinner-border text-primary"></div>
+            <p class="mt-2 fw-bold">Carregando Dashboard Financeiro...</p>
           </div>
+          <div id="conteudo-fluxo"></div>
         </div>
-
+           
 
       </div>
     </div>
