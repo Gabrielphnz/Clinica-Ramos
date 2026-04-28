@@ -213,122 +213,126 @@
 
   <div class="main-content">
     
-    <div class="row g-0 mb-4 animate-up" style="margin: 0 -10px; animation-delay: 0.1s;">
-      <div class="col-mini">
+    <div class="row g-3 mb-4 animate-up" style="animation-delay: 0.1s;">
+      <div class="col-md-3">
         <div class="card-kpi kpi-faturamento">
           <div class="kpi-label">Faturamento</div>
           <div class="kpi-value" id="kpiFaturamento">R$ 0</div>
         </div>
       </div>
-      <div class="col-mini">
+      <div class="col-md-3">
         <div class="card-kpi kpi-atendimentos">
           <div class="kpi-label">Atendimentos</div>
           <div class="kpi-value" id="kpiAtendimentos">0</div>
         </div>
       </div>
-      <div class="col-mini">
+      <div class="col-md-3">
         <div class="card-kpi kpi-ticket">
           <div class="kpi-label">Ticket Médio</div>
           <div class="kpi-value" id="kpiTicket">R$ 0</div>
         </div>
       </div>
-      <div class="col-mini">
+      <div class="col-md-3">
         <div class="card-kpi kpi-pacientes">
           <div class="kpi-label">Pacientes Únicos</div>
           <div class="kpi-value" id="kpiPacientes">0</div>
         </div>
       </div>
-      <div class="col-mini">
+      
+      <div class="col-md-3">
         <div class="card-kpi kpi-particular">
           <div class="kpi-label">% Particular</div>
           <div class="kpi-value" id="kpiParticular">0%</div>
         </div>
       </div>
-      <div class="col-mini">
+      <div class="col-md-3">
         <div class="card-kpi kpi-lucro">
           <div class="kpi-label">Lucro Líquido</div>
           <div class="kpi-value" id="kpiLucro">R$ 0</div>
         </div>
       </div>
-    </div>
       <div class="col-md-3">
-        <div class="p-3 bg-light rounded-4 border-start border-4 border-warning">
-          <small class="text-muted fw-bold">CUSTO LABORATÓRIO</small>
-          <h4 class="mb-0 text-warning fw-bold" id="dashTotalLab">R$ 0,00</h4>
+        <div class="card-kpi" style="border-left: 4px solid var(--warning);">
+          <div class="kpi-label">Custo Lab.</div>
+          <div class="kpi-value text-warning" id="dashTotalLab">R$ 0</div>
         </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card-kpi" style="border-left: 4px solid var(--info);">
+          <div class="kpi-label">🏆 Top Conversão</div>
+          <div class="kpi-value text-info" id="kpiConversao" style="font-size: 16px; line-height: 1.2;">-</div>
+        </div>
+      </div>
     </div>
 
-    <div class="row animate-up" style="animation-delay: 0.2s;">
-      <div class="col-md-5">
+    <div class="row g-3 mb-4 animate-up" style="animation-delay: 0.2s;">
+      <div class="col-md-8">
         <div class="chart-box">
-          <div class="chart-title">Receita Particular vs Plano</div>
-          <div class="chart-wrapper">
+          <div class="chart-title">Evolução Mensal do Faturamento</div>
+          <div class="chart-wrapper" style="height: 300px;">
+            <canvas id="chartEvolucao"></canvas>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="chart-box">
+          <div class="chart-title">Particular vs Plano</div>
+          <div class="chart-wrapper" style="height: 300px;">
             <canvas id="chartTipo"></canvas>
           </div>
         </div>
       </div>
-      <div class="col-md-7">
+    </div>
+
+    <div class="row g-3 mb-4 animate-up" style="animation-delay: 0.3s;">
+      <div class="col-md-4">
         <div class="chart-box">
-          <div class="chart-title">Atendimentos por Profissional</div>
-          <div class="chart-wrapper">
+          <div class="chart-title">Atendimentos por Doutor</div>
+          <div class="chart-wrapper" style="height: 250px;">
             <canvas id="chartAtendimentosDoutor"></canvas>
           </div>
         </div>
       </div>
-    </div>
-
-    <div class="row animate-up" style="animation-delay: 0.3s;">
       <div class="col-md-4">
         <div class="chart-box">
-          <div class="chart-title">🏆 Top 5 Profissionais</div>
-          <div id="rankingDoutores">Carregando...</div>
-        </div>
-      </div>
-      <div class="col-md-4">
-        <div class="chart-box">
-          <div class="chart-title">💎 Top 5 Procedimentos</div>
-          <div id="rankingProcedimentos">Carregando...</div>
-        </div>
-      </div>
-      <div class="col-md-4">
-        <div class="chart-box">
-          <div class="chart-title">🏥 Top 5 Planos</div>
-          <div id="rankingPlanos">Carregando...</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="row animate-up" style="animation-delay: 0.4s;">
-      <div class="col-md-7">
-        <div class="chart-box">
-          <div class="chart-title">Distribuição de Atendimentos por Mês</div>
-          <div class="chart-wrapper">
+          <div class="chart-title">Distribuição por Mês</div>
+          <div class="chart-wrapper" style="height: 250px;">
             <canvas id="chartMeses"></canvas>
           </div>
         </div>
       </div>
-      <div class="col-md-5">
+      <div class="col-md-4">
         <div class="chart-box">
-          <div class="chart-title">Custo Laboratório por Profissional</div>
-          <div class="chart-wrapper">
+          <div class="chart-title">Custo Lab por Doutor</div>
+          <div class="chart-wrapper" style="height: 250px;">
             <canvas id="chartLabDoutor"></canvas>
           </div>
         </div>
       </div>
     </div>
 
-    <div class="row animate-up" style="animation-delay: 0.5s;">
-      <div class="col-12">
-        <div class="chart-box">
-          <div class="chart-title">Evolução Mensal do Faturamento Bruto</div>
-          <div class="chart-wrapper" style="height: 300px;">
-            <canvas id="chartEvolucao"></canvas>
-          </div>
+    <div class="row g-3 mb-4 animate-up" style="animation-delay: 0.4s;">
+      <div class="col-md-4">
+        <div class="chart-box" style="height: 100%;">
+          <div class="chart-title">🏆 Top Doutores</div>
+          <div id="rankingDoutores"></div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="chart-box" style="height: 100%;">
+          <div class="chart-title">🔥 Top Procedimentos</div>
+          <div id="rankingProcedimentos"></div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="chart-box" style="height: 100%;">
+          <div class="chart-title">🏢 Top Planos</div>
+          <div id="rankingPlanos"></div>
         </div>
       </div>
     </div>
 
-    <div class="row animate-up" style="animation-delay: 0.6s;">
+    <div class="row animate-up" style="animation-delay: 0.5s;">
       <div class="col-12">
         <div class="chart-box" style="height: auto;">
           <div class="chart-title">🤖 Inteligência de Dados (Insights)</div>
@@ -340,6 +344,7 @@
         </div>
       </div>
     </div>
+
   </div>
 
   <script>
@@ -424,14 +429,22 @@
       gerarInsights();
     }
 
-   function calcularKPIs() {
-      const total = dadosFiltrados.reduce((s, i) => s + (Number(i.total) || 0), 0);
-      const part = dadosFiltrados.reduce((s, i) => s + (Number(i.particular) || 0), 0);
-      const plano = dadosFiltrados.reduce((s, i) => s + (Number(i.vplano) || 0), 0);
+  // === FUNÇÃO AUXILIAR PARA LIMPAR MOEDA (Resolve o travamento) ===
+    function limparMoedaParaCalculo(valor) {
+      if (!valor) return 0;
+      if (typeof valor === 'number') return valor;
+      // Remove pontos de milhar, troca vírgula por ponto e converte para número
+      return Number(valor.toString().replace(/\./g, '').replace(',', '.')) || 0;
+    }
+
+    function calcularKPIs() {
+      // Agora usamos a função auxiliar para garantir que a soma nunca quebre!
+      const total = dadosFiltrados.reduce((s, i) => s + limparMoedaParaCalculo(i.total), 0);
+      const part = dadosFiltrados.reduce((s, i) => s + limparMoedaParaCalculo(i.particular), 0);
+      const plano = dadosFiltrados.reduce((s, i) => s + limparMoedaParaCalculo(i.vplano), 0);
       const qtd = dadosFiltrados.length;
       
       const pacientesUnicos = [...new Set(dadosFiltrados.map(i => i.paciente))].length;
-      
       const configMoeda = { style: 'currency', currency: 'BRL', minimumFractionDigits: 0, maximumFractionDigits: 0 };
       
       document.getElementById('kpiFaturamento').innerText = total.toLocaleString('pt-BR', configMoeda);
@@ -439,16 +452,43 @@
       
       const ticketMedio = qtd > 0 ? total / qtd : 0;
       document.getElementById('kpiTicket').innerText = ticketMedio.toLocaleString('pt-BR', configMoeda);
-      
       document.getElementById('kpiPacientes').innerText = pacientesUnicos;
       
       const percentualPart = total > 0 ? Math.round((part / total) * 100) : 0;
       document.getElementById('kpiParticular').innerText = percentualPart + '%';
       
-      // CORREÇÃO: Agora soma estritamente o "Lucro da Clínica" já calculado na planilha
-      const lucroLiquido = dadosFiltrados.reduce((s, i) => s + (Number(i.lucroClinica) || 0), 0);
+      const lucroLiquido = dadosFiltrados.reduce((s, i) => s + limparMoedaParaCalculo(i.lucroClinica), 0);
       document.getElementById('kpiLucro').innerText = lucroLiquido.toLocaleString('pt-BR', configMoeda);
+
+      const totalLab = dadosFiltrados.reduce((s, i) => s + limparMoedaParaCalculo(i.vlab), 0);
+      document.getElementById('dashTotalLab').innerText = totalLab.toLocaleString('pt-BR', configMoeda);
+
+      const planoOriginalPaciente = {};
+      dadosBrutos.forEach(i => {
+          if (i.plano && i.plano.toUpperCase() !== "PARTICULAR") {
+              planoOriginalPaciente[i.paciente] = i.plano;
+          }
+      });
+
+      const conversaoReal = {};
+      dadosFiltrados.forEach(i => {
+          const vPart = limparMoedaParaCalculo(i.particular);
+          if (vPart > 0) {
+              let planoOrig = planoOriginalPaciente[i.paciente];
+              if (planoOrig) {
+                  conversaoReal[planoOrig] = (conversaoReal[planoOrig] || 0) + vPart;
+              }
+          }
+      });
+
+      const topConversao = Object.entries(conversaoReal).sort((a,b) => b[1] - a[1])[0];
+      if (topConversao) {
+          document.getElementById('kpiConversao').innerHTML = `<span class="fw-bold">${topConversao[0]}</span><br><small class="text-success" style="font-size:15px; font-weight:800;">${topConversao[1].toLocaleString('pt-BR', configMoeda)}</small>`;
+      } else {
+          document.getElementById('kpiConversao').innerHTML = `<span class='text-muted' style='font-size:14px;'>Nenhuma conversão</span>`;
+      }
     }
+
 
     function renderizarGraficos() {
       Object.values(graficos).forEach(g => { if (g) g.destroy(); });
@@ -644,9 +684,10 @@
       buildRankingBars(planosMap, 'rankingPlanos', 'bg-gradient-info');
     }
 
-    function gerarInsights() {
+function gerarInsights() {
       let insights = [];
       
+      // 1. INSIGHTS ORIGINAIS RESTAURADOS
       const doutores = {};
       dadosFiltrados.forEach(i => doutores[i.doutor] = (doutores[i.doutor] || 0) + i.total);
       const topDoutor = Object.entries(doutores).sort((a,b) => b[1]-a[1])[0];
@@ -683,9 +724,89 @@
             <div>Nenhum dado encontrado para os filtros selecionados.</div>
           </div>`;
       }
+
+      // ==========================================
+      // 2. MOTOR DE CONVERSÃO (PLANO -> PARTICULAR)
+      // ==========================================
       
+      // A. Mapeia a "Porta de Entrada" do paciente usando o banco de dados total (dadosBrutos)
+      const origemPaciente = {};
+      dadosBrutos.forEach(i => {
+          if (i.plano && i.plano.toUpperCase() !== "PARTICULAR" && i.plano.trim() !== "") {
+              origemPaciente[i.paciente] = i.plano; // Grava o plano do paciente
+          }
+      });
+
+      // B. Calcula o gasto Particular dos pacientes filtrados
+      const rankingConversao = {};
+      let totalConvertido = 0;
+      
+      dadosFiltrados.forEach(i => {
+          const vPart = Number(i.particular) || 0;
+          
+          // Se gerou receita particular E o paciente tem um plano registrado na origem
+          if (vPart > 0 && origemPaciente[i.paciente]) {
+              const planoOrigem = origemPaciente[i.paciente];
+              rankingConversao[planoOrigem] = (rankingConversao[planoOrigem] || 0) + vPart;
+              totalConvertido += vPart;
+          }
+      });
+
+      // C. Ordena do maior pro menor
+      const rankingOrdenado = Object.entries(rankingConversao).sort((a,b) => b[1]-a[1]);
+
+      // D. Gera o Visual do Ranking
+      if (rankingOrdenado.length > 0) {
+          let rankingHtml = `
+          <div class="card p-4 shadow-sm border-0 mt-4" style="border-radius: 20px; background: white;">
+              <div class="d-flex align-items-center mb-1">
+                  <div class="bg-primary text-white d-flex align-items-center justify-content-center rounded-circle me-3 shadow-sm" style="width: 36px; height: 36px;">
+                      <span class="material-icons" style="font-size: 20px;">swap_horiz</span>
+                  </div>
+                  <h6 class="fw-bold mb-0" style="color: var(--text-main); font-size: 16px;">Ranking de Upsell: Plano ➔ Particular</h6>
+              </div>
+              <p class="small text-muted mb-4 ms-5">Volume financeiro gerado de forma particular por pacientes originários de convênios.</p>
+              
+              <div class="ms-1">`;
+
+          rankingOrdenado.forEach((item, index) => {
+              const plano = item[0];
+              const valor = item[1];
+              const pct = totalConvertido > 0 ? Math.round((valor / totalConvertido) * 100) : 0;
+              
+              let medalha = "";
+              if(index === 0) medalha = "🥇";
+              else if(index === 1) medalha = "🥈";
+              else if(index === 2) medalha = "🥉";
+              else medalha = `<span class="badge bg-light text-muted">${index + 1}º</span>`;
+
+              rankingHtml += `
+              <div class="d-flex align-items-center justify-content-between mb-3">
+                  <div class="d-flex align-items-center gap-2" style="width: 30%;">
+                      <span style="font-size: 18px;">${medalha}</span>
+                      <span class="small fw-bold text-secondary text-truncate" title="${plano}">${plano}</span>
+                  </div>
+                  <div class="w-100 mx-3">
+                      <div class="progress shadow-sm" style="height: 10px; border-radius: 10px; background-color: #f1f5f9;">
+                          <div class="progress-bar bg-primary progress-bar-striped progress-bar-animated" role="progressbar" style="width: ${pct}%;"></div>
+                      </div>
+                  </div>
+                  <div class="small fw-bold text-end" style="width: 25%; color: var(--text-main);">
+                      R$ ${valor.toLocaleString('pt-BR', {minimumFractionDigits: 0})}
+                  </div>
+              </div>`;
+          });
+
+          rankingHtml += `</div></div>`;
+          
+          // Anexa o visual do ranking logo abaixo dos seus cards normais de insight
+          insightsHtml += rankingHtml; 
+      }
+
+      // Aplica tudo na tela
       document.getElementById('insightsArea').innerHTML = insightsHtml;
     }
+
   </script>
 </body>
 </html>
