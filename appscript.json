@@ -1,0 +1,22 @@
+{
+  "timeZone": "America/Sao_Paulo",
+  "dependencies": {},
+  "webapp": {
+    "executeAs": "USER_DEPLOYING",
+    "access": "ANYONE_ANONYMOUS"
+  },
+  "exceptionLogging": "STACKDRIVER",
+  "runtimeVersion": "V8",
+  "sheets": {
+    "macros": [
+      {
+        "menuName": "myFunction",
+        "functionName": "myFunction"
+      },
+      {
+        "menuName": "filtrarHojeEBrancosColunaA",
+        "functionName": "filtrarHojeEBrancosColunaA"
+      }
+    ]
+  }
+}
