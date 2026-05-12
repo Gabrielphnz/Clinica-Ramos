@@ -152,25 +152,58 @@ function incluirNoERP(filename) {
   }
 }
 
+function proximaLinhaVaziaDoutores() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const aba = ss.getSheetByName("config");
+  // Agora verifica a Coluna E (Doutor(a))
+  const valores = aba.getRange("E:E").getValues();
+  let linha = 0;
+  while (valores[linha] && valores[linha][0] !== "") {
+    linha++;
+  }
+  return linha + 1;
+}
+
 function getListasParaForm() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var sheetConfig = ss.getSheetByName("config"); 
-  if (!sheetConfig) return { doutores: [], procedimentos: [], planos: [], pagamentos: [] };
-  var data = sheetConfig.getDataRange().getValues();
-  var dentistas = [], procedimentos = [], planos = [], pagamentos = [];
-  for (var i = 1; i < data.length; i++) {
-    if (data[i][10]) dentistas.push(data[i][10].toString().trim().toUpperCase());
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const aba = ss.getSheetByName("config");
+  if (!aba) return { doutores: [], procedimentos: [], planos: [], pagamentos: [], doutoresConfig: [] };
+  
+  const data = aba.getDataRange().getValues();
+  let dentistas = [], procedimentos = [], planos = [], pagamentos = [];
+  let doutoresConfig = [];
+  let nomesProcessados = new Set();
+
+  for (let i = 1; i < data.length; i++) {
+    // Mantém as outras coletas se as colunas não mudaram
     if (data[i][0]) procedimentos.push(data[i][0].toString().trim());
     if (data[i][2]) planos.push(data[i][2].toString().trim());
     if (data[i][8]) pagamentos.push(data[i][8].toString().trim());
+    
+    // NOVA LOGICA: Coluna E é índice 4 | Coluna H é índice 7
+    const nome = data[i][4] ? data[i][4].toString().trim().toUpperCase() : "";
+    
+    if (nome && !nomesProcessados.has(nome)) {
+       const status = data[i][7] ? data[i][7].toString().toUpperCase() : "ATIVO";
+       
+       doutoresConfig.push({ nome: nome, status: status, linha: i + 1 });
+       nomesProcessados.add(nome);
+       
+       if (status !== "INATIVO") {
+           dentistas.push(nome);
+       }
+    }
   }
+  
   return {
-    doutores: [...new Set(dentistas)].sort(),
+    doutores: dentistas.sort(),
+    doutoresConfig: doutoresConfig.sort((a,b) => a.nome.localeCompare(b.nome)),
     procedimentos: [...new Set(procedimentos)].sort(),
     planos: [...new Set(planos)].sort(),
     pagamentos: [...new Set(pagamentos)].sort()
   };
 }
+
 
 function getDashboardData() {
   const dados = getDadosTabelaERP();
@@ -544,28 +577,52 @@ function getListasDropdown() {
   return listas;
 }
 
+
+// FUNÇÃO ESSENCIAL: Coloque no topo do seu base.gs
+function limparMoedaBD(valor) {
+  if (!valor) return 0;
+  if (typeof valor === 'number') return valor;
+  // Remove pontos e troca vírgula por ponto para o sistema entender como número
+  let limpo = valor.toString().replace(/\./g, '').replace(',', '.');
+  return parseFloat(limpo) || 0;
+}
+
 function cadastrarItemAuxiliar(tipo, valor, percPart, percPlano) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheetConfig = ss.getSheetByName("config");
-  if (!sheetConfig) return "Erro: aba 'config' não encontrada.";
-  let coluna;
-  if (tipo === 'procedimento') coluna = 1;
-  else if (tipo === 'plano') coluna = 3;
-  else if (tipo === 'pagamento') coluna = 9;
-  else if (tipo === 'doutor') {
-    const ultimaLinha = sheetConfig.getLastRow() + 1;
-    sheetConfig.getRange(ultimaLinha, 11).setValue(valor.toUpperCase());
-    sheetConfig.getRange(ultimaLinha, 12).setValue(Number(percPart) || 0.4);
-    sheetConfig.getRange(ultimaLinha, 13).setValue(Number(percPlano) || 0.45);
+  const aba = ss.getSheetByName("config");
+  
+  if (tipo === 'doutor') {
+    const linhaDestino = proximaLinhaVaziaDoutores();
+    // Coluna E (5): Nome | Coluna H (8): Status
+    aba.getRange(linhaDestino, 5).setValue(valor.toUpperCase());
+    
+    // Usa a nova função limparMoedaBD para não dar erro
+    aba.getRange(linhaDestino, 6).setValue(limparMoedaBD(percPart) || 0.4); 
+    aba.getRange(linhaDestino, 7).setValue(limparMoedaBD(percPlano) || 0.45);
+    aba.getRange(linhaDestino, 8).setValue("ATIVO"); 
+    
     return "Doutor cadastrado com sucesso!";
-  } else {
-    return "Tipo de item inválido.";
   }
-  const ultimaLinha = sheetConfig.getLastRow() + 1;
-  sheetConfig.getRange(ultimaLinha, coluna).setValue(valor);
+  
+  const col = tipo === 'procedimento' ? 1 : (tipo === 'plano' ? 3 : 9);
+  const valoresCol = aba.getRange(1, col, aba.getLastRow()).getValues();
+  let proxL = 1;
+  while(valoresCol[proxL-1] && valoresCol[proxL-1][0] !== "") { proxL++; }
+  
+  aba.getRange(proxL, col).setValue(valor);
   return "Item cadastrado com sucesso!";
 }
 
+function alternarStatusDoutorBD(linha) {
+   const ss = SpreadsheetApp.getActiveSpreadsheet();
+   const aba = ss.getSheetByName("config");
+   // Altera o status na Coluna H (8)
+   const statusAtual = aba.getRange(linha, 8).getValue(); 
+   const novoStatus = statusAtual === "INATIVO" ? "ATIVO" : "INATIVO";
+   aba.getRange(linha, 8).setValue(novoStatus);
+   return "Status atualizado!";
+}
+  
 function reorganizarPlanilha() {
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
