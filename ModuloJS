@@ -2079,7 +2079,26 @@ function salvarEdicaoProduto() {
 function abrirConfiguracao() {
   google.script.run.withSuccessHandler(function(listas) {
       let listaPlanos = ''; listas.planos.forEach(p => listaPlanos += '<div class="list-group-item d-flex justify-content-between align-items-center">' + p + '</div>');
-      let listaDoutores = ''; listas.doutores.forEach(d => listaDoutores += '<div class="list-group-item d-flex justify-content-between align-items-center">' + d + '</div>');
+      let listaDoutores = ''; 
+            listas.doutoresConfig.forEach(d => {
+              let isAtivo = d.status !== "INATIVO";
+              let corBadge = isAtivo ? "success" : "secondary";
+              let btnIcon = isAtivo ? "block" : "check_circle";
+              let btnColor = isAtivo ? "danger" : "success";
+              let btnTitle = isAtivo ? "Inativar Doutor" : "Reativar Doutor";
+
+              listaDoutores += `
+              <div class="list-group-item d-flex justify-content-between align-items-center py-2 border-0 border-bottom">
+                  <div>
+                    <span class="fw-bold ${!isAtivo ? 'text-muted text-decoration-line-through' : 'text-dark'}">${d.nome}</span>
+                    <span class="badge bg-${corBadge} ms-2" style="font-size:10px;">${d.status}</span>
+                  </div>
+                  <button class="btn btn-sm btn-outline-${btnColor} border-0 rounded-circle p-1 d-flex align-items-center" 
+                          onclick="alternarStatusFront(${d.linha})" title="${btnTitle}">
+                    <span class="material-icons" style="font-size:18px;">${btnIcon}</span>
+                  </button>
+              </div>`;
+            });
       let listaPagamentos = ''; listas.pagamentos.forEach(p => listaPagamentos += '<div class="list-group-item d-flex justify-content-between align-items-center">' + p + '</div>');
 
       const modalHtml = `
@@ -2133,9 +2152,12 @@ function abrirConfiguracao() {
                                       <div class="col-md-6"><input type="text" class="form-control bg-light border-0" id="novoDoutor" placeholder="Nome do Doutor"></div>
                                       <div class="col-md-2"><input type="number" class="form-control bg-light border-0" id="percPart" placeholder="% Part." value="0.40" step="0.01"></div>
                                       <div class="col-md-2"><input type="number" class="form-control bg-light border-0" id="percPlano" placeholder="% Plano" value="0.45" step="0.01"></div>
-                                      <div class="col-md-2"><button class="btn btn-success w-100 fw-bold" onclick="cadastrarDoutor()">➕ ADD</button></div>
+                                      <div class="col-md-2"><button class="btn btn-success w-100 fw-bold" id="btnSalvarDoutor" onclick="cadastrarDoutor()">➕ ADD</button></div>
                                   </div>
-                                  <div class="list-group list-group-flush border" style="max-height: 300px; overflow-y: auto; border-radius: 12px;">${listaDoutores}</div>
+                                  
+                                  <div class="list-group list-group-flush border" id="containerListaDoutores" style="max-height: 300px; overflow-y: auto; border-radius: 12px;">
+                                      ${listaDoutores}
+                                  </div>
                               </div>
                               <div class="tab-pane fade" id="pagamentos">
                                   <div class="input-group mb-3">
@@ -2191,6 +2213,98 @@ function abrirConfiguracao() {
       
       new bootstrap.Modal(document.getElementById('modalConfig')).show();
   }).getListasParaForm();
+}
+// ==========================================
+// CADASTRO SILENCIOSO DE DOUTOR (SEM POPUP)
+// ==========================================
+function adicionarDoutorInline() {
+   const input = document.getElementById("novoNomeDoutor");
+   const nome = input.value.trim();
+   
+   if (!nome) {
+       mostrarNotificacao("⚠️ Digite o nome do doutor primeiro!", "erro");
+       return;
+   }
+
+   const btn = input.nextElementSibling;
+   const textoOriginal = btn.innerHTML;
+   
+   // Bloqueia o botão e mostra o 'carregando'
+   input.disabled = true;
+   btn.disabled = true;
+   btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+
+   // Envia para o servidor (cadastrando comissão padrão 40% part / 45% plano)
+   google.script.run.withSuccessHandler(res => {
+       mostrarNotificacao("✅ " + res, "sucesso");
+       
+       // Libera o botão e limpa o campo
+       input.value = "";
+       input.disabled = false;
+       btn.disabled = false;
+       btn.innerHTML = textoOriginal;
+       
+       // Atualiza a lista na tela de forma silenciosa (sem fechar o modal)
+       google.script.run.withSuccessHandler(listas => {
+           atualizarListaDoutoresNoModal(listas.doutoresConfig);
+       }).getListasParaForm();
+       
+   }).withFailureHandler(err => {
+       mostrarNotificacao("❌ Erro: " + err, "erro");
+       input.disabled = false;
+       btn.disabled = false;
+       btn.innerHTML = textoOriginal;
+   }).cadastrarItemAuxiliar('doutor', nome, 0.4, 0.45);
+}
+
+function alternarStatusFront(linha) {
+   mostrarNotificacao("⏳ Atualizando status...", "info");
+   
+   google.script.run.withSuccessHandler(res => {
+       mostrarNotificacao("✅ " + res, "sucesso");
+       
+       // Em vez de abrirConfiguracao(), vamos apenas recarregar os dados
+       google.script.run.withSuccessHandler(function(listas) {
+           
+           // Aqui você deve colocar a lógica que desenha a lista de doutores
+           // Vou deixar o comando para atualizar a lista e manter a aba aberta
+           atualizarListaDoutoresNoModal(listas.doutoresConfig);
+           
+           // Limpeza forçada de qualquer "sombra" extra que tenha ficado
+           const backdrops = document.querySelectorAll('.modal-backdrop');
+           if (backdrops.length > 1) {
+               for (let i = 1; i < backdrops.length; i++) { backdrops[i].remove(); }
+           }
+       }).getListasParaForm();
+       
+   }).alternarStatusDoutorBD(linha);
+}
+
+// Função para atualizar apenas a lista sem fechar/abrir o modal
+function atualizarListaDoutoresNoModal(doutoresConfig) {
+    let html = ''; 
+    doutoresConfig.forEach(d => {
+       let isAtivo = d.status !== "INATIVO";
+       let corBadge = isAtivo ? "success" : "secondary";
+       let btnIcon = isAtivo ? "block" : "check_circle";
+       let btnColor = isAtivo ? "danger" : "success";
+
+       html += `
+       <div class="list-group-item d-flex justify-content-between align-items-center py-2 border-0 border-bottom">
+          <div>
+             <span class="fw-bold ${!isAtivo ? 'text-muted text-decoration-line-through' : 'text-dark'}">${d.nome}</span>
+             <span class="badge bg-${corBadge} ms-2" style="font-size:10px;">${d.status}</span>
+          </div>
+          <button class="btn btn-sm btn-outline-${btnColor} border-0 rounded-circle p-1 d-flex align-items-center" 
+                  onclick="alternarStatusFront(${d.linha})">
+             <span class="material-icons" style="font-size:18px;">${btnIcon}</span>
+          </button>
+       </div>`;
+    });
+    
+    // Procura o container da lista de doutores no seu modal e atualiza
+    const container = document.querySelector('#doutores .list-group') || document.querySelector('#listaDoutores');
+    if (container) container.innerHTML = html;
 }
 
 // ----------------------------------------------------
@@ -2251,11 +2365,49 @@ function cadastrarItem(tipo) {
 }
 
 function cadastrarDoutor() {
-  const nome = document.getElementById('novoDoutor').value;
-  const percPart = document.getElementById('percPart').value;
-  const percPlano = document.getElementById('percPlano').value;
-  if (!nome) return alert("Digite o nome do doutor!");
-  google.script.run.withSuccessHandler(function(res) { alert(res); document.getElementById('novoDoutor').value = ""; abrirConfiguracao(); }).cadastrarItemAuxiliar('doutor', nome, percPart, percPlano);
+   const inputNome = document.getElementById("novoDoutor");
+   const inputPart = document.getElementById("percPart");
+   const inputPlano = document.getElementById("percPlano");
+   const btn = document.getElementById("btnSalvarDoutor");
+   
+   const nome = inputNome.value.trim();
+   // Converte os números trocando vírgula por ponto para evitar erros
+   const percPart = parseFloat(inputPart.value.replace(',', '.')) || 0.40;
+   const percPlano = parseFloat(inputPlano.value.replace(',', '.')) || 0.45;
+   
+   if (!nome) {
+       mostrarNotificacao("⚠️ Digite o nome do doutor(a)!", "erro");
+       return;
+   }
+
+   const textoOriginal = btn.innerHTML;
+   
+   // Bloqueia o botão e mostra spinner
+   inputNome.disabled = true;
+   btn.disabled = true;
+   btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+
+   // Manda pro base.gs
+   google.script.run.withSuccessHandler(res => {
+       mostrarNotificacao("✅ " + res, "sucesso");
+       
+       // Limpa o campo do nome, mas mantém as % padrão
+       inputNome.value = "";
+       inputNome.disabled = false;
+       btn.disabled = false;
+       btn.innerHTML = textoOriginal;
+       
+       // Recarrega apenas a lista silenciosamente (sem tela preta)
+       google.script.run.withSuccessHandler(listas => {
+           atualizarListaDoutoresNoModal(listas.doutoresConfig);
+       }).getListasParaForm();
+       
+   }).withFailureHandler(err => {
+       mostrarNotificacao("❌ Erro: " + err, "erro");
+       inputNome.disabled = false;
+       btn.disabled = false;
+       btn.innerHTML = textoOriginal;
+   }).cadastrarItemAuxiliar('doutor', nome, percPart, percPlano);
 }
 
 function carregarUsuariosConfig() {
