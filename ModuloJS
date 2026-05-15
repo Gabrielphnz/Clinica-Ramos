@@ -245,35 +245,20 @@ var basePacientesCRM = [];
 // 1. INICIALIZAÇÃO BLINDADA DO SISTEMA
 // ==========================================
 // O Apps Script roda este script assim que o HTML termina de carregar.
-// Escondemos o ERP proativamente.
 document.getElementById("erp-app").style.display = "none";
 document.getElementById("telaLogin").style.display = "flex";
 
-// Esta função agora é a primeira a ser chamada, de forma agressiva.
 (function iniciarSessaoSegura() {
-  try {
-    const salvo = localStorage.getItem('usuarioRamos');
-    // Validação rígida: o cache tem que existir, ser texto, e ter estrutura de JSON.
-    if (salvo && typeof salvo === 'string' && salvo.includes('success')) {
-      const userTemp = JSON.parse(salvo);
-      if (userTemp && userTemp.success) {
-        usuarioLogado = userTemp;
-        document.getElementById("telaLogin").style.display = "none";
-        document.getElementById("erp-app").style.display = "block";
-        inicializarSistema(); // Só puxa os dados se o usuário for válido
-        return; // Sai da função, login funcionou.
-      }
-    }
-  } catch (e) {
-    console.error("Falha ao restaurar sessão:", e);
-  }
-  
-  // Se caiu aqui (por erro ou falta de cache), a limpeza é compulsória.
+  // Limpeza compulsória: Garante que a sessão antiga seja apagada do cache do navegador
   localStorage.removeItem('usuarioRamos');
+  
+  // Força a exibição da tela de login sempre que a página for recarregada
   document.getElementById("telaLogin").style.display = "flex";
   document.getElementById("erp-app").style.display = "none";
 })();
-
+// ==========================================
+// 2. FUNÇÕES DE AUTENTICAÇÃO
+// ==========================================
 // ==========================================
 // 2. FUNÇÕES DE AUTENTICAÇÃO
 // ==========================================
@@ -290,20 +275,17 @@ function fazerLogin() {
   }
 
   // Trava o botão para não enviar requisições repetidas
-  btn.disabled = true; 
+  btn.disabled = true;
   btn.innerText = "AUTENTICANDO..."; 
   msg.style.display = "none";
   
   google.script.run
     .withSuccessHandler(function(res) {
       if (res && res.success) {
-        // Sucesso: Salva e inicia
+        // Sucesso: Mantém o login APENAS na memória temporária da tela
         usuarioLogado = res; 
-        try {
-          localStorage.setItem('usuarioRamos', JSON.stringify(res));
-        } catch (storageError) {
-           console.warn("Navegador bloqueou o cache. O login funciona, mas não será lembrado.", storageError);
-        }
+        
+        // (A função de salvar em cache foi removida daqui)
         
         document.getElementById("telaLogin").style.display = "none";
         document.getElementById("erp-app").style.display = "block";
@@ -319,7 +301,7 @@ function fazerLogin() {
     })
     .withFailureHandler(function(err) {
       // Falha de servidor
-      msg.innerText = "❌ Erro de comunicação com o servidor."; 
+      msg.innerText = "❌ Erro de comunicação com o servidor.";
       msg.style.display = "block"; 
       btn.disabled = false; 
       btn.innerText = "ENTRAR";
@@ -394,41 +376,55 @@ function inicializarSistema() {
 // 3. CONTROLE DE PERMISSÕES
 // ==========================================
 function configurarAcessoBotoes() {
-  if (!usuarioLogado) return;
+    if (!usuarioLogado) return;
 
-  if (usuarioLogado.nivel === "RECEPCAO") {
-    const cardsFinanceiros = document.getElementById("cardsResumoFinanceiro");
-    if (cardsFinanceiros) cardsFinanceiros.style.display = "none";
+    // Correção: Agora o sistema reconhece ADMIN independente de como foi digitado na planilha
+    const nivelStr = (usuarioLogado.nivel || "").toUpperCase();
+    const isAdmin = (nivelStr === "ADMIN" || nivelStr === "ADMINISTRADOR");
+    const perms = (usuarioLogado.permissoes || "").toUpperCase();
 
-    if ($.fn.DataTable.isDataTable('#minhaTabela')) {
-      const tabela = $('#minhaTabela').DataTable();
-      tabela.column(5).visible(false); 
-      tabela.column(6).visible(false); 
-      tabela.column(7).visible(false); 
-    }
-  }
+    const aplicarTravaVisual = (seletores, permissao) => {
+        const elementos = document.querySelectorAll(seletores);
+        
+        elementos.forEach(el => {
+            if (isAdmin || perms.includes(permissao)) {
+                el.style.display = ""; 
+            } else {
+                el.style.setProperty("display", "none", "important");
+            }
+        });
+    };
 
-  if (usuarioLogado.nivel !== "ADMIN") {
-    const permissoes = (usuarioLogado.permissoes || "").toUpperCase();
+    // ==============================================================
+    // LISTA DE EXTERMÍNIO E PERMISSÕES
+    // ==============================================================
 
-    const btnRelatorio = document.querySelector('[onclick="gerarRelatorio()"]');
-    const btnHolerite = document.querySelector('[onclick="gerarHolerite()"]');
-    const btnResultado = document.querySelector('[onclick="gerarResultado()"]');
-    const btnConfig = document.querySelector('[onclick="abrirConfiguracao()"]');
-    const btnDashboard = document.querySelector('[onclick="abrirDashboard()"]');
+    // 1. Módulo AGENDA
+    aplicarTravaVisual('[data-bs-target="#area-agenda"], #tab-agenda, [href="#area-agenda"], [onclick*="Agenda"], [onclick*="agenda"], [onclick*="renderizarCalendario"]', 'AGENDA');
 
-    if (btnRelatorio) btnRelatorio.style.setProperty("display", "none", "important");
-    if (btnHolerite) btnHolerite.style.setProperty("display", "none", "important");
-    if (btnResultado) btnResultado.style.setProperty("display", "none", "important");
-    if (btnConfig) btnConfig.style.setProperty("display", "none", "important");
-    if (btnDashboard) btnDashboard.style.setProperty("display", "none", "important");
+    // 2. Módulo FLUXO DE CAIXA
+    aplicarTravaVisual('[data-bs-target="#area-fluxo"], #tab-fluxo, [href="#area-fluxo"], [onclick*="Fluxo"], [onclick*="fluxo"], [onclick*="carregarFluxoCaixa"]', 'FLUXO');
 
-    if (permissoes.includes("RELATORIO") && btnRelatorio) btnRelatorio.style.display = "inline-block";
-    if (permissoes.includes("HOLERITE") && btnHolerite) btnHolerite.style.display = "inline-block";
-    if (permissoes.includes("RESULTADO") && btnResultado) btnResultado.style.display = "inline-block";
-    if (permissoes.includes("CONFIG") && btnConfig) btnConfig.style.display = "inline-block";
-    if (permissoes.includes("DASHBOARD") && btnDashboard) btnDashboard.style.display = "inline-block";
-  }
+    // 3. FINANCEIRO (Lançamentos Gerais)
+    aplicarTravaVisual('[data-bs-target="#area-lancamentos"], #tab-lancamentos, [href="#area-lancamentos"]', 'FINANCEIRO');
+
+    // 4. NOTAS FISCAIS (Agora a nova aba também é protegida!)
+    aplicarTravaVisual('[data-bs-target="#area-notas-fiscais"], #tab-notas, [onclick*="renderizarGestaoNF"]', 'NOTAS_FISCAIS');
+
+    // 5. Módulo DASHBOARD 
+    aplicarTravaVisual('.sidebar, [href="#area-dashboard"], [onclick*="Dashboard"]', 'DASHBOARD');
+
+    // 6. Módulo ESTOQUE / ALMOXARIFADO
+    aplicarTravaVisual('[onclick*="abrirAlmoxarifado"], [onclick*="estoque"]', 'ESTOQUE');
+
+    // 7. Módulo LABORATÓRIO
+    aplicarTravaVisual('[onclick*="abrirGerenciamentoLab"], [onclick*="laboratorio"]', 'LABORATORIO');
+
+    // 8. Módulo CONFIGURAÇÕES
+    aplicarTravaVisual('[onclick*="abrirConfiguracao"], [href="#configuracoes"]', 'CONFIG');
+
+    // 9. RELATÓRIOS E HOLERITES
+    aplicarTravaVisual('[onclick*="Relatorio"], [onclick*="relatorio"], [onclick*="Holerite"]', 'RELATORIO');
 }
 
 // ==========================================
@@ -581,14 +577,15 @@ function exibirTabela(dados) {
         Number(r.vlab),
         
         // AÇÕES: Agora tem o botão de Prontuário E o botão de Editar
-        `<div class="d-flex gap-2 justify-content-center">
+       `<div class="d-flex gap-2 justify-content-center">
            <button class="btn btn-light btn-sm p-1 border text-primary shadow-sm" onclick="abrirProntuario('${r.paciente}')" title="Prontuário">
              <span class="material-icons" style="font-size:18px">assignment_ind</span>
            </button>
-           <button class="btn btn-light btn-sm p-1 border text-warning shadow-sm" onclick="editarRegistro(${r.id})" title="Editar Lançamento">
+           ${(usuarioLogado && (usuarioLogado.nivel === 'ADMIN' || (usuarioLogado.permissoes || '').toUpperCase().includes('EDITAR'))) ?
+           `<button class="btn btn-light btn-sm p-1 border text-warning shadow-sm" onclick="editarRegistro(${r.id})" title="Editar Lançamento">
              <span class="material-icons" style="font-size:18px">edit</span>
-           </button>
-         </div>`, 
+           </button>` : ''}
+         </div>`,
         r.id
     ];
   });
@@ -746,6 +743,10 @@ function verObs(elementoClicado) {
 // 5. MÓDULO DE LANÇAMENTO E EDIÇÃO
 // ==========================================
 function abrirFormulario() {
+  if (usuarioLogado && usuarioLogado.nivel !== "ADMIN") {
+      const perms = (usuarioLogado.permissoes || "").toUpperCase();
+      if (!perms.includes("ADICIONAR")) return mostrarNotificacao("🚫 Você não tem permissão para Lançar novos dados.", "erro");
+  }
   const modalEl = document.getElementById('modalCadastro');
   const modal = bootstrap.Modal.getOrCreateInstance(modalEl); 
   
@@ -767,8 +768,38 @@ function abrirFormulario() {
   document.getElementsByName('vplano')[0].value = "0,00";
   document.getElementsByName('vlab')[0].value = "0,00";
   
+  // Esconde a caixa de NF por padrão ao abrir um novo formulário
+  document.getElementById('boxNotaFiscal').style.display = 'none';
+  document.getElementById('nf_nao').checked = true;
+
   modal.show();
 }
+// ==========================================
+// MONITOR DE NOTA FISCAL (RODA 1 VEZ AO INICIAR)
+// ==========================================
+document.addEventListener('DOMContentLoaded', function() {
+  // Preenche datas do relatório de NF com o mês atual por padrão
+const dataH = new Date();
+const primeiroDia = new Date(dataH.getFullYear(), dataH.getMonth(), 1).toISOString().split('T')[0];
+const ultimoDia = new Date(dataH.getFullYear(), dataH.getMonth() + 1, 0).toISOString().split('T')[0];
+
+if(document.getElementById('nf_data_inicio')){
+    document.getElementById('nf_data_inicio').value = primeiroDia;
+    document.getElementById('nf_data_fim').value = ultimoDia;
+}
+  const selPlano = document.getElementById('sel_plano');
+  if (selPlano) {
+      selPlano.addEventListener('change', function() {
+          const box = document.getElementById('boxNotaFiscal');
+          if (this.value.toUpperCase() === 'PARTICULAR' || this.value.trim() === '') {
+              $(box).fadeIn(); // Efeito suave
+          } else {
+              $(box).fadeOut();
+              document.getElementById('nf_nao').checked = true; // Reseta
+          }
+      });
+  }
+});
 
 // =====================================
 // LÓGICA DE CÁLCULO DE TAXAS DE CARTÃO
@@ -933,6 +964,11 @@ function aplicarFiltroFinanceiro() {
 }
 
 function carregarFluxoCaixa(dtInicio = "", dtFim = "") {
+
+  if (usuarioLogado.nivel !== "ADMIN" && !(usuarioLogado.permissoes || "").toUpperCase().includes("FLUXO")) {
+      return mostrarNotificacao("🚫 Acesso negado ao Fluxo de Caixa.", "erro");
+  }
+
   // AGORA MIRA NA DIV CORRETA E EXCLUSIVA DO FLUXO
   const container = document.getElementById("conteudo-fluxo"); 
   const loader = document.getElementById("loader-fluxo");
@@ -1205,7 +1241,7 @@ function salvarLancamento() {
   const textoOriginal = btn.innerHTML;
   btn.disabled = true; 
   btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> SALVANDO...';
-
+  const precisaNF = document.querySelector('input[name="nf_solicitar"]:checked').value;
   // Coleta os dados do atendimento
   const dados = {
     idLinha: document.getElementById("idLinha").value,
@@ -1219,7 +1255,9 @@ function salvarLancamento() {
     vplano: form.vplano.value,
     vlab: form.vlab.value,
     taxaCartao: document.getElementById("taxaCartaoInp").value,
-    obs: form.obs.value
+    obs: form.obs.value,
+    nf: precisaNF,
+    nf_status: precisaNF === "SIM" ? "PENDENTE" : "N/A"
   };
 
   mostrarNotificacao("⏳ Registrando no sistema...", "info");
@@ -1247,7 +1285,7 @@ function salvarLancamento() {
         };
         google.script.run.apiSalvarMovimentoFinanceiro(dadosFin);
       }
-      // ==========================================
+ // ==========================================
       // FIM DA INTEGRAÇÃO
       // ==========================================
 
@@ -1256,6 +1294,13 @@ function salvarLancamento() {
       btn.disabled = false; 
       btn.innerHTML = textoOriginal;
       atualizarTabelaGlobal(); 
+
+      // MÁGICA DO LABORATÓRIO (Restaurada)
+      if (formatarParaCalculo(dados.vlab) > 0) {
+        setTimeout(() => {
+           invocarTelaLaboratorio(dados.paciente, dados.procedimento);
+        }, 500); // 0.5s de delay para dar tempo do modal anterior fechar sem bugar a tela
+      } 
     })
     .withFailureHandler(function(err) {
       mostrarNotificacao("❌ Erro: " + err, "erro");
@@ -1303,6 +1348,12 @@ function editarRegistro(idLinha) {
 }
 
 function pedirExclusao() {
+
+    if (usuarioLogado && usuarioLogado.nivel !== "ADMIN") {
+      const perms = (usuarioLogado.permissoes || "").toUpperCase();
+      if (!perms.includes("EXCLUIR")) return mostrarNotificacao("🚫 Você não tem permissão para Excluir registros.", "erro");
+  }
+
   const id = document.getElementById("idLinha").value;
   if (!id || !confirm("Tem certeza que deseja excluir este registro?")) return;
   const btnExcluir = document.getElementById("btnExcluir");
@@ -1422,6 +1473,9 @@ function selecionarPacienteCRM(nome, convenio) {
       }
       if (encontrou) {
           mostrarNotificacao('Plano ' + convenio + ' carregado com sucesso!', 'info');
+          
+          // MÁGICA AQUI: Dispara o aviso para a tela abrir a caixinha de Nota Fiscal
+          selPlano.dispatchEvent(new Event('change'));
       }
   }
   document.getElementById('autocomplete-list').style.display = 'none';
@@ -2167,32 +2221,67 @@ function abrirConfiguracao() {
                                   <div class="list-group list-group-flush border" style="max-height: 300px; overflow-y: auto; border-radius: 12px;">${listaPagamentos}</div>
                               </div>
                               <div class="tab-pane fade" id="usuarios">
-                                  <div class="d-flex justify-content-between align-items-center mb-3">
-                                      <h6 class="mb-0 fw-bold text-secondary">Acessos Cadastrados</h6>
-                                      <button class="btn btn-sm btn-primary fw-bold px-3" onclick="limparFormUsuarioConfig(); document.getElementById('formUsuarioCard').scrollIntoView({behavior: 'smooth'});">+ NOVO USUÁRIO</button>
-                                  </div>
-                                  <div class="table-responsive mb-4" style="max-height: 250px; border-radius: 12px; border: 1px solid #E9EDF7;">
-                                      <table class="table table-sm table-hover align-middle mb-0" id="tabelaUsuarios">
-                                          <thead class="table-light" style="position: sticky; top: 0; z-index: 1;">
-                                              <tr><th class="ps-3 text-muted">ID</th><th class="text-muted">Nome</th><th class="text-muted">Login</th><th class="text-muted">Nível</th><th class="text-muted">Permissões</th><th class="text-end pe-3 text-muted">Ações</th></tr>
-                                          </thead>
-                                          <tbody><tr><td colspan="6" class="text-center py-3 text-muted">Carregando usuários...</td></tr></tbody>
-                                      </table>
-                                  </div>
-                                  <div class="card bg-light border-0" id="formUsuarioCard" style="border-radius: 16px;">
+                                  <div class="card bg-light border-0 shadow-sm" id="formUsuarioCard" style="border-radius: 16px;">
                                       <div class="card-body p-4">
-                                          <h6 class="fw-bold mb-3 d-flex align-items-center gap-2" id="tituloFormUsuario" style="color: var(--primary-color);">
-                                              <span class="material-icons" style="font-size: 20px;">person_add</span> Adicionar Novo Usuário
+                                          <h6 class="fw-bold mb-4 d-flex align-items-center gap-2" style="color: var(--primary-color);">
+                                              <span class="material-icons" style="font-size: 24px;">manage_accounts</span> Gestão de Acessos e Permissões
                                           </h6>
+                                          
+                                          <div class="mb-4 p-3 bg-white rounded-3 shadow-sm border border-2 border-primary">
+                                              <label class="form-label small fw-bold text-primary mb-1">1. Selecione um usuário para editar ou crie um novo:</label>
+                                              <select class="form-select fw-bold bg-light border-0" id="comboUsuariosEdit" onchange="seUsuarioSelecionado(this.value)">
+                                                  <option value="">✨ + CRIAR NOVO USUÁRIO</option>
+                                              </select>
+                                          </div>
+
                                           <form id="formUsuarioConfig">
                                               <input type="hidden" id="userIdConfig">
                                               <div class="row g-3">
-                                                  <div class="col-md-4"><label class="form-label small fw-bold text-muted mb-1">Nome Completo</label><input type="text" class="form-control bg-white border-0" id="userNomeConfig" required></div>
-                                                  <div class="col-md-4"><label class="form-label small fw-bold text-muted mb-1">Login de Acesso</label><input type="text" class="form-control bg-white border-0" id="userLoginConfig" required></div>
-                                                  <div class="col-md-4"><label class="form-label small fw-bold text-muted mb-1">Senha</label><input type="text" class="form-control bg-white border-0" id="userSenhaConfig" required></div>
-                                                  <div class="col-md-4"><label class="form-label small fw-bold text-muted mb-1">Nível de Permissão</label><select class="form-select bg-white border-0" id="userNivelConfig"><option value="COMUM">COMUM (Apenas Lançar)</option><option value="ADMIN">ADMIN (Gestão Total)</option></select></div>
-                                                  <div class="col-md-8"><label class="form-label small fw-bold text-muted mb-1">Permissões Especiais</label><input type="text" class="form-control bg-white border-0" id="userPermissoesConfig" placeholder="Ex: RELATORIO, DASHBOARD, CONFIG"></div>
-                                                  <div class="col-12 mt-4 d-flex justify-content-end gap-2"><button type="button" class="btn btn-outline-secondary fw-bold" onclick="limparFormUsuarioConfig()">CANCELAR</button><button type="button" class="btn btn-success fw-bold px-4 shadow-sm" onclick="salvarUsuarioConfig()" id="btnSalvarUsuario">💾 SALVAR USUÁRIO</button></div>
+                                                  <div class="col-md-4"><label class="form-label small fw-bold text-muted mb-1">Nome Completo</label><input type="text" class="form-control bg-white border-0 shadow-sm" id="userNomeConfig" required></div>
+                                                  <div class="col-md-4"><label class="form-label small fw-bold text-muted mb-1">Login de Acesso</label><input type="text" class="form-control bg-white border-0 shadow-sm" id="userLoginConfig" required></div>
+                                                  <div class="col-md-4"><label class="form-label small fw-bold text-muted mb-1">Senha</label><input type="text" class="form-control bg-white border-0 shadow-sm" id="userSenhaConfig" required></div>
+                                                  <div class="col-md-4"><label class="form-label small fw-bold text-muted mb-1">Nível de Permissão</label><select class="form-select bg-white border-0 shadow-sm" id="userNivelConfig" onchange="if(this.value==='ADMIN'){document.getElementById('painelPermissoes').style.opacity='0.4'; document.getElementById('painelPermissoes').style.pointerEvents='none';}else{document.getElementById('painelPermissoes').style.opacity='1'; document.getElementById('painelPermissoes').style.pointerEvents='auto';}"><option value="COMUM">COMUM (Regras Específicas)</option><option value="ADMIN">ADMINISTRADOR (Acesso Total)</option></select></div>
+                                                  
+                                                  <div class="col-12 mt-4" id="painelPermissoes">
+                                                      <label class="form-label small fw-bold text-muted mb-2">2. Permissões Específicas (Marque o que este usuário pode fazer)</label>
+                                                      <div class="row g-3 bg-white p-3 rounded-4 border shadow-sm">
+                                                          <div class="col-md-4">
+                                                              <h6 class="small fw-bold text-primary mb-3"><span class="material-icons align-middle" style="font-size:16px">visibility</span> VISUALIZAR TELAS</h6>
+                                                              <div class="form-check form-switch"><input class="form-check-input perm-check" type="checkbox" value="AGENDA" id="p_age"><label class="form-check-label small fw-semibold" for="p_age">Módulo Agenda</label></div>
+                                                              <div class="form-check form-switch"><input class="form-check-input perm-check" type="checkbox" value="FLUXO" id="p_flu"><label class="form-check-label small fw-semibold" for="p_flu">Módulo Fluxo de Caixa</label></div>
+                                                              <div class="form-check form-switch">
+                                                                <input class="form-check-input perm-check" type="checkbox" value="NOTAS_FISCAIS" id="p_nf">
+                                                                <label class="form-check-label small fw-semibold" for="p_nf">Gestão de Notas Fiscais</label>
+                                                              </div>
+                                                              
+                                                              <div class="form-check form-switch"><input class="form-check-input perm-check" type="checkbox" value="DASHBOARD" id="p_dash"><label class="form-check-label small fw-semibold" for="p_dash">Dashboard Gráfico</label></div>
+                                                              <div class="form-check form-switch"><input class="form-check-input perm-check" type="checkbox" value="FINANCEIRO" id="p_fin"><label class="form-check-label small fw-semibold" for="p_fin">Lançamentos (Tabela)</label></div>
+                                                              <div class="form-check form-switch"><input class="form-check-input perm-check" type="checkbox" value="ESTOQUE" id="p_est"><label class="form-check-label small fw-semibold" for="p_est">Almoxarifado / Estoque</label></div>
+                                                              <div class="form-check form-switch"><input class="form-check-input perm-check" type="checkbox" value="LABORATORIO" id="p_lab"><label class="form-check-label small fw-semibold" for="p_lab">Laboratório de Próteses</label></div>
+                                                              <div class="form-check form-switch"><input class="form-check-input perm-check" type="checkbox" value="CONFIG" id="p_conf"><label class="form-check-label small fw-semibold" for="p_conf">Configurações do Sistema</label></div>
+                                                          </div>
+                                                          <div class="col-md-4">
+                                                              <h6 class="small fw-bold text-info mb-3"><span class="material-icons align-middle" style="font-size:16px">description</span> RELATÓRIOS</h6>
+                                                              <div class="form-check form-switch"><input class="form-check-input perm-check" type="checkbox" value="RELATORIO" id="p_rel"><label class="form-check-label small fw-semibold" for="p_rel">Relatório Geral</label></div>
+                                                              <div class="form-check form-switch"><input class="form-check-input perm-check" type="checkbox" value="HOLERITE" id="p_hol"><label class="form-check-label small fw-semibold" for="p_hol">Holerites</label></div>
+                                                              <div class="form-check form-switch"><input class="form-check-input perm-check" type="checkbox" value="RESULTADO" id="p_res"><label class="form-check-label small fw-semibold" for="p_res">Resultado da Clínica</label></div>
+                                                          </div>
+                                                          <div class="col-md-4">
+                                                              <h6 class="small fw-bold text-danger mb-3"><span class="material-icons align-middle" style="font-size:16px">edit_note</span> AÇÕES DO ERP</h6>
+                                                              <div class="form-check form-switch"><input class="form-check-input perm-check" type="checkbox" value="ADICIONAR" id="p_add" checked><label class="form-check-label small text-success fw-bold" for="p_add">Adicionar Lançamentos</label></div>
+                                                              <div class="form-check form-switch"><input class="form-check-input perm-check" type="checkbox" value="EDITAR" id="p_edit"><label class="form-check-label small text-warning fw-bold" for="p_edit">Editar Lançamentos</label></div>
+                                                              <div class="form-check form-switch"><input class="form-check-input perm-check" type="checkbox" value="EXCLUIR" id="p_del"><label class="form-check-label small text-danger fw-bold" for="p_del">Excluir Lançamentos</label></div>
+                                                          </div>
+                                                      </div>
+                                                  </div>
+                                                  
+                                                  <div class="col-12 mt-4 d-flex justify-content-between align-items-center pt-3 border-top">
+                                                      <button type="button" class="btn btn-outline-danger fw-bold shadow-sm" onclick="excluirUsuarioConfig(document.getElementById('userIdConfig').value)" id="btnExcluirCombo" style="display:none;">🗑️ EXCLUIR USUÁRIO</button>
+                                                      <div class="d-flex gap-2 ms-auto">
+                                                         <button type="button" class="btn btn-outline-secondary fw-bold shadow-sm" onclick="limparFormUsuarioConfig()">LIMPAR E NOVO</button>
+                                                         <button type="button" class="btn btn-success fw-bold px-5 shadow-sm" onclick="salvarUsuarioConfigNovo()" id="btnSalvarUsuario">💾 SALVAR USUÁRIO</button>
+                                                      </div>
+                                                  </div>
                                               </div>
                                           </form>
                                       </div>
@@ -2410,23 +2499,6 @@ function cadastrarDoutor() {
    }).cadastrarItemAuxiliar('doutor', nome, percPart, percPlano);
 }
 
-function carregarUsuariosConfig() {
-  google.script.run.withSuccessHandler(function(usuarios) {
-      let tbody = document.querySelector("#tabelaUsuarios tbody");
-      if (!tbody) return;
-      tbody.innerHTML = "";
-      usuarios.forEach(u => {
-          let badgeNivel = u.nivel === 'ADMIN' ? '<span class="badge bg-danger rounded-pill" style="letter-spacing: 0.5px;">ADMIN</span>' : (u.nivel === 'RECEPCAO' ? '<span class="badge bg-info rounded-pill" style="letter-spacing: 0.5px;">RECEPÇÃO</span>' : '<span class="badge bg-secondary rounded-pill" style="letter-spacing: 0.5px;">COMUM</span>');
-          let row = tbody.insertRow();
-          row.insertCell(0).innerHTML = `<span class="text-muted fw-bold ps-2">#${u.id}</span>`;
-          row.insertCell(1).innerHTML = `<span class="fw-bold text-dark">${u.nome}</span>`;
-          row.insertCell(2).innerHTML = `<span class="text-muted">${u.login}</span>`;
-          row.insertCell(3).innerHTML = badgeNivel;
-          row.insertCell(4).innerHTML = `<small class="text-muted">${u.permissoes || '-'}</small>`;
-          row.insertCell(5).innerHTML = `<button class="btn btn-sm btn-light text-warning shadow-sm border-0 me-1" onclick="editarUsuarioConfig(${u.id})"><span class="material-icons" style="font-size: 16px;">edit</span></button><button class="btn btn-sm btn-light text-danger shadow-sm border-0" onclick="excluirUsuarioConfig(${u.id})"><span class="material-icons" style="font-size: 16px;">delete</span></button>`;
-      });
-  }).listarUsuarios();
-}
 
 function editarUsuarioConfig(id) {
   google.script.run.withSuccessHandler(function(u) {
@@ -2447,43 +2519,116 @@ function editarUsuarioConfig(id) {
   }).getUsuarioPorId(id);
 }
 
-function excluirUsuarioConfig(id) {
-  if (!confirm("Excluir este usuário permanentemente?")) return;
-  google.script.run.withSuccessHandler(function(msg) { mostrarNotificacao(msg, "sucesso"); carregarUsuariosConfig(); limparFormUsuarioConfig(); }).excluirUsuario(id);
+// ==========================================
+// MOTOR DE USUÁRIOS E PERMISSÕES AVANÇADAS
+// ==========================================
+var cacheUsuariosConfig = [];
+
+function carregarUsuariosConfig() {
+  google.script.run.withSuccessHandler(function(usuarios) {
+      cacheUsuariosConfig = usuarios; 
+      const combo = document.getElementById("comboUsuariosEdit");
+      if (!combo) return;
+      
+      let html = '<option value="">✨ + CRIAR NOVO USUÁRIO</option>';
+      usuarios.forEach(u => {
+          let icone = u.nivel === 'ADMIN' ? '👑' : '👤';
+          html += `<option value="${u.id}">${icone} ${u.nome} (${u.login})</option>`;
+      });
+      combo.innerHTML = html;
+      limparFormUsuarioConfig();
+  }).listarUsuarios();
 }
 
-function salvarUsuarioConfig() {
-  const dados = {
-      id: document.getElementById("userIdConfig").value || null,
-      nome: document.getElementById("userNomeConfig").value,
-      login: document.getElementById("userLoginConfig").value,
-      senha: document.getElementById("userSenhaConfig").value,
-      nivel: document.getElementById("userNivelConfig").value,
-      permissoes: document.getElementById("userPermissoesConfig").value
-  };
-  if (!dados.nome || !dados.login || !dados.senha) return mostrarNotificacao("Preencha nome, login e senha!", "erro");
-  const btnSalvar = document.getElementById("btnSalvarUsuario");
-  const textoOriginal = btnSalvar.innerHTML;
-  btnSalvar.innerHTML = "Salvando..."; btnSalvar.disabled = true;
-  google.script.run.withSuccessHandler(function(msg) { mostrarNotificacao(msg, "sucesso"); carregarUsuariosConfig(); limparFormUsuarioConfig(); btnSalvar.disabled = false; }).withFailureHandler(function(err) { mostrarNotificacao("Erro ao salvar.", "erro"); btnSalvar.innerHTML = textoOriginal; btnSalvar.disabled = false; }).salvarUsuario(dados);
+function seUsuarioSelecionado(id) {
+    if (!id) {
+        limparFormUsuarioConfig();
+        return;
+    }
+    const u = cacheUsuariosConfig.find(x => x.id.toString() === id.toString());
+    if (!u) return;
+
+    document.getElementById("userIdConfig").value = u.id;
+    document.getElementById("userNomeConfig").value = u.nome;
+    document.getElementById("userLoginConfig").value = u.login;
+    document.getElementById("userSenhaConfig").value = u.senha;
+    document.getElementById("userNivelConfig").value = u.nivel;
+    
+    document.getElementById("btnExcluirCombo").style.display = "inline-block";
+    document.getElementById("btnSalvarUsuario").innerHTML = "💾 ATUALIZAR USUÁRIO";
+
+    const painel = document.getElementById('painelPermissoes');
+    if(u.nivel === 'ADMIN'){
+        painel.style.opacity='0.4'; painel.style.pointerEvents='none';
+    } else {
+        painel.style.opacity='1'; painel.style.pointerEvents='auto';
+    }
+
+    // Varre e marca os Switches de Permissão
+    const permissoesArray = (u.permissoes || "").toUpperCase().split(",");
+    document.querySelectorAll('.perm-check').forEach(chk => {
+        chk.checked = permissoesArray.includes(chk.value.trim());
+    });
+}
+
+function salvarUsuarioConfigNovo() {
+    let permissoesSelecionadas = [];
+    document.querySelectorAll('.perm-check').forEach(chk => {
+        if(chk.checked) permissoesSelecionadas.push(chk.value);
+    });
+
+    const dados = {
+        id: document.getElementById("userIdConfig").value || null,
+        nome: document.getElementById("userNomeConfig").value,
+        login: document.getElementById("userLoginConfig").value,
+        senha: document.getElementById("userSenhaConfig").value,
+        nivel: document.getElementById("userNivelConfig").value,
+        permissoes: permissoesSelecionadas.join(",") 
+    };
+
+    if (!dados.nome || !dados.login || !dados.senha) return mostrarNotificacao("Preencha nome, login e senha!", "erro");
+    
+    const btnSalvar = document.getElementById("btnSalvarUsuario");
+    const textoOriginal = btnSalvar.innerHTML;
+    btnSalvar.innerHTML = "Salvando..."; btnSalvar.disabled = true;
+
+    google.script.run.withSuccessHandler(function(msg) { 
+        mostrarNotificacao(msg, "sucesso"); 
+        carregarUsuariosConfig(); 
+        btnSalvar.disabled = false; 
+    }).withFailureHandler(function(err) { 
+        mostrarNotificacao("Erro ao salvar.", "erro"); 
+        btnSalvar.innerHTML = textoOriginal; 
+        btnSalvar.disabled = false; 
+    }).salvarUsuario(dados);
+}
+
+function excluirUsuarioConfig(id) {
+  if (!id) return;
+  if (!confirm("Excluir este usuário permanentemente?")) return;
+  google.script.run.withSuccessHandler(function(msg) { 
+      mostrarNotificacao(msg, "sucesso"); 
+      carregarUsuariosConfig(); 
+  }).excluirUsuario(id);
 }
 
 function limparFormUsuarioConfig() {
-  document.getElementById("userIdConfig").value = "";
-  document.getElementById("userNomeConfig").value = "";
-  document.getElementById("userLoginConfig").value = "";
-  document.getElementById("userSenhaConfig").value = "";
-  document.getElementById("userNivelConfig").value = "COMUM";
-  document.getElementById("userPermissoesConfig").value = "";
-  const titulo = document.getElementById("tituloFormUsuario");
-  titulo.innerHTML = `<span class="material-icons" style="font-size: 20px;">person_add</span> Adicionar Novo Usuário`;
-  titulo.style.color = "var(--primary-color)";
-  const btnSalvar = document.getElementById("btnSalvarUsuario");
-  btnSalvar.innerHTML = "💾 SALVAR USUÁRIO";
-  btnSalvar.classList.replace("btn-warning", "btn-success");
-  btnSalvar.classList.add("text-white");
-}
+    document.getElementById("comboUsuariosEdit").value = "";
+    document.getElementById("userIdConfig").value = "";
+    document.getElementById("userNomeConfig").value = "";
+    document.getElementById("userLoginConfig").value = "";
+    document.getElementById("userSenhaConfig").value = "";
+    document.getElementById("userNivelConfig").value = "COMUM";
+    document.getElementById("btnExcluirCombo").style.display = "none";
+    document.getElementById("btnSalvarUsuario").innerHTML = "💾 SALVAR USUÁRIO";
 
+    document.getElementById('painelPermissoes').style.opacity='1'; 
+    document.getElementById('painelPermissoes').style.pointerEvents='auto';
+
+    document.querySelectorAll('.perm-check').forEach(chk => {
+        chk.checked = (chk.value === 'ADICIONAR'); // Novo usuário vem só com ADICIONAR marcado
+    });
+}
 
 function salvarPacienteCRM() {
   const form = document.getElementById("formPacienteCompleto");
@@ -2603,6 +2748,11 @@ function alterarIntervaloAgenda(novoIntervalo) {
 }
 
 function renderizarCalendario(forcarRecarregamento = false) {
+
+  if (usuarioLogado.nivel !== "ADMIN" && !(usuarioLogado.permissoes || "").toUpperCase().includes("AGENDA")) {
+      return mostrarNotificacao("🚫 Acesso negado ao Módulo Agenda.", "erro");
+  }
+
   const calendarEl = document.getElementById('calendario-clinica');
   if (!calendarEl) return;
   
@@ -2655,6 +2805,8 @@ function renderizarCalendario(forcarRecarregamento = false) {
 }
 
 function abrirModalAgendamento(data, hora) {
+
+
   // 1. Limpa o formulário e reseta os campos ocultos
   const form = document.getElementById("formAgendamento");
   if (form) form.reset();
@@ -5294,6 +5446,180 @@ function deletarRegraRecorrente(id) {
         mostrarNotificacao("✅ Recorrência removida!", "sucesso");
         carregarRecorrenciasModal(); // Recarrega a lista dentro do modal
     }).excluirRegraFixa(id);
+}
+
+// ==========================================
+// MÓDULO DE GESTÃO DE NOTAS FISCAIS
+// ==========================================
+
+function renderizarGestaoNF() {
+    document.getElementById('area-relatorio-nf').innerHTML = '<div class="text-center mt-4"><span class="spinner-border text-primary"></span><p class="mt-2 text-muted fw-bold">Buscando pendências...</p></div>';
+
+    google.script.run.withSuccessHandler(function(dados) {
+        const solicitacoes = dados.filter(i => i.nf === "SIM");
+
+        if(solicitacoes.length === 0) {
+            document.getElementById('area-relatorio-nf').innerHTML = '<div class="alert alert-success text-center border-0 shadow-sm fw-bold">🎉 Nenhuma Nota Fiscal solicitada ou pendente!</div>';
+            return;
+        }
+
+        // Agora exibimos LINHA POR LINHA (Separado por procedimento)
+        let html = `
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead class="bg-light">
+                    <tr>
+                        <th class="text-secondary small fw-bold">DATA</th>
+                        <th class="text-secondary small fw-bold">PACIENTE</th>
+                        <th class="text-secondary small fw-bold">PROCEDIMENTO</th>
+                        <th class="text-secondary small fw-bold">STATUS</th>
+                        <th class="text-center text-secondary small fw-bold">AÇÕES</th>
+                    </tr>
+                </thead>
+                <tbody>`;
+
+        solicitacoes.forEach((item) => {
+            const isConcluido = item.nf_status === "CONCLUÍDO";
+            const statusIcon = isConcluido ? '<span class="badge bg-success">✅ CONCLUÍDO</span>' : '<span class="badge bg-warning text-dark">⏳ PENDENTE</span>';
+            const linkView = item.nf_link ? item.nf_link : '#';
+
+            html += `
+            <tr>
+                <td class="text-muted fw-bold small">${item.data}</td>
+                <td class="fw-bold text-dark">${item.paciente}</td>
+                <td class="text-muted fw-bold small">${item.procedimento}</td>
+                <td>${statusIcon}</td>
+                <td class="text-center">
+                    <button class="btn btn-sm btn-light border shadow-sm me-2" onclick="abrirProntuario('${item.paciente}')" title="Abrir Prontuário">
+                        <span class="material-icons text-primary" style="font-size:18px">assignment_ind</span>
+                    </button>`;
+
+            if(isConcluido) {
+                html += `<a href="${linkView}" target="_blank" class="btn btn-sm btn-outline-success shadow-sm fw-bold">
+                            <span class="material-icons align-middle" style="font-size:16px">visibility</span> Ver NF
+                         </a>`;
+            } else {
+                // Passamos o ID EXATO para o modal
+                html += `<button class="btn btn-sm btn-primary shadow-sm fw-bold" onclick="abrirModalNF('${item.paciente}', '${item.id}', '${item.procedimento}')">
+                            <span class="material-icons align-middle" style="font-size:16px">upload_file</span> Anexar
+                         </button>`;
+            }
+
+            html += `</td></tr>`;
+        });
+
+        html += `</tbody></table></div>`;
+        document.getElementById('area-relatorio-nf').innerHTML = html;
+
+    }).getDadosTabelaERP();
+}
+
+function abrirModalNF(paciente, idLinha, procedimento) {
+    document.getElementById('nfPacienteNome').innerText = paciente + " - " + procedimento;
+    document.getElementById('nfPacienteHidden').value = paciente;
+    
+    // Cria/Preenche o ID oculto da linha específica
+    let hiddenId = document.getElementById('nfIdLinhaHidden');
+    if(!hiddenId) {
+        hiddenId = document.createElement('input');
+        hiddenId.type = 'hidden';
+        hiddenId.id = 'nfIdLinhaHidden';
+        document.querySelector('#modalAnexoNF .modal-body').appendChild(hiddenId);
+    }
+    hiddenId.value = idLinha;
+    
+    document.getElementById('linkNFInput').value = "";
+    new bootstrap.Modal(document.getElementById('modalAnexoNF')).show();
+}
+
+function salvarAnexoNF() {
+    const paciente = document.getElementById('nfPacienteHidden').value;
+    const idLinha = document.getElementById('nfIdLinhaHidden').value;
+    const link = document.getElementById('linkNFInput').value.trim();
+    const btn = document.getElementById('btnSalvarNF');
+
+    if(!link) return mostrarNotificacao("Cole o link ou código da NF!", "erro");
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Salvando...';
+
+    google.script.run.withSuccessHandler(function(res) {
+        mostrarNotificacao(res, "sucesso");
+        bootstrap.Modal.getInstance(document.getElementById('modalAnexoNF')).hide();
+        btn.disabled = false;
+        btn.innerHTML = '✅ Marcar como Concluído';
+        renderizarGestaoNF(); 
+    }).withFailureHandler(function(err){
+        mostrarNotificacao(err, "erro");
+        btn.disabled = false;
+        btn.innerHTML = '✅ Marcar como Concluído';
+    }).atualizarStatusNF_BD(idLinha, paciente, link); // Agora envia o ID pro servidor!
+}
+
+function gerarRelatorioNFPeriodo() {
+    const inicio = document.getElementById('nf_data_inicio').value;
+    const fim = document.getElementById('nf_data_fim').value;
+
+    if (!inicio || !fim) return mostrarNotificacao("Selecione o período inicial e final!", "erro");
+
+    document.getElementById('area-relatorio-nf').innerHTML = '<div class="text-center mt-4"><span class="spinner-border text-primary"></span><p class="mt-2 text-muted fw-bold">Gerando relatório de emissões...</p></div>';
+
+    google.script.run.withSuccessHandler(function(dados) {
+        // Filtra por data e por status CONCLUÍDO
+        const dIni = new Date(inicio + "T00:00:00");
+        const dFim = new Date(fim + "T23:59:59");
+
+        const filtrados = dados.filter(item => {
+            if (!item.data) return false;
+            // Converte a data do item (DD/MM/YYYY) para objeto Date
+            const partes = item.data.split('/');
+            const dataItem = new Date(partes[2], partes[1] - 1, partes[0]);
+            
+            return dataItem >= dIni && dataItem <= dFim && item.nf_status === "CONCLUÍDO";
+        });
+
+        if (filtrados.length === 0) {
+            document.getElementById('area-relatorio-nf').innerHTML = '<div class="alert alert-info text-center border-0 shadow-sm fw-bold">ℹ️ Nenhuma nota emitida neste período.</div>';
+            return;
+        }
+
+        let html = `
+        <div class="mb-3 d-flex justify-content-between align-items-center">
+            <span class="badge bg-primary px-3 py-2">${filtrados.length} Nota(s) Encontrada(s)</span>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle" style="font-size: 13px;">
+                <thead class="bg-light">
+                    <tr>
+                        <th>DATA</th>
+                        <th>PACIENTE</th>
+                        <th>PROCEDIMENTO</th>
+                        <th class="text-center">AÇÕES</th>
+                    </tr>
+                </thead>
+                <tbody>`;
+
+        filtrados.forEach(f => {
+            html += `
+            <tr>
+                <td class="fw-bold">${f.data}</td>
+                <td>${f.paciente}</td>
+                <td class="text-muted">${f.procedimento}</td>
+                <td class="text-center">
+                    <button class="btn btn-sm btn-light border p-1 me-1" onclick="abrirProntuario('${f.paciente}')" title="Prontuário">
+                        <span class="material-icons text-primary" style="font-size:18px">assignment_ind</span>
+                    </button>
+                    <a href="${f.nf_link}" target="_blank" class="btn btn-sm btn-success p-1" title="Visualizar Nota">
+                        <span class="material-icons" style="font-size:18px">visibility</span>
+                    </a>
+                </td>
+            </tr>`;
+        });
+
+        html += `</tbody></table></div>`;
+        document.getElementById('area-relatorio-nf').innerHTML = html;
+
+    }).getDadosTabelaERP(); // Usa sua função oficial que já lê as colunas P, Q e R
 }
 
 function abrirDashboard() { google.script.run.withSuccessHandler(url => window.open(url + "?page=Index", "_blank")).getScriptURL(); }
