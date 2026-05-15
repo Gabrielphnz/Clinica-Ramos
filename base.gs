@@ -1,7 +1,50 @@
 const NOME_ABA_DADOS = "TOTAL"; 
 
 
+function consertarDadosColados() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  
+  // Confirme se o nome da aba está correto aqui:
+  const sheet = ss.getSheetByName(typeof NOME_ABA_DADOS !== 'undefined' ? NOME_ABA_DADOS : "Respostas ao formulário 1"); 
+  
+  if (!sheet) {
+    console.log("Erro: Aba não encontrada.");
+    return;
+  }
 
+  const data = sheet.getDataRange().getValues();
+  let datasCorrigidas = 0;
+  let idsGerados = 0;
+
+  // i = 2 para pular a linha de cabeçalho e a de template (se houver)
+  for (let i = 2; i < data.length; i++) {
+    
+    // 1. CORRIGE O TIPO DA DATA (Coluna A / Índice 0)
+    let dataCelula = data[i][0];
+    if (typeof dataCelula === 'string' && dataCelula.includes('/')) {
+       let partes = dataCelula.split('/');
+       if (partes.length === 3) {
+         // Se o ano estiver com 2 dígitos, ajusta para 4 (ex: 24 -> 2024)
+         let ano = partes[2].length === 2 ? "20" + partes[2] : partes[2];
+         // Reescreve a célula forçando o Google Sheets a entender que é uma Data
+         sheet.getRange(i + 1, 1).setValue(new Date(ano, partes[1] - 1, partes[0]));
+         datasCorrigidas++;
+       }
+    }
+
+    // 2. GARANTE O ID ÚNICO (Coluna N / Índice 13)
+    if (!data[i][13] || data[i][13].toString().trim() === "") {
+      sheet.getRange(i + 1, 14).setValue(new Date().getTime() + i); // Cria ID novo e único
+      idsGerados++;
+    }
+    
+    // 3. LIMPA ESPAÇOS INVISÍVEIS (Doutor e Paciente)
+    if (data[i][1] && typeof data[i][1] === 'string') sheet.getRange(i + 1, 2).setValue(data[i][1].trim());
+    if (data[i][2] && typeof data[i][2] === 'string') sheet.getRange(i + 1, 3).setValue(data[i][2].trim());
+  }
+
+  console.log(`Sucesso! ${datasCorrigidas} datas formatadas e ${idsGerados} IDs gerados.`);
+}
 // ==========================================
 // ROTEADOR PÚBLICO (ERP vs PORTAL DE ACEITE)
 // ==========================================
@@ -216,43 +259,70 @@ function getDashboardData() {
 
 // ===== LEITURA DOS DADOS =====
 function getDadosTabelaERP() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName(NOME_ABA_DADOS);
-  if (!sheet) return [];
-  
-  const values = sheet.getDataRange().getValues();
-  let resultados = [];
-  
-  for (let i = 2; i < values.length; i++) {
-    let r = values[i];
-    if (!r[1] || String(r[1]).trim() === "") continue; 
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    // Procura a aba correta
+    const sheet = ss.getSheetByName(typeof NOME_ABA_DADOS !== 'undefined' ? NOME_ABA_DADOS : "Respostas ao formulário 1");
     
-    let dtExibicao = "";
-    if (r[0] instanceof Date) {
-      const data = r[0];
-      dtExibicao = `${String(data.getDate()).padStart(2,'0')}/${String(data.getMonth()+1).padStart(2,'0')}/${data.getFullYear()}`;
-    } else {
-      dtExibicao = r[0];
+    if (!sheet) {
+      console.log("Aba não encontrada.");
+      return [];
+    }
+
+    const data = sheet.getDataRange().getValues();
+    let resultados = [];
+
+    // Começa no 1 para ignorar o cabeçalho
+    for (let i = 1; i < data.length; i++) {
+      let r = data[i];
+
+      // SE a linha estiver totalmente vazia nas colunas principais, salta e vai para a próxima (evita crash)
+      if (!r[0] && !r[2] && !r[3]) continue;
+
+      // Tratamento de Data Blindado
+      let dtExibicao = "";
+      try {
+        if (r[0] instanceof Date) {
+           dtExibicao = Utilities.formatDate(r[0], "GMT-3", "dd/MM/yyyy");
+        } else if (r[0]) {
+           dtExibicao = r[0].toString().substring(0, 10);
+        } else {
+           dtExibicao = "Sem Data";
+        }
+      } catch(e) {
+        dtExibicao = "Data Inválida";
+      }
+
+      // Monta o objeto com proteções contra falhas matemáticas (Number)
+      resultados.push({
+        id: r[13] || (new Date().getTime() + i), // Coluna N (14)
+        data: dtExibicao,
+        doutor: r[1] ? r[1].toString().trim() : "",
+        paciente: r[2] ? r[2].toString().trim() : "",
+        procedimento: r[3] ? r[3].toString().trim() : "",
+        plano: r[4] ? r[4].toString().trim() : "",
+        pagamento: r[5] ? r[5].toString().trim() : "",
+        obs: r[6] ? r[6].toString().trim() : "",
+        particular: Number(r[7]) || 0,
+        vplano: Number(r[8]) || 0,
+        vlab: Number(r[9]) || 0,
+        lucroClinica: Number(r[12]) || 0,
+        parteDentista: (Number(r[10]) || 0) + (Number(r[11]) || 0),
+        
+        // Colunas Novas da Nota Fiscal (P, Q, R)
+        nf: r[15] ? String(r[15]).trim().toUpperCase() : "NÃO",
+        nf_status: r[16] ? String(r[16]).trim().toUpperCase() : "N/A",
+        nf_link: r[17] ? String(r[17]).trim() : ""
+      });
     }
     
-    resultados.push({
-      id: r[13] || (i + 1),
-      data: dtExibicao,
-      doutor: r[1],
-      paciente: r[2],
-      procedimento: r[3],
-      plano: r[4], 
-      pagamento: r[5],
-      obs: r[6],
-      particular: Number(r[7]) || 0,
-      vplano: Number(r[8]) || 0,
-      vlab: Number(r[9]) || 0,
-      lucroClinica: Number(r[12]) || 0,
-      parteDentista: (Number(r[10]) || 0) + (Number(r[11]) || 0)
-    });
+    // Devolve os resultados (os mais recentes primeiro)
+    return resultados.reverse(); 
+
+  } catch (erroFatal) {
+    console.log("Erro fatal no servidor ao ler dados: " + erroFatal.message);
+    return []; // Devolve vazio para não travar a tela preta
   }
-  
-  return resultados;
 }
 
 function encontrarPrimeiraLinhaVazia(sheet) {
@@ -317,12 +387,11 @@ function salvarLancamentoUnificado(dados) {
     // CAPTURA A TAXA DE CARTÃO DO PACOTE DE DADOS
     const valorTaxaCartao = limparValor(dados.taxaCartao);
     
-    // ==========================================
+// ==========================================
     // EDIÇÃO DE REGISTRO EXISTENTE
     // ==========================================
     if (dados.idLinha && dados.idLinha !== "") {
       const busca = sheet.getRange("N:N").createTextFinder(dados.idLinha).matchEntireCell(true).findNext();
-      
       if (busca) {
         const linha = busca.getRow();
         const valoresAtualizados = [[
@@ -330,12 +399,15 @@ function salvarLancamentoUnificado(dados) {
           dados.plano, dados.pagamento, dados.obs, valorParticular,
           valorPlano, valorLab
         ]];
-        
         sheet.getRange(linha, 1, 1, 10).setValues(valoresAtualizados);
         
-        // GRAVA A TAXA NA COLUNA "O" (15) DURANTE A EDIÇÃO
+        // Mantém a Taxa (Coluna O / 15) e a NF (P, Q, R) na edição
         sheet.getRange(linha, 15).setValue(valorTaxaCartao);
         
+        // Se a NF for alterada, salva o novo status
+        if(dados.nf) sheet.getRange(linha, 16).setValue(dados.nf);
+        if(dados.nf_status) sheet.getRange(linha, 17).setValue(dados.nf_status);
+
         return "Registro atualizado com sucesso!";
       }
       return "Registro não encontrado para edição";
@@ -344,11 +416,10 @@ function salvarLancamentoUnificado(dados) {
     // ==========================================
     // CRIANDO UM NOVO REGISTRO
     // ==========================================
+    // ... [MANTENHA A BUSCA DA LINHA VAZIA QUE VOCÊ JÁ TEM AQUI] ...
     const ultimaLinha = sheet.getLastRow();
     let linhaDestino = ultimaLinha + 1;
     const inicioBusca = Math.max(3, ultimaLinha - 100);
-    
-    // Acha a primeira linha vazia
     const valoresColunaB = sheet.getRange(inicioBusca, 2, ultimaLinha - inicioBusca + 1, 1).getValues();
     for (let i = 0; i < valoresColunaB.length; i++) {
       if (!valoresColunaB[i][0] || valoresColunaB[i][0].toString().trim() === "") {
@@ -357,18 +428,16 @@ function salvarLancamentoUnificado(dados) {
       }
     }
     
-    const novoId = new Date().getTime(); 
-    
+    const novoId = new Date().getTime();
     const novaLinhaDados = [[
       dataObj, dados.doutor, dados.paciente, dados.procedimento,
       dados.plano, dados.pagamento, dados.obs, valorParticular,
       valorPlano, valorLab
     ]];
     
-    // Copia as Fórmulas das Colunas K(11), L(12) e M(13)
+    // ... [MANTENHA A CÓPIA DAS FÓRMULAS AQUI] ...
     if (sheet.getLastRow() >= 3) {
       const linhaTemplate = 3;
-      
       let formulaR1C1_K = sheet.getRange(linhaTemplate, 11).getFormulaR1C1();
       if (formulaR1C1_K) sheet.getRange(linhaDestino, 11).setFormulaR1C1(formulaR1C1_K);
       else sheet.getRange(linhaDestino, 11).setValue(sheet.getRange(linhaTemplate, 11).getValue());
@@ -381,16 +450,17 @@ function salvarLancamentoUnificado(dados) {
       if (formulaR1C1_M) sheet.getRange(linhaDestino, 13).setFormulaR1C1(formulaR1C1_M);
       else sheet.getRange(linhaDestino, 13).setValue(sheet.getRange(linhaTemplate, 13).getValue());
     }
-    
+
     // Grava as 10 primeiras colunas (A até J)
     sheet.getRange(linhaDestino, 1, 1, 10).setValues(novaLinhaDados);
-    
     // Grava o ID único na Coluna N (14)
     sheet.getRange(linhaDestino, 14).setValue(novoId);
-    
-    // GRAVA A TAXA DO CARTÃO NA COLUNA "O" (15) DO NOVO REGISTRO
+    // Grava a Taxa do Cartão na Coluna "O" (15) 
     sheet.getRange(linhaDestino, 15).setValue(valorTaxaCartao);
-    
+    // Grava NF (16) e Status da NF (17)
+    sheet.getRange(linhaDestino, 16).setValue(dados.nf || "NÃO");
+    sheet.getRange(linhaDestino, 17).setValue(dados.nf_status || "N/A");
+
     return "Registro salvo com sucesso!";
     
   } catch (erro) {
@@ -3152,4 +3222,55 @@ function editarRegraFixaBD(id, desc, valor, dia) {
   } finally {
     lock.releaseLock();
   }
+}
+
+// ==========================================
+// ATUALIZA STATUS E ANEXA LINK DA NF (ESPECÍFICA POR PROCEDIMENTO)
+// ==========================================
+function atualizarStatusNF_BD(idLinha, pacienteNome, linkOuId) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  // Altere abaixo para o nome exato da sua aba de financeiro se precisar (DADOS ou Respostas...)
+  const sheet = ss.getSheetByName(typeof NOME_ABA_DADOS !== 'undefined' ? NOME_ABA_DADOS : "Respostas ao formulário 1"); 
+  if(!sheet) return "Erro: Aba principal não encontrada.";
+
+  let linkFinal = linkOuId;
+
+  // 1. INTEGRAÇÃO COM O MOTOR DE DOCUMENTOS E PASTAS DO DRIVE
+  try {
+    if (linkOuId.includes("id=") || linkOuId.length > 20) {
+      const idArquivo = linkOuId.includes("id=") ? linkOuId.split("id=")[1].split("&")[0] : linkOuId.split("/d/")[1]?.split("/")[0] || linkOuId;
+      const arquivo = DriveApp.getFileById(idArquivo);
+      
+      const nomePastaRaiz = "Documentos_Clinica_Ramos";
+      let pastasRaiz = DriveApp.getFoldersByName(nomePastaRaiz);
+      let pastaRaiz = pastasRaiz.hasNext() ? pastasRaiz.next() : DriveApp.createFolder(nomePastaRaiz);
+
+      let pastasPac = pastaRaiz.getFoldersByName(pacienteNome.trim());
+      let pastaPaciente = pastasPac.hasNext() ? pastasPac.next() : pastaRaiz.createFolder(pacienteNome.trim());
+
+      let pastasTipo = pastaPaciente.getFoldersByName("Notas Fiscais");
+      let pastaDestino = pastasTipo.hasNext() ? pastasTipo.next() : pastaPaciente.createFolder("Notas Fiscais");
+
+      arquivo.moveTo(pastaDestino);
+      linkFinal = arquivo.getUrl(); 
+      
+      let abaDocs = ss.getSheetByName("DOCUMENTOS") || ss.insertSheet("DOCUMENTOS");
+      const dataHoje = Utilities.formatDate(new Date(), "GMT-3", "dd/MM/yyyy");
+      abaDocs.appendRow([dataHoje, pacienteNome.trim(), "NOTA FISCAL", "NF Eletrônica", linkFinal, "", "✅ ARQUIVADO"]);
+    }
+  } catch(e) {
+    console.log("Erro ao mover para a pasta. Salvando apenas o link: " + e);
+  }
+
+  // 2. ATUALIZA A PLANILHA DO FINANCEIRO (Procura exatamente o ID do procedimento)
+  const busca = sheet.getRange("N:N").createTextFinder(idLinha.toString()).matchEntireCell(true).findNext();
+  if (busca) {
+      const linha = busca.getRow();
+      sheet.getRange(linha, 17).setValue("CONCLUÍDO"); // Coluna Q
+      sheet.getRange(linha, 18).setValue(linkFinal);   // Coluna R
+      
+      return "NF anexada ao procedimento específico com sucesso!";
+  }
+
+  return "Erro: Procedimento não encontrado na base de dados.";
 }
