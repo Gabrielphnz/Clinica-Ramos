@@ -387,13 +387,27 @@ function salvarLancamentoUnificado(dados) {
     // CAPTURA A TAXA DE CARTÃO DO PACOTE DE DADOS
     const valorTaxaCartao = limparValor(dados.taxaCartao);
     
-// ==========================================
+    // ==========================================
     // EDIÇÃO DE REGISTRO EXISTENTE
     // ==========================================
     if (dados.idLinha && dados.idLinha !== "") {
       const busca = sheet.getRange("N:N").createTextFinder(dados.idLinha).matchEntireCell(true).findNext();
       if (busca) {
         const linha = busca.getRow();
+
+        // ==========================================
+        // 🛡️ NOVA TRAVA DE SEGURANÇA RETROATIVA
+        // ==========================================
+        // Lê a data que já está na planilha para impedir que burlem o sistema alterando a data no formulário
+        let dataOriginal = sheet.getRange(linha, 1).getValue();
+        let dataFormatadaStr = dataOriginal instanceof Date ? Utilities.formatDate(dataOriginal, ss.getSpreadsheetTimeZone(), "dd/MM/yyyy") : String(dataOriginal);
+        
+        let trava = verificarTravaEdicao(dataFormatadaStr, "COMUM"); 
+        if (trava.bloqueado) {
+            return trava.msg; // Se estiver trancado, devolve o erro para a tela e cancela a edição!
+        }
+        // ==========================================
+
         const valoresAtualizados = [[
           dataObj, dados.doutor, dados.paciente, dados.procedimento,
           dados.plano, dados.pagamento, dados.obs, valorParticular,
@@ -474,7 +488,7 @@ function salvarLancamento(dados) {
   return salvarLancamentoUnificado(dados);
 }
 
-// ===== EXCLUIR REGISTRO (VERSÃO OTIMIZADA) =====
+// ===== EXCLUIR REGISTRO (VERSÃO OTIMIZADA E PROTEGIDA) =====
 function excluirLancamento(idLinha) {
   const lock = LockService.getScriptLock();
   
@@ -496,6 +510,21 @@ function excluirLancamento(idLinha) {
     
     if (busca) {
       const linha = busca.getRow();
+      
+      // ==========================================
+      // 🛡️ NOVA TRAVA DE SEGURANÇA RETROATIVA
+      // ==========================================
+      // Pega a data do registo que o utilizador está a tentar apagar
+      let dataOriginal = sheet.getRange(linha, 1).getValue();
+      let dataFormatadaStr = dataOriginal instanceof Date ? Utilities.formatDate(dataOriginal, ss.getSpreadsheetTimeZone(), "dd/MM/yyyy") : String(dataOriginal);
+      
+      // Passa pela verificação matemática dos dias
+      let trava = verificarTravaEdicao(dataFormatadaStr, "COMUM"); 
+      if (trava.bloqueado) {
+          // Se estiver trancado, devolve a mensagem de erro e NÃO APAGA NADA
+          return trava.msg; 
+      }
+      // ==========================================
       
       // 1. FAZ O BACKUP DE SEGURANÇA (Copia da Coluna A até à Coluna O)
       const dadosLinha = sheet.getRange(linha, 1, 1, 15).getValues()[0];
@@ -522,7 +551,6 @@ function excluirLancamento(idLinha) {
     lock.releaseLock();
   }
 }
-
 
 function getListaPacientes() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -1805,44 +1833,6 @@ function apiSalvarLaboratorio(dados) {
   return { success: true, id: idLab };
 }
 
-function apiGetNotificacoes() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const abaLab = ss.getSheetByName("LABORATORIO");
-  const notificacoes = [];
-  const hoje = new Date();
-  hoje.setHours(0,0,0,0);
-
-  if (abaLab) {
-    const dados = abaLab.getDataRange().getValues();
-    for (let i = 1; i < dados.length; i++) {
-      const [id, paciente, lab, envio, prazo, previsaoStr, status] = dados[i];
-      
-      if (status === "FINALIZADO") continue;
-
-      // Converte string dd/MM/yyyy para objeto Date
-      const partes = previsaoStr.split('/');
-      const dataPrevisao = new Date(partes[2], partes[1] - 1, partes[0]);
-      
-      const diffTime = dataPrevisao - hoje;
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-      if (diffDays <= 1) { // Notifica se falta 1 dia ou se já venceu
-        notificacoes.push({
-          tipo: "LABORATORIO",
-          titulo: diffDays === 1 ? "Entrega de Lab Amanhã" : "Atraso de Laboratório!",
-          mensagem: `${paciente} - ${lab} (Previsto: ${previsaoStr})`,
-          paciente: paciente,
-          idRef: id,
-          urgencia: diffDays < 0 ? "alta" : "media"
-        });
-      }
-    }
-  }
-
-  // Aqui você pode adicionar lógica para outras notificações (estoque baixo, aniversários, etc)
-  
-  return notificacoes;
-}
 
 // ==========================================
 // MÓDULO DE LABORATÓRIO E NOTIFICAÇÕES
@@ -2881,6 +2871,54 @@ function apiSalvarMovimentoFinanceiro(dados) {
   }
 }
 
+// ==========================================
+// MÓDULO: TRAVA DE SEGURANÇA RETROATIVA
+// ==========================================
+function apiSalvarConfiguracoesTrava(ativa, dias) {
+  const props = PropertiesService.getScriptProperties();
+  props.setProperty('TRAVA_ATIVA', ativa ? 'true' : 'false');
+  props.setProperty('TRAVA_DIAS', dias.toString());
+  return "Regras de segurança atualizadas!";
+}
+
+function apiBuscarConfiguracoesTrava() {
+  const props = PropertiesService.getScriptProperties();
+  return {
+    ativa: props.getProperty('TRAVA_ATIVA') === 'true',
+    dias: parseInt(props.getProperty('TRAVA_DIAS') || '7', 10)
+  };
+}
+
+function verificarTravaEdicao(dataRegistroStr, usuarioNivel) {
+  // O Administrador nunca é bloqueado
+  if (usuarioNivel === "ADMIN") return { bloqueado: false }; 
+
+  const props = PropertiesService.getScriptProperties();
+  const ativa = props.getProperty('TRAVA_ATIVA') === 'true';
+  
+  if (!ativa) return { bloqueado: false }; 
+
+  const diasLimite = parseInt(props.getProperty('TRAVA_DIAS') || '0', 10);
+  
+  // Converte a data do registro (ex: "15/05/2026") para poder calcular
+  if (!dataRegistroStr || !dataRegistroStr.includes('/')) return { bloqueado: false };
+  
+  const partes = dataRegistroStr.split('/');
+  const dataLancamento = new Date(partes[2], partes[1] - 1, partes[0]);
+  const hoje = new Date();
+  hoje.setHours(0,0,0,0);
+  dataLancamento.setHours(0,0,0,0);
+  
+  // Calcula diferença em dias
+  const diffTime = Math.abs(hoje - dataLancamento);
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+  
+  if (diffDays > diasLimite) {
+    return { bloqueado: true, msg: `ERRO_TRAVA: Este registro tem ${diffDays} dias. O sistema só permite alterar registros de até ${diasLimite} dias atrás.` };
+  }
+  
+  return { bloqueado: false };
+}
 // ==========================================
 // BUSCADOR AVANÇADO COM FILTRO DE DATAS, PAGAMENTOS E COMISSÕES
 // ==========================================
