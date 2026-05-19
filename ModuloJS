@@ -1263,12 +1263,20 @@ function salvarLancamento() {
   mostrarNotificacao("⏳ Registrando no sistema...", "info");
 
   google.script.run
-    .withSuccessHandler(function(res) {
-      
-      // ==========================================
-      // INÍCIO DA INTEGRAÇÃO COM O FINANCEIRO
-      // ==========================================
-      if (formatarParaCalculo(dados.particular) > 0) {
+  .withSuccessHandler(function(res) {
+    
+    // INTERCEPTADOR DA TRAVA: Se o servidor barrar, mostra o aviso e mantém o modal aberto
+    if (res && res.startsWith("ERRO_TRAVA")) {
+      mostrarNotificacao("🚫 " + res.replace("ERRO_TRAVA: ", ""), "erro");
+      btn.disabled = false; 
+      btn.innerHTML = textoOriginal;
+      return;
+    }
+
+    // ==========================================
+    // INÍCIO DA INTEGRAÇÃO COM O FINANCEIRO ORIGINAL...
+    // ==========================================
+    if (formatarParaCalculo(dados.particular) > 0) {
         const dadosFin = {
           id: "FIN-ORIGEM-" + dados.idLinha, // Previne duplicação na edição
           tipo: "ENTRADA",
@@ -1314,17 +1322,8 @@ function editarRegistro(idLinha) {
   const r = dadosLocais.find(item => item.id == idLinha);
   if (!r) return;
 
-  const [dia, mes, ano] = r.data.split('/');
-  const dataLanc = new Date(ano, mes - 1, dia);
-  const hoje = new Date();
-  hoje.setHours(0,0,0,0);
-  
-  const diffDays = (hoje - dataLanc) / (1000 * 60 * 60 * 24);
-
-  if (diffDays > 1 && usuarioLogado.nivel !== "ADMIN") {
-    mostrarNotificacao("🚫 Bloqueado: Apenas o Administrador pode editar registros retroativos.", "erro");
-    return;
-  }
+  // A trava rígida de 1 dia foi removida daqui.
+  // Agora o servidor (backend) valida dinamicamente conforme os dias escolhidos no painel!
 
   const form = document.getElementById("formCadastro");
   document.getElementById("idLinha").value = r.id; 
@@ -2124,9 +2123,6 @@ function salvarEdicaoProduto() {
   google.script.run.withSuccessHandler(res => { mostrarNotificacao(res, "sucesso"); bootstrap.Modal.getInstance(document.getElementById('modalEditaProd')).hide(); abrirAlmoxarifado(); }).editarProdutoCatalogo(dados);
 }
 
-// ==========================================
-// 8. CONFIGURAÇÕES, CRUD DE USUÁRIOS E DEMAIS
-// ==========================================
   // ==========================================
 // 8. CONFIGURAÇÕES, PREÇOS E USUÁRIOS
 // ==========================================
@@ -2164,12 +2160,14 @@ function abrirConfiguracao() {
                           <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                       </div>
                       <div class="modal-body bg-light" style="padding: 25px 30px;">
+                          
                           <ul class="nav nav-pills mb-4" id="configTabs" style="background: white; padding: 8px; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.03);">
                               <li class="nav-item"><a class="nav-link active rounded-3 fw-bold" data-bs-toggle="pill" href="#procedimentos">PROCEDIMENTOS</a></li>
                               <li class="nav-item"><a class="nav-link rounded-3 fw-bold" data-bs-toggle="pill" href="#planos">PLANOS</a></li>
                               <li class="nav-item"><a class="nav-link rounded-3 fw-bold" data-bs-toggle="pill" href="#doutores">DOUTORES</a></li>
                               <li class="nav-item"><a class="nav-link rounded-3 fw-bold" data-bs-toggle="pill" href="#pagamentos">PAGAMENTOS</a></li>
-                              <li class="nav-item ms-auto"><a class="nav-link rounded-3 fw-bold text-primary" data-bs-toggle="pill" href="#usuarios">👥 USUÁRIOS</a></li>
+                              <li class="nav-item"><a class="nav-link rounded-3 fw-bold text-primary" data-bs-toggle="pill" href="#usuarios">👥 USUÁRIOS</a></li>
+                              <li class="nav-item ms-auto"><a class="nav-link rounded-3 fw-bold text-danger" data-bs-toggle="pill" href="#seguranca">🔒 SEGURANÇA</a></li>
                           </ul>
                           
                           <div class="tab-content bg-white p-4 rounded-4 shadow-sm border" style="border-color: #E9EDF7 !important;">
@@ -2201,6 +2199,7 @@ function abrirConfiguracao() {
                                   </div>
                                   <div class="list-group list-group-flush border" style="max-height: 300px; overflow-y: auto; border-radius: 12px;">${listaPlanos}</div>
                               </div>
+                              
                               <div class="tab-pane fade" id="doutores">
                                   <div class="row g-2 mb-3">
                                       <div class="col-md-6"><input type="text" class="form-control bg-light border-0" id="novoDoutor" placeholder="Nome do Doutor"></div>
@@ -2208,11 +2207,11 @@ function abrirConfiguracao() {
                                       <div class="col-md-2"><input type="number" class="form-control bg-light border-0" id="percPlano" placeholder="% Plano" value="0.45" step="0.01"></div>
                                       <div class="col-md-2"><button class="btn btn-success w-100 fw-bold" id="btnSalvarDoutor" onclick="cadastrarDoutor()">➕ ADD</button></div>
                                   </div>
-                                  
                                   <div class="list-group list-group-flush border" id="containerListaDoutores" style="max-height: 300px; overflow-y: auto; border-radius: 12px;">
                                       ${listaDoutores}
                                   </div>
                               </div>
+                              
                               <div class="tab-pane fade" id="pagamentos">
                                   <div class="input-group mb-3">
                                       <input type="text" class="form-control bg-light border-0" id="novoPagamento" placeholder="Nova forma de pagamento...">
@@ -2220,6 +2219,7 @@ function abrirConfiguracao() {
                                   </div>
                                   <div class="list-group list-group-flush border" style="max-height: 300px; overflow-y: auto; border-radius: 12px;">${listaPagamentos}</div>
                               </div>
+                              
                               <div class="tab-pane fade" id="usuarios">
                                   <div class="card bg-light border-0 shadow-sm" id="formUsuarioCard" style="border-radius: 16px;">
                                       <div class="card-body p-4">
@@ -2250,8 +2250,8 @@ function abrirConfiguracao() {
                                                               <div class="form-check form-switch"><input class="form-check-input perm-check" type="checkbox" value="AGENDA" id="p_age"><label class="form-check-label small fw-semibold" for="p_age">Módulo Agenda</label></div>
                                                               <div class="form-check form-switch"><input class="form-check-input perm-check" type="checkbox" value="FLUXO" id="p_flu"><label class="form-check-label small fw-semibold" for="p_flu">Módulo Fluxo de Caixa</label></div>
                                                               <div class="form-check form-switch">
-                                                                <input class="form-check-input perm-check" type="checkbox" value="NOTAS_FISCAIS" id="p_nf">
-                                                                <label class="form-check-label small fw-semibold" for="p_nf">Gestão de Notas Fiscais</label>
+                                                                  <input class="form-check-input perm-check" type="checkbox" value="NOTAS_FISCAIS" id="p_nf">
+                                                                  <label class="form-check-label small fw-semibold" for="p_nf">Gestão de Notas Fiscais</label>
                                                               </div>
                                                               
                                                               <div class="form-check form-switch"><input class="form-check-input perm-check" type="checkbox" value="DASHBOARD" id="p_dash"><label class="form-check-label small fw-semibold" for="p_dash">Dashboard Gráfico</label></div>
@@ -2287,21 +2287,70 @@ function abrirConfiguracao() {
                                       </div>
                                   </div>
                               </div>
+                              
+                              <div class="tab-pane fade" id="seguranca">
+                                  <div class="card p-4 border-danger shadow-sm" style="border-radius: 16px; border-width: 2px;">
+                                      <h5 class="fw-bold text-danger mb-3"><span class="material-icons align-middle">lock</span> Proteção do Caixa (Trava de Edição)</h5>
+                                      <p class="text-muted small mb-4">Evite que usuários comuns alterem lançamentos financeiros de meses passados acidentalmente. <br><b>Nota: O perfil Administrador ignora esta trava e tem controle total.</b></p>
+                                      
+                                      <div class="form-check form-switch mb-4">
+                                          <input class="form-check-input" type="checkbox" id="checkTravaAtiva" style="transform: scale(1.5); margin-right: 15px;" onchange="document.getElementById('blocoDiasTrava').style.display = this.checked ? 'block' : 'none';">
+                                          <label class="form-check-label fw-bold text-dark mt-1" for="checkTravaAtiva">Ativar Bloqueio Retroativo</label>
+                                      </div>
+
+                                      <div id="blocoDiasTrava" style="display: none;" class="mb-4 p-3 bg-light rounded-3 border">
+                                          <label class="form-label small fw-bold text-muted">Trancar edições/exclusões de registros com data de atendimento mais velha que:</label>
+                                          <div class="input-group mt-2" style="max-width: 200px;">
+                                              <input type="number" id="inpDiasTrava" class="form-control fw-bold text-center text-danger" value="7" min="0">
+                                              <span class="input-group-text bg-white fw-bold">Dias</span>
+                                          </div>
+                                      </div>
+
+                                      <button class="btn btn-danger fw-bold px-5 py-2 shadow-sm" id="btnSalvarTrava" onclick="salvarRegraTravaFront()">💾 SALVAR REGRA DE SEGURANÇA</button>
+                                  </div>
+                              </div>
+                              
                           </div>
                       </div>
                   </div>
               </div>
           </div>
       `;
+      
       $('#modalConfig').remove();
       document.body.insertAdjacentHTML('beforeend', modalHtml);
       
       // Gatilhos de carregamento ao abrir as abas
       $('#modalConfig').on('shown.bs.tab', 'a[data-bs-toggle="pill"][href="#usuarios"]', function () { carregarUsuariosConfig(); });
+      
+      // GATILHO DA NOVA ABA DE SEGURANÇA
+      $('#modalConfig').on('shown.bs.tab', 'a[data-bs-toggle="pill"][href="#seguranca"]', function () { carregarStatusTravaFront(); });
+      
       carregarTabelaProcedimentosConfig(); // Carrega os preços na hora que a tela abre!
       
       new bootstrap.Modal(document.getElementById('modalConfig')).show();
   }).getListasParaForm();
+}
+
+// Funções que o botão "SALVAR REGRA DE SEGURANÇA" e a aba usam
+function carregarStatusTravaFront() {
+    google.script.run.withSuccessHandler(function(config) {
+        document.getElementById("checkTravaAtiva").checked = config.ativa;
+        document.getElementById("inpDiasTrava").value = config.dias;
+        document.getElementById('blocoDiasTrava').style.display = config.ativa ? 'block' : 'none';
+    }).apiBuscarConfiguracoesTrava();
+}
+
+function salvarRegraTravaFront() {
+    const btn = document.getElementById("btnSalvarTrava");
+    const ativa = document.getElementById("checkTravaAtiva").checked;
+    const dias = document.getElementById("inpDiasTrava").value;
+    
+    btn.disabled = true; btn.innerText = "SALVANDO...";
+    google.script.run.withSuccessHandler(function(res) {
+        mostrarNotificacao(res, "sucesso");
+        btn.disabled = false; btn.innerText = "💾 SALVAR REGRA DE SEGURANÇA";
+    }).apiSalvarConfiguracoesTrava(ativa, dias);
 }
 // ==========================================
 // CADASTRO SILENCIOSO DE DOUTOR (SEM POPUP)
